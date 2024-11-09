@@ -16,7 +16,7 @@ logging.basicConfig(filename='yt_dlp_download.log', level=logging.INFO)
 
 # List of video URLs to download
 urls = [
-    "https://www.youtube.com/watch?v=0HQ1a9uiB0o",  # Replace with your actual video URLs
+    "https://www.youtube.com/watch?v=lA-mRMwDm6c",  # Replace with your actual video URLs
 ]
 
 # Set up base download options
