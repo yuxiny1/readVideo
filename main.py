@@ -35,22 +35,20 @@ def load_access_token():
     else:
         raise FileNotFoundError(f"Token file {token_path} not found.")
 
-# Simulate video download and processing task
 async def process_video(task_id: str, url: str, access_token: str):
     # Define the fixed download path
-    download_path = '/Volumes/2TB_MAINDISK_FAN_XIANG/DownLoadYoutubeVideos/%(uploader)s/%(upload_date)s-%(title)s.%(ext)s'  # Replace with the desired fixed path
-
-    # Simulate download, transcribing, and processing
+    download_base_path = '/Volumes/2TB_MAINDISK_FAN_XIANG/DownLoadYoutubeVideos'  # Define a base directory for downloads
+    download_path = os.path.join(download_base_path, "%(uploader)s/%(upload_date)s-%(title)s.%(ext)s")  # Fixed path template
+    
     print(f"Task {task_id}: Downloading video from {url}...")
     
     # Call the download function with the fixed path and access token
-    await asyncio.to_thread(download_video, url, access_token, download_path)
+    downloaded_file_path = await asyncio.to_thread(download_video, url, access_token, download_base_path)
     
     print(f"Task {task_id}: Video downloaded.")
     
     # Initialize AudioTranscription class (replace with your OpenAI API key)
-    # Load the API key from the JSON file
-    with open('config.json', 'r') as f:
+    with open('apiKey.json', 'r') as f:
         config = json.load(f)
 
     api_key = config["apiKey"]
@@ -59,10 +57,9 @@ async def process_video(task_id: str, url: str, access_token: str):
     transcription_service = AudioTranscription(api_key=api_key)
 
     # Path to the audio file (you may need to extract audio from the video file)
-    audio_file_path = download_path.replace(".mp4", ".mp3")  # Assuming you extract audio in MP3 format
-    
+    audio_file_path = downloaded_file_path
     # Perform transcription
-    transcription_text = transcription_service.process_audio_file(audio_file_path)
+    transcription_text = transcription_service.process_video(audio_file_path)
     
     if transcription_text:
         print(f"Task {task_id}: Audio transcribed.")

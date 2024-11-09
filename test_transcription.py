@@ -4,7 +4,7 @@ from moviepy.editor import AudioFileClip
 import wave
 
 # Set your OpenAI API key
-with open('config.json', 'r') as f:
+with open('apiKey.json', 'r') as f:
     config = json.load(f)
 
 api_key = config["apiKey"]
