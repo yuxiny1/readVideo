@@ -4,3 +4,4 @@ yt_dlp_download.log
 client_secret.json
 *.log
 /downloads
+apiKey.json

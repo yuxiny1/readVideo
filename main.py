@@ -1,12 +1,12 @@
 from fastapi import FastAPI, BackgroundTasks
 import asyncio
 import os
-import logging
+import json
 from google_auth import initialize_youtube_api
 from yt_dl import download_video
-import json
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+from audioTranscription import AudioTranscription
 
 app = FastAPI()
 
@@ -20,12 +20,17 @@ def load_access_token():
             
             # If the credentials are expired, refresh them
             if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-                
-                # Save the refreshed credentials back to the token file
-                with open(token_path, 'w') as token_file:
-                    json.dump(creds.to_dict(), token_file)
-                    
+                creds.refresh(Request())    
+                creds_dict = {
+                    "token": creds.token,
+                    "refresh_token": creds.refresh_token,
+                    "token_uri": creds.token_uri,
+                    "client_id": creds.client_id,
+                    "client_secret": creds.client_secret,
+                    "scopes": creds.scopes
+                }
+                with open("token.json", "w") as token_file:
+                    json.dump(creds_dict, token_file)
             return creds.token
     else:
         raise FileNotFoundError(f"Token file {token_path} not found.")
@@ -42,11 +47,31 @@ async def process_video(task_id: str, url: str, access_token: str):
     await asyncio.to_thread(download_video, url, access_token, download_path)
     
     print(f"Task {task_id}: Video downloaded.")
-
-    # Simulate transcription (you would call Whisper API here)
-    await asyncio.sleep(5)
-    print(f"Task {task_id}: Audio transcribed.")
     
+    # Initialize AudioTranscription class (replace with your OpenAI API key)
+    # Load the API key from the JSON file
+    with open('config.json', 'r') as f:
+        config = json.load(f)
+
+    api_key = config["apiKey"]
+
+    # Pass the API key to your transcription service
+    transcription_service = AudioTranscription(api_key=api_key)
+
+    # Path to the audio file (you may need to extract audio from the video file)
+    audio_file_path = download_path.replace(".mp4", ".mp3")  # Assuming you extract audio in MP3 format
+    
+    # Perform transcription
+    transcription_text = transcription_service.process_audio_file(audio_file_path)
+    
+    if transcription_text:
+        print(f"Task {task_id}: Audio transcribed.")
+        
+        # Save the transcription to a text file
+        transcription_service.save_transcription(transcription_text, download_path)
+    else:
+        print(f"Task {task_id}: Failed to transcribe audio.")
+
     # Simulate GPT processing
     await asyncio.sleep(3)
     print(f"Task {task_id}: Text formatted.")
