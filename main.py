@@ -36,43 +36,39 @@ def load_access_token():
         raise FileNotFoundError(f"Token file {token_path} not found.")
 
 async def process_video(task_id: str, url: str, access_token: str):
-    # Define the fixed download path
-    download_base_path = '/Volumes/2TB_MAINDISK_FAN_XIANG/DownLoadYoutubeVideos'  # Define a base directory for downloads
-    download_path = os.path.join(download_base_path, "%(uploader)s/%(upload_date)s-%(title)s.%(ext)s")  # Fixed path template
+    download_base_path = '/Volumes/2TB_MAINDISK_FAN_XIANG/DownLoadYoutubeVideos'
+    
+    # Define the specific path for download
+    download_path = os.path.join(download_base_path, "youtube_videos")
     
     print(f"Task {task_id}: Downloading video from {url}...")
     
-    # Call the download function with the fixed path and access token
-    downloaded_file_path = await asyncio.to_thread(download_video, url, access_token, download_base_path)
+    # Call the download function
+    downloaded_file_path = await asyncio.to_thread(download_video, url, access_token, download_path)
+
+    if downloaded_file_path is None:
+        print(f"Task {task_id}: Failed to download video, {downloaded_file_path} is None.")
+        return {"error": "Failed to download video."}
     
     print(f"Task {task_id}: Video downloaded.")
     
-    # Initialize AudioTranscription class (replace with your OpenAI API key)
+    # Initialize AudioTranscription with API key
     with open('apiKey.json', 'r') as f:
         config = json.load(f)
-
     api_key = config["apiKey"]
-
-    # Pass the API key to your transcription service
     transcription_service = AudioTranscription(api_key=api_key)
 
-    # Path to the audio file (you may need to extract audio from the video file)
-    audio_file_path = downloaded_file_path
-    # Perform transcription
-    transcription_text = transcription_service.process_video(audio_file_path)
+    transcription_text = transcription_service.process_video(downloaded_file_path)
     
     if transcription_text:
         print(f"Task {task_id}: Audio transcribed.")
-        
-        # Save the transcription to a text file
-        transcription_service.save_transcription(transcription_text, download_path)
+        transcription_service.save_transcription(transcription_text, downloaded_file_path)
     else:
         print(f"Task {task_id}: Failed to transcribe audio.")
 
-    # Simulate GPT processing
-    await asyncio.sleep(3)
+    await asyncio.sleep(3)  # Simulate any additional processing
     print(f"Task {task_id}: Text formatted.")
-
+    
 @app.post("/process_video/")
 async def create_task(background_tasks: BackgroundTasks, task_id: str, url: str):
     try:
