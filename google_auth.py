@@ -26,7 +26,6 @@ def authenticate_google():
 
         with open(token_path, 'w') as token_file:
             token_file.write(creds.to_json())
-
     return creds
 
 def initialize_youtube_api():
