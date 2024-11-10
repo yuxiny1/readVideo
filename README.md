@@ -1,6 +1,6 @@
 readVideo
 
-Convert videos into text
+Convert videos into text ( this project learn from Yage Computing life to practice my builder skills ) 
 This project allows you to transcribe videos into text, so you can consume video content in written form, saving time and effort.
 
 Features
