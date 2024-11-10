@@ -5,3 +5,4 @@ client_secret.json
 *.log
 /downloads
 apiKey.json
+/__pycache__
