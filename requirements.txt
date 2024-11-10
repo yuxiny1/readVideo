@@ -8,3 +8,5 @@ yt-dlp
 openai
 moviepy
 wave
+# System dependencies
+ffmpeg    # Install ffmpeg on your system separately using Homebrew or other methods

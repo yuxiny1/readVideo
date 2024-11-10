@@ -38,7 +38,7 @@ Configuration
 	
 	Running the Application
 	Start the FastAPI server:
-	uvicorn app:app --host 0.0.0.0 --port 8000
+	uvicorn main:app --reload
 
 
 Usage
