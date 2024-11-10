@@ -6,3 +6,4 @@ client_secret.json
 /downloads
 apiKey.json
 /__pycache__
+%(upload_date)s-%(title)s_transcription.txt
