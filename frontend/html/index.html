@@ -7,20 +7,27 @@
   <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
-  <header class="topbar">
-    <div>
-      <h1>readVideo</h1>
-      <div class="meta-row">
-        <span id="health-pill" class="pill muted">Checking</span>
-        <span id="backend-pill" class="pill muted">Backend</span>
-      </div>
-    </div>
-    <nav class="topnav">
-      <a class="quiet-link" href="/history">History</a>
-      <a class="quiet-link" href="/favorites">Favorites</a>
-      <a class="quiet-link" href="/docs" target="_blank" rel="noreferrer">API Docs</a>
-    </nav>
-  </header>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <a class="brand-link" href="/">readVideo</a>
+      <nav class="side-nav">
+        <a class="side-link active" href="/">New Video</a>
+        <a class="side-link" href="/history">History</a>
+        <a class="side-link" href="/favorites">Favorites</a>
+        <a class="side-link" href="/docs" target="_blank" rel="noreferrer">API Docs</a>
+      </nav>
+    </aside>
+
+    <div class="page-content">
+      <header class="topbar">
+        <div>
+          <h1>readVideo</h1>
+          <div class="meta-row">
+            <span id="health-pill" class="pill muted">Checking</span>
+            <span id="backend-pill" class="pill muted">Backend</span>
+          </div>
+        </div>
+      </header>
 
   <main class="workspace">
     <section class="tool-panel process-panel">
@@ -71,7 +78,10 @@
     <section class="tool-panel output-panel">
       <div class="panel-header">
         <h2>Latest Output</h2>
-        <button id="copy-summary" class="secondary-button" type="button" disabled>Copy Summary</button>
+        <div class="button-row">
+          <button id="favorite-summary" class="secondary-button" type="button" disabled>Favorite Summary</button>
+          <button id="copy-summary" class="secondary-button" type="button" disabled>Copy Summary</button>
+        </div>
       </div>
 
       <dl class="output-list">
@@ -125,6 +135,8 @@
       <div id="watchlist" class="watchlist"></div>
     </aside>
   </main>
+    </div>
+  </div>
 
   <script type="module" src="/static/js/app.js"></script>
 </body>

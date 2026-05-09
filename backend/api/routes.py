@@ -1,3 +1,4 @@
+from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
@@ -15,6 +16,7 @@ from backend.storage.watchlist import WatchlistStore
 
 
 router = APIRouter()
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def get_store() -> WatchlistStore:
@@ -27,6 +29,15 @@ def get_history_store() -> HistoryStore:
 
 def get_favorite_store() -> FavoriteStore:
     return FavoriteStore(load_settings().database_path)
+
+
+def resolve_history_file(path: str) -> Path:
+    file_path = Path(path).expanduser()
+    if not file_path.is_absolute():
+        file_path = PROJECT_ROOT / file_path
+    if not file_path.exists() or not file_path.is_file():
+        raise FileNotFoundError(f"File does not exist: {path}")
+    return file_path
 
 
 @router.post("/process_video/")
@@ -82,6 +93,32 @@ async def get_history(task_id: str):
     if record is None:
         raise HTTPException(status_code=404, detail="History record not found")
     return record.__dict__
+
+
+@router.get("/api/history/{task_id}/files/{file_kind}")
+async def download_history_file(task_id: str, file_kind: str):
+    record = get_history_store().get_record(task_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="History record not found")
+
+    paths = {
+        "video": record.video_path,
+        "transcript": record.transcription_path,
+        "markdown": record.markdown_path,
+    }
+    if file_kind not in paths:
+        raise HTTPException(status_code=404, detail="Unknown file kind")
+
+    file_path = paths[file_kind]
+    if not file_path:
+        raise HTTPException(status_code=404, detail=f"No {file_kind} file saved for this task")
+
+    try:
+        path = resolve_history_file(file_path)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    return FileResponse(path, filename=path.name)
 
 
 @router.get("/api/favorites")

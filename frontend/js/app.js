@@ -4,6 +4,7 @@ import {escapeHtml, formatElapsed} from "./format.js";
 const state = {
   pollTimer: null,
   latestSummary: "",
+  latestTask: null,
 };
 
 const elements = {
@@ -22,6 +23,7 @@ const elements = {
   transcriptPath: document.querySelector("#transcript-path"),
   markdownPath: document.querySelector("#markdown-path"),
   summaryBox: document.querySelector("#summary-box"),
+  favoriteSummary: document.querySelector("#favorite-summary"),
   copySummary: document.querySelector("#copy-summary"),
   refreshTasks: document.querySelector("#refresh-tasks"),
   recentTasks: document.querySelector("#recent-tasks"),
@@ -62,15 +64,37 @@ function setStep(status) {
 }
 
 function updateOutput(task) {
-  elements.videoPath.textContent = task.video_path || "-";
-  elements.transcriptPath.textContent = task.transcription_path || "-";
-  elements.markdownPath.textContent = task.markdown_path || "-";
+  state.latestTask = task;
+  renderOutputPath(elements.videoPath, task, "video", task.video_path);
+  renderOutputPath(elements.transcriptPath, task, "transcript", task.transcription_path);
+  renderOutputPath(elements.markdownPath, task, "markdown", task.markdown_path);
 
   if (task.summary) {
     state.latestSummary = task.summary;
     elements.summaryBox.textContent = task.summary;
     elements.copySummary.disabled = false;
   }
+
+  const canFavorite = Boolean(task.task_id && (task.summary || task.markdown_path));
+  elements.favoriteSummary.disabled = !canFavorite;
+  if (canFavorite) {
+    elements.favoriteSummary.textContent = "Favorite Summary";
+  }
+}
+
+function renderOutputPath(element, task, kind, value) {
+  if (!value) {
+    element.textContent = "-";
+    return;
+  }
+
+  if (!task.task_id) {
+    element.textContent = value;
+    return;
+  }
+
+  const href = `/api/history/${encodeURIComponent(task.task_id)}/files/${kind}`;
+  element.innerHTML = `<a class="path-anchor" href="${href}" target="_blank" rel="noreferrer">${escapeHtml(value)}</a>`;
 }
 
 function renderTask(task) {
@@ -147,7 +171,10 @@ async function startProcessingUrl(url) {
   elements.startButton.disabled = true;
   elements.summaryBox.textContent = "Waiting for task output...";
   elements.copySummary.disabled = true;
+  elements.favoriteSummary.disabled = true;
+  elements.favoriteSummary.textContent = "Favorite Summary";
   state.latestSummary = "";
+  state.latestTask = null;
   setStep("queued");
   setNotice("Queued", "pending");
 
@@ -327,10 +354,30 @@ async function copySummary() {
   }, 1200);
 }
 
+async function favoriteLatestSummary() {
+  if (!state.latestTask?.task_id) return;
+
+  const oldText = elements.favoriteSummary.textContent;
+  elements.favoriteSummary.disabled = true;
+  elements.favoriteSummary.textContent = "Saving";
+  try {
+    await api("/api/favorites", {
+      method: "POST",
+      body: JSON.stringify({task_id: state.latestTask.task_id}),
+    });
+    elements.favoriteSummary.textContent = "Favorited";
+  } catch (error) {
+    elements.favoriteSummary.disabled = false;
+    elements.favoriteSummary.textContent = oldText;
+    setNotice(error.message, "error");
+  }
+}
+
 elements.processForm.addEventListener("submit", submitProcess);
 elements.watchForm.addEventListener("submit", submitWatchItem);
 elements.watchlist.addEventListener("click", handleWatchlistClick);
 elements.copySummary.addEventListener("click", copySummary);
+elements.favoriteSummary.addEventListener("click", favoriteLatestSummary);
 elements.refreshTasks.addEventListener("click", loadRecentTasks);
 elements.recentTasks.addEventListener("click", handleRecentTaskClick);
 

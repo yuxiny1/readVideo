@@ -27,12 +27,64 @@ body {
   color: var(--text);
 }
 
+.app-layout {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 20px 16px;
+  border-right: 1px solid var(--line);
+  background: #fff;
+}
+
+.brand-link {
+  display: block;
+  margin-bottom: 18px;
+  color: var(--text);
+  font-size: 21px;
+  font-weight: 850;
+  letter-spacing: 0;
+  text-decoration: none;
+}
+
+.side-nav {
+  display: grid;
+  gap: 8px;
+}
+
+.side-link {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 9px 11px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #1d2b42;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.side-link:hover,
+.side-link.active {
+  border-color: #d4ddec;
+  background: #eef3fb;
+}
+
+.page-content {
+  min-width: 0;
+}
+
 .topbar {
   min-height: 86px;
   padding: 20px 28px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 16px;
   background: #fff;
   border-bottom: 1px solid var(--line);
@@ -58,6 +110,15 @@ h1 {
 h2 {
   font-size: 17px;
   line-height: 1.2;
+}
+
+h3 {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0;
+  text-transform: uppercase;
 }
 
 .meta-row,
@@ -440,6 +501,14 @@ dd {
   font-size: 13px;
 }
 
+.path-anchor {
+  color: var(--blue);
+  overflow-wrap: anywhere;
+  font-weight: 700;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
 .watch-notes {
   margin: 8px 0 0;
   color: #3d4757;
@@ -529,7 +598,7 @@ dd {
 
 .summary-preview {
   max-height: 220px;
-  margin: 14px 0 0;
+  margin: 0;
   padding: 12px;
   overflow: auto;
   white-space: pre-wrap;
@@ -538,6 +607,16 @@ dd {
   background: #101828;
   color: #edf3ff;
   font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.favorite-detail {
+  margin-top: 14px;
+}
+
+.favorite-detail p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 750;
 }
 
 .file-row {
@@ -552,6 +631,31 @@ dd {
 }
 
 @media (max-width: 920px) {
+  .app-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+    height: auto;
+    padding: 14px 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .brand-link {
+    margin-bottom: 10px;
+  }
+
+  .side-nav {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .side-link {
+    justify-content: center;
+    text-align: center;
+  }
+
   .workspace,
   .favorites-workspace {
     grid-template-columns: 1fr;
@@ -570,6 +674,10 @@ dd {
 }
 
 @media (max-width: 560px) {
+  .side-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .topbar {
     align-items: flex-start;
     flex-direction: column;

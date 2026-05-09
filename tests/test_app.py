@@ -84,6 +84,7 @@ class MainAppTest(unittest.TestCase):
         self.assertIn("/static/js/app.js", response.text)
         self.assertIn("/history", response.text)
         self.assertIn("/favorites", response.text)
+        self.assertIn("favorite-summary", response.text)
 
     def test_history_page_serves_frontend(self):
         client = TestClient(app)
@@ -150,6 +151,29 @@ class MainAppTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()[0]["task_id"], "history-task")
         self.assertEqual(response.json()[0]["markdown_path"], "notes/video.md")
+
+    def test_history_file_endpoint_downloads_task_output(self):
+        with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
+            "os.environ",
+            {"READVIDEO_DATABASE_PATH": str(Path(tmpdir) / "history.sqlite3")},
+            clear=True,
+        ):
+            transcript = Path(tmpdir) / "video_transcription.txt"
+            transcript.write_text("hello transcript", encoding="utf-8")
+            set_task_status(
+                "file-task",
+                "completed",
+                url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                transcription_path=str(transcript),
+            )
+            from backend.storage.history import HistoryStore
+
+            HistoryStore(str(Path(tmpdir) / "history.sqlite3")).upsert_task(TASKS["file-task"])
+            client = TestClient(app)
+            response = client.get("/api/history/file-task/files/transcript")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.text, "hello transcript")
 
     def test_favorites_endpoint_adds_history_record(self):
         with tempfile.TemporaryDirectory() as tmpdir, patch.dict(

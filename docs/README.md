@@ -17,6 +17,7 @@ The default transcription backend is local `whisper.cpp`, so OpenAI API access i
 - Shows recent task status, elapsed time, and generated output paths in the browser.
 - Persists processed video history in SQLite, including source URL, video, transcript, and Markdown paths.
 - Lets you favorite valuable summaries and keep their Markdown locations in one page.
+- Lets you favorite a summary from either the History page or the current Latest Output panel after a download finishes.
 - Lists Markdown files from a chosen notes folder and serves them for download.
 - Saves a local watchlist of YouTube channels/playlists in SQLite and can check recent source updates with `yt-dlp`.
 
@@ -95,7 +96,7 @@ Open:
 http://localhost:8000
 ```
 
-The frontend is served from `frontend/` and calls the same FastAPI app for task status, Markdown output, and saved YouTube sources.
+The frontend is served from `frontend/` and calls the same FastAPI app for task status, Markdown output, and saved YouTube sources. Main navigation lives in the left sidebar.
 Open `/history` to review previously downloaded/transcribed videos and their saved file paths.
 Open `/favorites` to review favorite summaries, jump to their Markdown folders, list `.md` files, and download notes.
 

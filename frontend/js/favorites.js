@@ -52,22 +52,32 @@ async function loadFavorites() {
 
 
 function renderFavorite(item) {
+  const title = item.title || item.url || item.task_id;
   return `
     <article class="favorite-card" data-id="${item.id}">
       <div class="history-card-header">
         <div>
-          <h2>${escapeHtml(item.title || item.url || item.task_id)}</h2>
+          <h2>${escapeHtml(title)}</h2>
           <a class="watch-url" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">${escapeHtml(item.url || "No URL")}</a>
         </div>
         <span class="pill ok">Favorite</span>
       </div>
 
+      <section class="favorite-detail">
+        <h3>Title</h3>
+        <p>${escapeHtml(title)}</p>
+      </section>
+
+      <section class="favorite-detail">
+        <h3>Content</h3>
+        <pre class="summary-preview">${escapeHtml(item.summary || "No summary saved.")}</pre>
+      </section>
+
       <dl class="path-list">
+        ${pathRow("Source Link", item.url)}
         ${pathRow("Markdown", item.markdown_path)}
         ${pathRow("Folder", item.notes_dir)}
       </dl>
-
-      <pre class="summary-preview">${escapeHtml(item.summary || "No summary saved.")}</pre>
 
       <div class="card-actions">
         ${item.markdown_path ? `<a class="quiet-link small-link" href="/api/markdown_files/download?path=${encodeURIComponent(item.markdown_path)}">Download MD</a>` : ""}
