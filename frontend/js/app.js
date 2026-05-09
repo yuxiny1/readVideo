@@ -1,3 +1,6 @@
+import {api} from "./api.js";
+import {escapeHtml, formatElapsed} from "./format.js";
+
 const state = {
   pollTimer: null,
   latestSummary: "",
@@ -29,19 +32,6 @@ const elements = {
   watchlist: document.querySelector("#watchlist"),
   watchCount: document.querySelector("#watch-count"),
 };
-
-async function api(path, options = {}) {
-  const response = await fetch(path, {
-    headers: {"Content-Type": "application/json", ...(options.headers || {})},
-    ...options,
-  });
-  const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
-  if (!response.ok) {
-    throw new Error(data?.detail || data?.error || response.statusText);
-  }
-  return data;
-}
 
 function setPill(element, text, kind = "muted") {
   element.textContent = text;
@@ -271,33 +261,6 @@ async function copySummary() {
   window.setTimeout(() => {
     elements.copySummary.textContent = oldText;
   }, 1200);
-}
-
-function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, (char) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;",
-  }[char]));
-}
-
-function formatElapsed(task) {
-  const start = Date.parse(task.created_at);
-  const end = Date.parse(task.completed_at || task.updated_at || new Date().toISOString());
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
-    return "0s";
-  }
-
-  const seconds = Math.round((end - start) / 1000);
-  if (seconds < 60) {
-    return `${seconds}s`;
-  }
-
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}m ${remainingSeconds}s`;
 }
 
 elements.processForm.addEventListener("submit", submitProcess);

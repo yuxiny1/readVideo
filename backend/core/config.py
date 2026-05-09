@@ -7,7 +7,9 @@ from typing import Optional
 from dotenv import load_dotenv
 
 
-load_dotenv()
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(PROJECT_ROOT / ".env")
+load_dotenv(PROJECT_ROOT / "config" / ".env", override=True)
 
 
 @dataclass(frozen=True)
@@ -33,6 +35,8 @@ def load_openai_api_key(config_path: str = "apiKey.json", required: bool = True)
         return env_key
 
     key_file = Path(config_path)
+    if not key_file.is_absolute():
+        key_file = PROJECT_ROOT / key_file
     if key_file.exists():
         with open(key_file, "r", encoding="utf-8") as f:
             config = json.load(f)

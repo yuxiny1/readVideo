@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from watchlist import WatchlistStore
+from backend.storage.watchlist import WatchlistStore
 
 
 class WatchlistStoreTest(unittest.TestCase):

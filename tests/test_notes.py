@@ -2,7 +2,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from notes import chunk_transcript, summarize_transcript, summarize_transcript_with_backend, write_markdown_note
+from backend.services.notes import (
+    chunk_transcript,
+    summarize_transcript,
+    summarize_transcript_with_backend,
+    write_markdown_note,
+)
 
 
 class NotesTest(unittest.TestCase):

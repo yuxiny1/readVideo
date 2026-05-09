@@ -1,6 +1,6 @@
 import unittest
 
-from local_transcription import _normalize_whisper_text
+from backend.services.local_transcription import _normalize_whisper_text
 
 
 class LocalTranscriptionTest(unittest.TestCase):

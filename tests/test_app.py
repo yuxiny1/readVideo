@@ -6,13 +6,15 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-import main
-from config import load_openai_api_key, load_settings
+from backend.api import routes
+from backend.app import app
+from backend.core.config import load_openai_api_key, load_settings
+from backend.core.task_state import TASKS, clear_tasks, set_task_status
 
 
 class MainAppTest(unittest.TestCase):
     def setUp(self):
-        main.TASKS.clear()
+        clear_tasks()
 
     def test_load_openai_api_key_prefers_environment(self):
         with patch.dict("os.environ", {"OPENAI_API_KEY": "env-key"}):
@@ -39,14 +41,14 @@ class MainAppTest(unittest.TestCase):
             notes_backend=None,
             ollama_model=None,
         ):
-            main.set_task_status(task_id, "completed", url=url)
+            set_task_status(task_id, "completed", url=url)
 
         with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}), patch.object(
-            main,
+            routes,
             "process_video",
             fake_process_video,
         ):
-            client = TestClient(main.app)
+            client = TestClient(app)
             response = client.post(
                 "/process_video/",
                 json={"task_id": "test-task", "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"},
@@ -54,11 +56,11 @@ class MainAppTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["task_id"], "test-task")
-        self.assertEqual(main.TASKS["test-task"]["status"], "completed")
+        self.assertEqual(TASKS["test-task"]["status"], "completed")
 
     def test_process_video_endpoint_validates_notes_backend(self):
         with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}):
-            client = TestClient(main.app)
+            client = TestClient(app)
             response = client.post(
                 "/process_video/",
                 json={
@@ -71,16 +73,16 @@ class MainAppTest(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_index_serves_frontend(self):
-        client = TestClient(main.app)
+        client = TestClient(app)
         response = client.get("/")
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("readVideo", response.text)
-        self.assertIn("/static/app.js", response.text)
+        self.assertIn("/static/js/app.js", response.text)
 
     def test_app_config_exposes_non_secret_defaults(self):
         with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}, clear=True):
-            client = TestClient(main.app)
+            client = TestClient(app)
             response = client.get("/app_config")
 
         self.assertEqual(response.status_code, 200)
@@ -89,10 +91,10 @@ class MainAppTest(unittest.TestCase):
         self.assertNotIn("openai_api_key", data)
 
     def test_tasks_endpoint_lists_recent_task_metadata(self):
-        main.set_task_status("task-1", "queued", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")
-        main.set_task_status("task-1", "completed", markdown_path="notes/demo.md")
+        set_task_status("task-1", "queued", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        set_task_status("task-1", "completed", markdown_path="notes/demo.md")
 
-        client = TestClient(main.app)
+        client = TestClient(app)
         response = client.get("/tasks")
 
         self.assertEqual(response.status_code, 200)
@@ -105,7 +107,7 @@ class MainAppTest(unittest.TestCase):
 
     def test_openai_backend_requires_openai_key(self):
         with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "openai"}, clear=True):
-            client = TestClient(main.app)
+            client = TestClient(app)
             response = client.post(
                 "/process_video/",
                 json={"task_id": "test-task", "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"},
@@ -121,7 +123,7 @@ class MainAppTest(unittest.TestCase):
         self.assertIsNone(settings.openai_api_key)
 
     def test_unknown_task_returns_404(self):
-        client = TestClient(main.app)
+        client = TestClient(app)
         response = client.get("/task_status/missing")
         self.assertEqual(response.status_code, 404)
 
