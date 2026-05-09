@@ -37,6 +37,15 @@ export OPENAI_TRANSCRIPTION_MODEL="whisper-1"
 export READVIDEO_CHUNK_SECONDS="180"
 ```
 
+Or create a local `.env` file, which is ignored by Git:
+
+```bash
+OPENAI_API_KEY=sk-...
+READVIDEO_DOWNLOAD_DIR=downloads/youtube_videos
+OPENAI_TRANSCRIPTION_MODEL=whisper-1
+READVIDEO_CHUNK_SECONDS=180
+```
+
 For backwards compatibility, the app also accepts an `apiKey.json` file:
 
 ```json

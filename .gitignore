@@ -5,6 +5,9 @@ client_secret.json
 *.log
 /downloads
 apiKey.json
+.env
+.env.*
+!.env.example
 /__pycache__
 __pycache__/
 %(upload_date)s-%(title)s_transcription.txt
