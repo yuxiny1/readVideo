@@ -5,6 +5,8 @@ yt_dlp_download.log
 client_secret.json
 *.log
 /downloads
+/notes
+readvideo.sqlite3
 apiKey.json
 .env
 .env.*

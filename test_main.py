@@ -32,10 +32,16 @@ class MainAppTest(unittest.TestCase):
                 load_settings()
 
     def test_process_video_endpoint_accepts_json_body(self):
-        async def fake_process_video(task_id, url):
+        async def fake_process_video(
+            task_id,
+            url,
+            notes_dir=None,
+            notes_backend=None,
+            ollama_model=None,
+        ):
             main.set_task_status(task_id, "completed", url=url)
 
-        with patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"}), patch.object(
+        with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}), patch.object(
             main,
             "process_video",
             fake_process_video,
@@ -50,8 +56,22 @@ class MainAppTest(unittest.TestCase):
         self.assertEqual(response.json()["task_id"], "test-task")
         self.assertEqual(main.TASKS["test-task"]["status"], "completed")
 
-    def test_process_video_endpoint_requires_openai_key(self):
-        with patch.dict("os.environ", {}, clear=True):
+    def test_process_video_endpoint_validates_notes_backend(self):
+        with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}):
+            client = TestClient(main.app)
+            response = client.post(
+                "/process_video/",
+                json={
+                    "task_id": "test-task",
+                    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                    "notes_backend": "missing",
+                },
+            )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_openai_backend_requires_openai_key(self):
+        with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "openai"}, clear=True):
             client = TestClient(main.app)
             response = client.post(
                 "/process_video/",
@@ -59,6 +79,13 @@ class MainAppTest(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 400)
+
+    def test_local_backend_does_not_require_openai_key(self):
+        with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}, clear=True):
+            settings = load_settings()
+
+        self.assertEqual(settings.transcription_backend, "local")
+        self.assertIsNone(settings.openai_api_key)
 
     def test_unknown_task_returns_404(self):
         client = TestClient(main.app)
