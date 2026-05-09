@@ -1,11 +1,15 @@
 from uuid import uuid4
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from fastapi.responses import FileResponse
 
-from backend.api.schemas import ProcessVideoRequest, WatchItemRequest
+from backend.api.schemas import FavoriteRequest, ProcessVideoRequest, WatchItemRequest
 from backend.core.config import load_settings
 from backend.core.task_state import get_task, list_tasks, set_task_status
+from backend.services.markdown_files import list_markdown_files, resolve_markdown_file
+from backend.services.source_updates import list_source_updates
 from backend.services.video_processor import process_video, resolve_notes_backend
+from backend.storage.favorites import FavoriteStore
 from backend.storage.history import HistoryStore
 from backend.storage.watchlist import WatchlistStore
 
@@ -19,6 +23,10 @@ def get_store() -> WatchlistStore:
 
 def get_history_store() -> HistoryStore:
     return HistoryStore(load_settings().database_path)
+
+
+def get_favorite_store() -> FavoriteStore:
+    return FavoriteStore(load_settings().database_path)
 
 
 @router.post("/process_video/")
@@ -76,6 +84,55 @@ async def get_history(task_id: str):
     return record.__dict__
 
 
+@router.get("/api/favorites")
+async def list_favorites():
+    return [item.__dict__ for item in get_favorite_store().list_items()]
+
+
+@router.post("/api/favorites")
+async def add_favorite(request: FavoriteRequest):
+    record = get_history_store().get_record(request.task_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="History record not found")
+    if not record.summary and not record.markdown_path:
+        raise HTTPException(status_code=400, detail="This task has no summary or Markdown note yet.")
+
+    item = get_favorite_store().add_from_history(record)
+    return item.__dict__
+
+
+@router.delete("/api/favorites/{item_id}")
+async def delete_favorite(item_id: int):
+    deleted = get_favorite_store().delete_item(item_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Favorite not found")
+    return {"deleted": True}
+
+
+@router.get("/api/markdown_files")
+async def get_markdown_files(directory: str = Query(default="")):
+    settings = load_settings()
+    folder = directory or settings.notes_dir
+    try:
+        files = list_markdown_files(folder)
+    except (FileNotFoundError, NotADirectoryError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return [item.__dict__ for item in files]
+
+
+@router.get("/api/markdown_files/download")
+async def download_markdown_file(path: str):
+    try:
+        markdown_path = resolve_markdown_file(path)
+    except (FileNotFoundError, ValueError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return FileResponse(
+        markdown_path,
+        filename=markdown_path.name,
+        media_type="text/markdown",
+    )
+
+
 @router.get("/watchlist")
 async def list_watchlist():
     return [item.__dict__ for item in get_store().list_items()]
@@ -93,6 +150,21 @@ async def delete_watch_item(item_id: int):
     if not deleted:
         raise HTTPException(status_code=404, detail="Watch item not found")
     return {"deleted": True}
+
+
+@router.get("/watchlist/{item_id}/updates")
+async def list_watch_item_updates(item_id: int, limit: int = Query(default=8, ge=1, le=50)):
+    item = get_store().get_item(item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Watch item not found")
+    try:
+        updates = list_source_updates(item.url, limit)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Could not load source updates: {exc}") from exc
+    return {
+        "source": item.__dict__,
+        "updates": [update.__dict__ for update in updates],
+    }
 
 
 @router.get("/health")

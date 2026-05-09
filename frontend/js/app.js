@@ -127,15 +127,23 @@ async function loadConfig() {
 
 async function submitProcess(event) {
   event.preventDefault();
-  window.clearTimeout(state.pollTimer);
+  await startProcessingUrl(elements.videoUrl.value.trim());
+}
 
-  const payload = {
-    url: elements.videoUrl.value.trim(),
+function buildProcessPayload(url) {
+  return {
+    url,
     notes_dir: elements.notesDir.value.trim() || null,
     notes_backend: elements.notesBackend.value,
     ollama_model: elements.ollamaModel.value.trim() || null,
   };
+}
 
+async function startProcessingUrl(url) {
+  window.clearTimeout(state.pollTimer);
+
+  const payload = buildProcessPayload(url);
+  elements.videoUrl.value = url;
   elements.startButton.disabled = true;
   elements.summaryBox.textContent = "Waiting for task output...";
   elements.copySummary.disabled = true;
@@ -173,8 +181,10 @@ async function loadWatchlist() {
         ${item.notes ? `<p class="watch-notes">${escapeHtml(item.notes)}</p>` : ""}
         <div class="watch-actions">
           <button class="secondary-button" type="button" data-action="use">Use</button>
+          <button class="secondary-button" type="button" data-action="updates">Updates</button>
           <button class="danger-button" type="button" data-action="delete">Delete</button>
         </div>
+        <div class="source-updates"></div>
       </article>
     `).join("");
   } catch (error) {
@@ -236,10 +246,64 @@ async function handleWatchlistClick(event) {
     return;
   }
 
+  if (action === "updates") {
+    await loadSourceUpdates(item, id);
+    return;
+  }
+
+  if (action === "use-update" || action === "download-update") {
+    const update = button.closest(".source-update");
+    const url = update.dataset.url;
+    elements.videoUrl.value = url;
+    elements.videoUrl.focus();
+    if (action === "download-update") {
+      await startProcessingUrl(url);
+    }
+    return;
+  }
+
   if (action === "delete") {
     await api(`/watchlist/${encodeURIComponent(id)}`, {method: "DELETE"});
     await loadWatchlist();
   }
+}
+
+async function loadSourceUpdates(item, id) {
+  const container = item.querySelector(".source-updates");
+  container.innerHTML = '<div class="empty-state">Checking source updates...</div>';
+
+  try {
+    const result = await api(`/watchlist/${encodeURIComponent(id)}/updates?limit=8`);
+    if (!result.updates.length) {
+      container.innerHTML = '<div class="empty-state">No videos found for this source.</div>';
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="source-update-list">
+        ${result.updates.map(renderSourceUpdate).join("")}
+      </div>
+    `;
+  } catch (error) {
+    container.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+  }
+}
+
+function renderSourceUpdate(update) {
+  const meta = [update.uploader, update.upload_date].filter(Boolean).join(" / ");
+  return `
+    <div class="source-update" data-url="${escapeHtml(update.url)}">
+      <div>
+        <p class="watch-title">${escapeHtml(update.title)}</p>
+        <a class="watch-url" href="${escapeHtml(update.url)}" target="_blank" rel="noreferrer">${escapeHtml(update.url)}</a>
+        ${meta ? `<p class="watch-notes">${escapeHtml(meta)}</p>` : ""}
+      </div>
+      <div class="watch-actions">
+        <button class="secondary-button small-button" type="button" data-action="use-update">Use</button>
+        <button class="secondary-button small-button" type="button" data-action="download-update">Download</button>
+      </div>
+    </div>
+  `;
 }
 
 async function handleRecentTaskClick(event) {

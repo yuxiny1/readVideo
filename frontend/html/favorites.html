@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>readVideo Favorites</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>readVideo Favorites</h1>
+      <div class="meta-row">
+        <span id="favorites-count" class="pill muted">Loading</span>
+      </div>
+    </div>
+    <nav class="topnav">
+      <a class="quiet-link" href="/">New Video</a>
+      <a class="quiet-link" href="/history">History</a>
+      <a class="quiet-link" href="/docs" target="_blank" rel="noreferrer">API Docs</a>
+    </nav>
+  </header>
+
+  <main class="favorites-workspace">
+    <section class="tool-panel favorites-panel">
+      <div class="panel-header">
+        <h2>Favorite Summaries</h2>
+        <button id="refresh-favorites" class="secondary-button small-button" type="button">Refresh</button>
+      </div>
+      <div id="favorites-list" class="favorite-list"></div>
+    </section>
+
+    <aside class="tool-panel files-panel">
+      <div class="panel-header">
+        <h2>Markdown Files</h2>
+        <span id="md-count" class="caption">0 files</span>
+      </div>
+
+      <form id="md-folder-form" class="stack compact">
+        <div>
+          <label for="md-folder">Markdown Folder Path</label>
+          <input id="md-folder" placeholder="notes">
+        </div>
+        <div class="button-row">
+          <button class="secondary-button" type="submit">Load Folder</button>
+          <button id="use-default-folder" class="secondary-button" type="button">Use Default</button>
+        </div>
+      </form>
+
+      <div id="md-files" class="file-list"></div>
+    </aside>
+  </main>
+
+  <script type="module" src="/static/js/favorites.js"></script>
+</body>
+</html>

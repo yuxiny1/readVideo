@@ -63,7 +63,9 @@ h2 {
 .meta-row,
 .panel-header,
 .progress-strip,
-.watch-actions {
+.watch-actions,
+.card-actions,
+.button-row {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -90,6 +92,15 @@ h2 {
   width: min(1180px, 100%);
   margin: 0 auto;
   padding: 24px;
+}
+
+.favorites-workspace {
+  width: min(1240px, 100%);
+  margin: 0 auto;
+  padding: 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 18px;
 }
 
 .tool-panel {
@@ -227,6 +238,12 @@ button:disabled {
   text-decoration: none;
   background: #eef3fb;
   border: 1px solid #d4ddec;
+}
+
+.small-link {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 12px;
 }
 
 .pill {
@@ -434,6 +451,24 @@ dd {
   margin-top: 10px;
 }
 
+.card-actions {
+  margin-top: 12px;
+}
+
+.source-updates {
+  margin-top: 12px;
+}
+
+.source-update-list {
+  display: grid;
+  gap: 8px;
+}
+
+.source-update {
+  padding: 10px 0 0;
+  border-top: 1px solid var(--line);
+}
+
 .empty-state {
   padding: 14px;
   border: 1px dashed var(--line-strong);
@@ -447,7 +482,8 @@ dd {
   gap: 12px;
 }
 
-.history-card {
+.history-card,
+.favorite-card {
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -485,8 +521,39 @@ dd {
   background: #fff1f0;
 }
 
+.favorite-list,
+.file-list {
+  display: grid;
+  gap: 12px;
+}
+
+.summary-preview {
+  max-height: 220px;
+  margin: 14px 0 0;
+  padding: 12px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-radius: 6px;
+  background: #101828;
+  color: #edf3ff;
+  font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.file-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-strong);
+}
+
 @media (max-width: 920px) {
-  .workspace {
+  .workspace,
+  .favorites-workspace {
     grid-template-columns: 1fr;
     grid-template-areas:
       "process"
@@ -511,7 +578,14 @@ dd {
 
   .primary-button,
   .secondary-button,
-  .danger-button {
+  .danger-button,
+  .quiet-link {
     width: 100%;
+    justify-content: center;
+  }
+
+  .file-row,
+  .history-card-header {
+    grid-template-columns: 1fr;
   }
 }

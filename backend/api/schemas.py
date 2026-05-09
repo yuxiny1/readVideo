@@ -15,3 +15,7 @@ class WatchItemRequest(BaseModel):
     name: str = Field(min_length=1)
     url: HttpUrl
     notes: str = ""
+
+
+class FavoriteRequest(BaseModel):
+    task_id: str = Field(min_length=1)

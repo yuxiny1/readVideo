@@ -15,8 +15,10 @@ The default transcription backend is local `whisper.cpp`, so OpenAI API access i
 - Lets you choose the Markdown output folder per request.
 - Provides a simple FastAPI frontend and JSON API.
 - Shows recent task status, elapsed time, and generated output paths in the browser.
-- Persists processed video history in SQLite, including video, transcript, and Markdown paths.
-- Saves a local watchlist of YouTube channels/playlists in SQLite.
+- Persists processed video history in SQLite, including source URL, video, transcript, and Markdown paths.
+- Lets you favorite valuable summaries and keep their Markdown locations in one page.
+- Lists Markdown files from a chosen notes folder and serves them for download.
+- Saves a local watchlist of YouTube channels/playlists in SQLite and can check recent source updates with `yt-dlp`.
 
 ## Requirements
 
@@ -95,6 +97,7 @@ http://localhost:8000
 
 The frontend is served from `frontend/` and calls the same FastAPI app for task status, Markdown output, and saved YouTube sources.
 Open `/history` to review previously downloaded/transcribed videos and their saved file paths.
+Open `/favorites` to review favorite summaries, jump to their Markdown folders, list `.md` files, and download notes.
 
 ## API Usage
 
@@ -130,6 +133,28 @@ History:
 curl "http://localhost:8000/api/history"
 ```
 
+Favorites:
+
+```bash
+curl "http://localhost:8000/api/favorites"
+curl -X POST "http://localhost:8000/api/favorites" \
+  -H "Content-Type: application/json" \
+  -d '{"task_id": "demo-1"}'
+```
+
+Markdown files:
+
+```bash
+curl "http://localhost:8000/api/markdown_files?directory=notes"
+curl -OJ "http://localhost:8000/api/markdown_files/download?path=notes/demo.md"
+```
+
+Saved source updates:
+
+```bash
+curl "http://localhost:8000/watchlist/1/updates?limit=8"
+```
+
 ## Tests
 
 ```bash
@@ -142,8 +167,8 @@ python -m unittest discover -s tests
 - `backend/app.py`: FastAPI app factory surface, frontend mounting, router registration.
 - `backend/api/`: HTTP routes and request schemas.
 - `backend/core/`: Settings and task state.
-- `backend/services/`: Download, transcription, video processing, and note generation.
-- `backend/storage/`: SQLite-backed watchlist and processing history storage.
+- `backend/services/`: Download, transcription, video processing, note generation, Markdown file listing, and saved source update discovery.
+- `backend/storage/`: SQLite-backed watchlist, processing history, and favorite summary storage.
 - `frontend/html/`: Browser HTML.
 - `frontend/css/`: Browser styles.
 - `frontend/js/`: Browser behavior and API calls.

@@ -24,3 +24,8 @@ async def index():
 @app.get("/history", include_in_schema=False)
 async def history_page():
     return FileResponse(HTML_DIR / "history.html")
+
+
+@app.get("/favorites", include_in_schema=False)
+async def favorites_page():
+    return FileResponse(HTML_DIR / "favorites.html")
