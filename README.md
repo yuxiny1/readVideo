@@ -85,6 +85,8 @@ Open:
 http://localhost:8000
 ```
 
+The frontend is served from `static/` and calls the same FastAPI app for task status, Markdown output, and saved YouTube sources.
+
 ## API Usage
 
 Create a background task:
@@ -122,6 +124,7 @@ python -m unittest
 ## Project Structure
 
 - `main.py`: FastAPI app, frontend, task lifecycle, and watchlist endpoints.
+- `static/`: Browser frontend for processing videos and managing saved sources.
 - `config.py`: Environment and legacy `apiKey.json` configuration.
 - `local_transcription.py`: Local `whisper.cpp` transcription backend.
 - `notes.py`: Transcript chunking, summary extraction, and Markdown note writing.

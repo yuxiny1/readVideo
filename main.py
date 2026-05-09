@@ -1,10 +1,12 @@
 import asyncio
 import logging
+from pathlib import Path
 from typing import Optional
 from uuid import uuid4
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, HttpUrl
 
 from audioTranscription import AudioTranscription
@@ -16,7 +18,10 @@ from yt_dl import download_video
 
 
 logger = logging.getLogger(__name__)
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
 app = FastAPI(title="readVideo")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 TASKS = {}
 
 
@@ -115,9 +120,9 @@ async def process_video(
         set_task_status(task_id, "failed", url=url, error=str(exc))
 
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/")
 async def index():
-    return HTMLResponse(INDEX_HTML)
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.post("/process_video/")
@@ -178,6 +183,19 @@ async def health():
     return {"status": "ok"}
 
 
+@app.get("/app_config")
+async def app_config():
+    settings = load_settings()
+    return {
+        "transcription_backend": settings.transcription_backend,
+        "download_dir": settings.download_dir,
+        "notes_dir": settings.notes_dir,
+        "notes_backend": settings.notes_backend,
+        "ollama_model": settings.ollama_model,
+        "local_whisper_model": settings.local_whisper_model,
+    }
+
+
 def _title_from_path(path: str) -> str:
     from pathlib import Path
 
@@ -189,162 +207,6 @@ def _resolve_notes_backend(request_backend: Optional[str], default_backend: str)
     if backend not in {"extractive", "ollama"}:
         raise RuntimeError("notes_backend must be extractive or ollama.")
     return backend
-
-
-INDEX_HTML = """
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>readVideo</title>
-  <style>
-    :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    body { margin: 0; background: #f6f7f9; color: #1e2430; }
-    header { padding: 24px 32px 12px; border-bottom: 1px solid #d9dee8; background: #fff; }
-    h1 { margin: 0; font-size: 28px; letter-spacing: 0; }
-    main { max-width: 1120px; margin: 0 auto; padding: 24px 20px 48px; display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.8fr); gap: 20px; }
-    section { background: #fff; border: 1px solid #d9dee8; border-radius: 8px; padding: 18px; }
-    h2 { margin: 0 0 14px; font-size: 17px; letter-spacing: 0; }
-    label { display: block; margin: 12px 0 6px; font-size: 13px; font-weight: 650; color: #4a5260; }
-    input, textarea, select { width: 100%; box-sizing: border-box; border: 1px solid #c5ccd8; border-radius: 6px; padding: 10px 12px; font: inherit; background: #fff; }
-    textarea { min-height: 72px; resize: vertical; }
-    button { margin-top: 14px; border: 0; border-radius: 6px; padding: 10px 14px; font: inherit; font-weight: 700; background: #135cc8; color: #fff; cursor: pointer; }
-    button.secondary { background: #e8edf5; color: #243044; }
-    button.danger { background: #b42318; }
-    pre { min-height: 180px; white-space: pre-wrap; word-break: break-word; background: #101828; color: #e7edf8; border-radius: 6px; padding: 14px; overflow: auto; }
-    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-    .watch-item { border-top: 1px solid #edf0f5; padding: 12px 0; }
-    .watch-item strong { display: block; margin-bottom: 4px; }
-    .watch-item a { color: #135cc8; word-break: break-all; }
-    @media (max-width: 800px) { main { grid-template-columns: 1fr; padding: 16px; } header { padding: 20px 16px 10px; } }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>readVideo</h1>
-  </header>
-  <main>
-    <section>
-      <h2>Process Video</h2>
-      <form id="process-form">
-        <label for="url">YouTube URL</label>
-        <input id="url" name="url" required placeholder="https://www.youtube.com/watch?v=...">
-        <label for="notes-dir">Markdown output folder</label>
-        <input id="notes-dir" name="notes_dir" placeholder="notes or /Users/you/Library/Mobile Documents/...">
-        <label for="notes-backend">Summary backend</label>
-        <select id="notes-backend" name="notes_backend">
-          <option value="extractive">Local extractive</option>
-          <option value="ollama">Ollama local LLM</option>
-        </select>
-        <label for="ollama-model">Ollama model</label>
-        <input id="ollama-model" name="ollama_model" placeholder="qwen2.5:3b">
-        <button type="submit">Start</button>
-      </form>
-      <h2 style="margin-top:22px">Task Status</h2>
-      <pre id="status">Idle</pre>
-    </section>
-    <section>
-      <h2>Watchlist</h2>
-      <form id="watch-form">
-        <label for="watch-name">Name</label>
-        <input id="watch-name" required placeholder="Channel or playlist name">
-        <label for="watch-url">URL</label>
-        <input id="watch-url" required placeholder="https://www.youtube.com/@...">
-        <label for="watch-notes">Notes</label>
-        <textarea id="watch-notes" placeholder="Why you follow it"></textarea>
-        <button type="submit">Save</button>
-      </form>
-      <div id="watchlist"></div>
-    </section>
-  </main>
-  <script>
-    const statusEl = document.querySelector("#status");
-    const urlEl = document.querySelector("#url");
-    const watchlistEl = document.querySelector("#watchlist");
-
-    function showStatus(value) {
-      statusEl.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
-    }
-
-    async function pollTask(taskId) {
-      const response = await fetch(`/task_status/${taskId}`);
-      const data = await response.json();
-      showStatus(data);
-      if (!["completed", "failed"].includes(data.status)) {
-        setTimeout(() => pollTask(taskId), 2000);
-      }
-    }
-
-    document.querySelector("#process-form").addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const payload = {
-        url: urlEl.value,
-        notes_dir: document.querySelector("#notes-dir").value || null,
-        notes_backend: document.querySelector("#notes-backend").value,
-        ollama_model: document.querySelector("#ollama-model").value || null
-      };
-      showStatus("Queued...");
-      const response = await fetch("/process_video/", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload)
-      });
-      const data = await response.json();
-      showStatus(data);
-      if (response.ok) pollTask(data.task_id);
-    });
-
-    document.querySelector("#watch-form").addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const payload = {
-        name: document.querySelector("#watch-name").value,
-        url: document.querySelector("#watch-url").value,
-        notes: document.querySelector("#watch-notes").value
-      };
-      await fetch("/watchlist", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload)
-      });
-      event.target.reset();
-      loadWatchlist();
-    });
-
-    async function deleteWatchItem(id) {
-      await fetch(`/watchlist/${id}`, {method: "DELETE"});
-      loadWatchlist();
-    }
-
-    async function loadWatchlist() {
-      const response = await fetch("/watchlist");
-      const items = await response.json();
-      watchlistEl.innerHTML = items.map(item => `
-        <div class="watch-item">
-          <strong>${escapeHtml(item.name)}</strong>
-          <a href="${escapeHtml(item.url)}" target="_blank">${escapeHtml(item.url)}</a>
-          <p>${escapeHtml(item.notes || "")}</p>
-          <div class="row">
-            <button class="secondary" onclick="urlEl.value='${escapeAttr(item.url)}'">Use</button>
-            <button class="danger" onclick="deleteWatchItem(${item.id})">Delete</button>
-          </div>
-        </div>
-      `).join("");
-    }
-
-    function escapeHtml(value) {
-      return String(value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;","'":"&#39;"}[c]));
-    }
-
-    function escapeAttr(value) {
-      return String(value).replace(/['\\\\]/g, "\\\\$&");
-    }
-
-    loadWatchlist();
-  </script>
-</body>
-</html>
-"""
 
 
 if __name__ == "__main__":

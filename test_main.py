@@ -70,6 +70,24 @@ class MainAppTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
 
+    def test_index_serves_frontend(self):
+        client = TestClient(main.app)
+        response = client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("readVideo", response.text)
+        self.assertIn("/static/app.js", response.text)
+
+    def test_app_config_exposes_non_secret_defaults(self):
+        with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}, clear=True):
+            client = TestClient(main.app)
+            response = client.get("/app_config")
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["transcription_backend"], "local")
+        self.assertNotIn("openai_api_key", data)
+
     def test_openai_backend_requires_openai_key(self):
         with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "openai"}, clear=True):
             client = TestClient(main.app)
