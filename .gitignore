@@ -10,7 +10,7 @@ readvideo.sqlite3
 apiKey.json
 .env
 .env.*
-!.env.example
+!config/env.example
 /__pycache__
 __pycache__/
 %(upload_date)s-%(title)s_transcription.txt

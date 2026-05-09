@@ -3,17 +3,7 @@ import re
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
-from datetime import datetime
-from pathlib import Path
-from typing import Iterable, Optional
-
-
-@dataclass(frozen=True)
-class NoteResult:
-    markdown_path: str
-    summary: str
-    section_count: int
-    summary_backend: str = "extractive"
+from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -44,67 +34,12 @@ TOPIC_GROUPS = (
     ("石油美元", ("石油美元", "petrodollar", "石油", "沙烏地", "Saudi", "OPEC", "opac", "美債")),
     ("去美元化", ("去美元化", "外匯儲備量", "美元儲備", "央行", "人民幣", "swap lines", "拋售", "凍結")),
     ("投資策略", ("充足的現金", "現金倉位", "投資上面", "投資", "現金", "黃金", "比特幣", "股票", "ETF", "風險")),
-    ("AI 與個股", ("AI 的產業", "AI 產業", "AI 的能源", "半導體", "NVIDIA", "台積電", "PanTier", "Palantir", "特斯拉", "QQQ", "VOO")),
+    ("AI 與产业", ("AI 的產業", "AI 产业", "AI 產業", "AI 的能源", "半導體", "NVIDIA", "台積電", "PanTier", "Palantir", "特斯拉", "QQQ", "VOO")),
+    ("白领工作的本质", ("白领工作", "白領工作", "knowledge worker", "知识工作者", "知識工作者", "认知中介", "認知中介")),
+    ("工作价值", ("bullshit jobs", "bullshit", "狗屁工作", "没有意义", "沒有意義", "成就感", "价值感", "價值感")),
+    ("生产力变化", ("生产力", "生產力", "生产关系", "生產關係", "范式", "範式", "自动化", "自動化", "AI")),
+    ("个人应对", ("结果负责", "結果負責", "行动点", "行動點", "作品集", "定义问题", "定義問題", "信任", "整合者", "contractor", "business owner")),
 )
-
-
-def write_markdown_note(
-    transcript_text: str,
-    video_title: str,
-    source_url: str,
-    output_dir: str,
-    transcript_path: Optional[str] = None,
-    summary_backend: str = "extractive",
-    ollama_model: str = "qwen2.5:3b",
-    ollama_url: str = "http://127.0.0.1:11434/api/generate",
-) -> NoteResult:
-    sections = chunk_transcript(transcript_text)
-    summary_items = summarize_transcript_with_backend(
-        transcript_text,
-        backend=summary_backend,
-        ollama_model=ollama_model,
-        ollama_url=ollama_url,
-    )
-    markdown = render_markdown_note(
-        video_title=video_title,
-        source_url=source_url,
-        transcript_text=transcript_text,
-        sections=sections,
-        summary_items=summary_items,
-        transcript_path=transcript_path,
-    )
-
-    notes_dir = Path(output_dir).expanduser()
-    notes_dir.mkdir(parents=True, exist_ok=True)
-    note_path = notes_dir / f"{safe_filename(video_title)}.md"
-    note_path.write_text(markdown, encoding="utf-8")
-
-    return NoteResult(
-        markdown_path=str(note_path),
-        summary="\n".join(f"- {item}" for item in summary_items),
-        section_count=len(sections),
-        summary_backend=summary_backend,
-    )
-
-
-def chunk_transcript(transcript_text: str, max_chars: int = 900) -> list[str]:
-    lines = [line.strip() for line in transcript_text.splitlines() if line.strip()]
-    chunks = []
-    current = []
-    current_len = 0
-
-    for line in lines:
-        if current and current_len + len(line) > max_chars:
-            chunks.append(" ".join(current))
-            current = []
-            current_len = 0
-        current.append(line)
-        current_len += len(line)
-
-    if current:
-        chunks.append(" ".join(current))
-
-    return chunks
 
 
 def summarize_transcript(transcript_text: str, max_items: int = 6) -> list[str]:
@@ -128,6 +63,9 @@ def summarize_transcript(transcript_text: str, max_items: int = 6) -> list[str]:
         used_line_numbers.update(range(window.start, window.end + 1))
         if len(selected) >= max_items:
             return selected
+
+    if len(selected) >= min(4, max_items):
+        return selected
 
     for window in _ranked_windows(windows, used_line_numbers):
         item = _trim_sentence(window.text)
@@ -194,45 +132,6 @@ def summarize_transcript_with_ollama(
     if not items:
         raise RuntimeError("Ollama summary did not return usable bullet points.")
     return items[:6]
-
-
-def render_markdown_note(
-    video_title: str,
-    source_url: str,
-    transcript_text: str,
-    sections: Iterable[str],
-    summary_items: Iterable[str],
-    transcript_path: Optional[str] = None,
-) -> str:
-    generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
-    lines = [
-        f"# {video_title}",
-        "",
-        f"- Source: {source_url}",
-        f"- Generated: {generated_at}",
-    ]
-    if transcript_path:
-        lines.append(f"- Transcript: `{transcript_path}`")
-
-    lines.extend(["", "## Summary", ""])
-    summary_items = list(summary_items)
-    if summary_items:
-        lines.extend(f"- {item}" for item in summary_items)
-    else:
-        lines.append("- No summary could be generated.")
-
-    lines.extend(["", "## Structured Notes", ""])
-    for index, section in enumerate(sections, start=1):
-        lines.extend([f"### {index}. {_section_title(section)}", "", section, ""])
-
-    lines.extend(["## Full Transcript", "", transcript_text.strip(), ""])
-    return "\n".join(lines)
-
-
-def safe_filename(name: str) -> str:
-    cleaned = re.sub(r"[\\/:*?\"<>|]+", "-", name).strip()
-    cleaned = re.sub(r"\s+", " ", cleaned)
-    return cleaned[:180] or "readvideo-note"
 
 
 def _tokens(sentence: str) -> list[str]:
@@ -344,7 +243,7 @@ def _ranked_windows(windows: list[SummaryWindow], used_line_numbers: set[int]) -
     return [window for _, _, window in scored]
 
 
-def _section_title(section: str) -> str:
+def section_title(section: str) -> str:
     best_label = "Transcript Segment"
     best_score = 0
     for label, keywords in TOPIC_GROUPS:

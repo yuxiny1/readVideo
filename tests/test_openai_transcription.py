@@ -2,7 +2,7 @@ import tempfile
 import unittest
 import wave
 
-from audioTranscription import AudioTranscription
+from backend.services.openai_transcription import AudioTranscription
 
 
 class FakeTranscription:

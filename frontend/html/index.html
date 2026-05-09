@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>readVideo</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>readVideo</h1>
+      <div class="meta-row">
+        <span id="health-pill" class="pill muted">Checking</span>
+        <span id="backend-pill" class="pill muted">Backend</span>
+      </div>
+    </div>
+    <nav class="topnav">
+      <a class="quiet-link" href="/history">History</a>
+      <a class="quiet-link" href="/docs" target="_blank" rel="noreferrer">API Docs</a>
+    </nav>
+  </header>
+
+  <main class="workspace">
+    <section class="tool-panel process-panel">
+      <div class="panel-header">
+        <h2>New Video</h2>
+        <span id="task-id" class="caption"></span>
+      </div>
+
+      <form id="process-form" class="stack">
+        <div>
+          <label for="video-url">YouTube URL</label>
+          <input id="video-url" name="url" required placeholder="https://www.youtube.com/watch?v=...">
+        </div>
+
+        <div>
+          <label for="notes-dir">Markdown Output Folder</label>
+          <input id="notes-dir" name="notes_dir" placeholder="notes">
+        </div>
+
+        <div class="form-grid">
+          <div>
+            <label for="notes-backend">Summary Backend</label>
+            <select id="notes-backend" name="notes_backend">
+              <option value="extractive">Local Extractive</option>
+              <option value="ollama">Ollama Local LLM</option>
+            </select>
+          </div>
+          <div>
+            <label for="ollama-model">Ollama Model</label>
+            <input id="ollama-model" name="ollama_model" placeholder="qwen2.5:3b">
+          </div>
+        </div>
+
+        <button id="start-button" class="primary-button" type="submit">Start Processing</button>
+      </form>
+
+      <div class="progress-strip" aria-label="Task progress">
+        <span class="step" data-step="queued">Queued</span>
+        <span class="step" data-step="downloading">Download</span>
+        <span class="step" data-step="transcribing">Transcribe</span>
+        <span class="step" data-step="organizing_notes">Notes</span>
+        <span class="step" data-step="completed">Done</span>
+      </div>
+
+      <div id="task-message" class="notice muted">Idle</div>
+    </section>
+
+    <section class="tool-panel output-panel">
+      <div class="panel-header">
+        <h2>Latest Output</h2>
+        <button id="copy-summary" class="secondary-button" type="button" disabled>Copy Summary</button>
+      </div>
+
+      <dl class="output-list">
+        <div>
+          <dt>Video</dt>
+          <dd id="video-path">-</dd>
+        </div>
+        <div>
+          <dt>Transcript</dt>
+          <dd id="transcript-path">-</dd>
+        </div>
+        <div>
+          <dt>Markdown</dt>
+          <dd id="markdown-path">-</dd>
+        </div>
+      </dl>
+
+      <pre id="summary-box" class="summary-box">No completed task yet.</pre>
+
+      <div class="recent-block">
+        <div class="panel-header compact-header">
+          <h2>Recent Tasks</h2>
+          <button id="refresh-tasks" class="secondary-button small-button" type="button">Refresh</button>
+        </div>
+        <div id="recent-tasks" class="recent-tasks"></div>
+      </div>
+    </section>
+
+    <aside class="tool-panel watch-panel">
+      <div class="panel-header">
+        <h2>Saved Sources</h2>
+        <span id="watch-count" class="caption">0 saved</span>
+      </div>
+
+      <form id="watch-form" class="stack compact">
+        <div>
+          <label for="watch-name">Name</label>
+          <input id="watch-name" required placeholder="Channel or playlist name">
+        </div>
+        <div>
+          <label for="watch-url">URL</label>
+          <input id="watch-url" required placeholder="https://www.youtube.com/@...">
+        </div>
+        <div>
+          <label for="watch-notes">Notes</label>
+          <textarea id="watch-notes" placeholder="Topic, cadence, or priority"></textarea>
+        </div>
+        <button class="secondary-button full" type="submit">Save Source</button>
+      </form>
+
+      <div id="watchlist" class="watchlist"></div>
+    </aside>
+  </main>
+
+  <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

@@ -50,7 +50,7 @@ class LocalWhisperTranscription:
         transcript_path = output_base.with_suffix(".txt")
 
         try:
-            subprocess.run(
+            _run_command(
                 [
                     "ffmpeg",
                     "-v",
@@ -66,11 +66,10 @@ class LocalWhisperTranscription:
                     "-c:a",
                     "pcm_s16le",
                     str(audio_path),
-                ],
-                check=True,
+                ]
             )
 
-            subprocess.run(
+            _run_command(
                 [
                     self.whisper_cli,
                     "-m",
@@ -82,8 +81,7 @@ class LocalWhisperTranscription:
                     "-otxt",
                     "-of",
                     str(output_base),
-                ],
-                check=True,
+                ]
             )
 
             text = transcript_path.read_text(encoding="utf-8")
@@ -108,3 +106,12 @@ def _normalize_whisper_text(text: str) -> str:
         line = re.sub(r"\s+", " ", line)
         lines.append(line)
     return "\n".join(lines) + ("\n" if lines else "")
+
+
+def _run_command(command: list[str]):
+    result = subprocess.run(command, capture_output=True, text=True, check=False)
+    if result.returncode != 0:
+        output = (result.stderr or result.stdout or "").strip()
+        if len(output) > 2000:
+            output = output[-2000:]
+        raise RuntimeError(f"Command failed: {' '.join(command[:2])}\n{output}")
