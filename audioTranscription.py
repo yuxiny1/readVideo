@@ -1,130 +1,146 @@
-import openai
 import os
-from moviepy.editor import AudioFileClip
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional
 import wave
-import json
+
+from openai import OpenAI
+
+try:
+    from moviepy import AudioFileClip
+except ImportError:  # moviepy<2 compatibility
+    from moviepy.editor import AudioFileClip
+
+
+DEFAULT_TRANSCRIPTION_MODEL = "whisper-1"
+
+
+@dataclass(frozen=True)
+class TranscriptionResult:
+    text: str
+    transcription_path: str
+    chunk_count: int
+
 
 class AudioTranscription:
-    def __init__(self, api_key: str, model: str = "whisper-1"):
+    def __init__(self, api_key: Optional[str] = None, model: str = DEFAULT_TRANSCRIPTION_MODEL, client=None):
         self.api_key = api_key
         self.model = model
-        openai.api_key = self.api_key  # Initialize the API key once
+        self.client = client or OpenAI(api_key=api_key)
 
     def split_audio_by_duration(self, audio_path: str, chunk_duration_sec: int) -> list:
         """
-        Split the audio file into chunks based on duration (in seconds).
+        Split the audio file into chunks based on duration in seconds.
         """
+        if chunk_duration_sec <= 0:
+            raise ValueError("chunk_duration_sec must be greater than 0")
+
         chunks = []
-        try:
-            # Ensure the directory for chunk files exists
-            output_dir = os.path.dirname(audio_path)
-            if not os.path.exists(output_dir):
-                os.makedirs(output_dir)
+        audio_file_path = Path(audio_path)
+        output_dir = audio_file_path.parent
+        output_dir.mkdir(parents=True, exist_ok=True)
+        base_name = audio_file_path.stem
 
-            # Get file base name for chunk naming
-            base_name = os.path.splitext(os.path.basename(audio_path))[0]
+        with wave.open(str(audio_file_path), "rb") as wave_file:
+            params = wave_file.getparams()
+            frames_per_chunk = wave_file.getframerate() * chunk_duration_sec
 
-            with wave.open(audio_path, 'rb') as wave_file:
-                framerate = wave_file.getframerate()
-                num_frames = wave_file.getnframes()
-                frames_per_chunk = framerate * chunk_duration_sec
-                audio_data = wave_file.readframes(num_frames)
+            chunk_index = 0
+            while True:
+                chunk_data = wave_file.readframes(frames_per_chunk)
+                if not chunk_data:
+                    break
 
-                for i in range(0, len(audio_data), frames_per_chunk * 2):
-                    chunk_data = audio_data[i:i + frames_per_chunk * 2]
-                    
-                    # Create a unique file name for each chunk
-                    chunk_file_path = os.path.join(output_dir, f"{base_name}_chunk_{i // (frames_per_chunk * 2)}.wav")
-                    with wave.open(chunk_file_path, 'wb') as chunk:
-                        chunk.setnchannels(1)
-                        chunk.setsampwidth(2)  # 16-bit audio
-                        chunk.setframerate(framerate)
-                        chunk.writeframes(chunk_data)
-                    
-                    chunks.append(chunk_file_path)
+                chunk_file_path = output_dir / f"{base_name}_chunk_{chunk_index}.wav"
+                with wave.open(str(chunk_file_path), "wb") as chunk:
+                    chunk.setparams(params)
+                    chunk.writeframes(chunk_data)
 
-        except Exception as e:
-            print(f"Error splitting audio: {e}")
+                chunks.append(str(chunk_file_path))
+                chunk_index += 1
+
         return chunks
 
     def transcribe_audio(self, audio_file_path: str) -> str:
         """
-        Transcribe audio using OpenAI Whisper or another API model.
+        Transcribe audio using the OpenAI audio transcription API.
         """
-        try:
-            with open(audio_file_path, "rb") as audio_file:
-                transcription = openai.Audio.transcribe(model=self.model, file=audio_file)
-                return transcription['text']
-        except Exception as e:
-            print(f"Error transcribing audio: {e}")
-            return ""
+        with open(audio_file_path, "rb") as audio_file:
+            transcription = self.client.audio.transcriptions.create(
+                model=self.model,
+                file=audio_file,
+            )
 
-    def save_transcription(self, text: str, original_video_path: str):
+        if isinstance(transcription, str):
+            return transcription
+
+        text = getattr(transcription, "text", None)
+        if text is not None:
+            return text
+
+        if isinstance(transcription, dict):
+            return transcription.get("text", "")
+
+        raise TypeError("OpenAI transcription response did not include text.")
+
+    def save_transcription(self, text: str, original_video_path: str) -> str:
         """
-        Save the transcribed text to a dynamically named file based on the original video file.
+        Save the transcribed text next to the original video file.
         """
-        try:
-            # Extract the base name of the video file (without extension)
-            base_name = os.path.splitext(os.path.basename(original_video_path))[0]
-            
-            # Create the output file path for the transcription (same name as video, but with _transcription.txt suffix)
-            output_file_path = os.path.join(os.path.dirname(original_video_path), f"{base_name}_transcription.txt")
-            
-            # Save the transcription text to the file
-            with open(output_file_path, "w") as text_file:
-                text_file.write(text)
-            
-            print(f"Transcription saved to {output_file_path}")
-        except Exception as e:
-            print(f"Error saving transcription: {e}")
+        video_path = Path(original_video_path)
+        output_file_path = video_path.with_name(f"{video_path.stem}_transcription.txt")
+
+        with open(output_file_path, "w", encoding="utf-8") as text_file:
+            text_file.write(text)
+
+        return str(output_file_path)
 
     def delete_chunk_files(self, chunks: list):
         """
-        Delete chunk files after transcription is successful.
+        Delete temporary chunk files.
         """
         for chunk_path in chunks:
             try:
                 os.remove(chunk_path)
-                print(f"Deleted chunk: {chunk_path}")
-            except Exception as e:
-                print(f"Error deleting chunk {chunk_path}: {e}")
+            except FileNotFoundError:
+                pass
 
     def process_video(self, video_file_path: str, chunk_duration_sec: int = 180):
         """
-        Process the video: convert it to audio, split it into chunks, transcribe, and clean up.
+        Convert a video to audio, split it into chunks, transcribe, and clean up.
         """
-        
-        # Step 1: Convert video to audio
-        audio_file_path = video_file_path.replace(".mp4", ".wav")  # Change to appropriate audio file format
-        audio = AudioFileClip(video_file_path)
-        audio.write_audiofile(audio_file_path)
+        video_path = Path(video_file_path)
+        if not video_path.is_file():
+            raise FileNotFoundError(f"Video file not found: {video_file_path}")
 
-        # Step 2: Split the audio into chunks
-        audio_chunks = self.split_audio_by_duration(audio_file_path, chunk_duration_sec)
-        
-        # Step 3: Transcribe each chunk and accumulate the results
-        full_transcription = ""
-        for chunk_path in audio_chunks:
-            transcription_text = self.transcribe_audio(chunk_path)
-            if transcription_text:
-                full_transcription += transcription_text + "\n\n"
-            # Step 4: Delete chunk files after transcription
-            self.delete_chunk_files([chunk_path])
+        audio_file_path = video_path.with_suffix(".wav")
+        audio_chunks = []
 
-        # Step 5: Save the transcription to a file
-        self.save_transcription(full_transcription, video_file_path)
-        
-        return full_transcription  # Optionally return the full transcription
+        try:
+            with AudioFileClip(str(video_path)) as audio:
+                audio.write_audiofile(
+                    str(audio_file_path),
+                    fps=16000,
+                    nbytes=2,
+                    codec="pcm_s16le",
+                    logger=None,
+                )
 
+            audio_chunks = self.split_audio_by_duration(str(audio_file_path), chunk_duration_sec)
+            transcriptions = []
+            for chunk_path in audio_chunks:
+                transcription_text = self.transcribe_audio(chunk_path).strip()
+                if transcription_text:
+                    transcriptions.append(transcription_text)
 
-# Example Usage:
-# Assuming you already have the downloaded video file, call the process method with the correct video file.
-# with open('apiKey.json', 'r') as f:
-#     config = json.load(f)
-
-# api_key = config["apiKey"]
-
-# audio_transcription = AudioTranscription(api_key=api_key)
-# video_file_path = "/path/to/your/video.mp4"
-# transcription = audio_transcription.process_video(video_file_path)
-# print(transcription)
+            full_transcription = "\n\n".join(transcriptions)
+            transcription_path = self.save_transcription(full_transcription, str(video_path))
+            return TranscriptionResult(
+                text=full_transcription,
+                transcription_path=transcription_path,
+                chunk_count=len(audio_chunks),
+            )
+        finally:
+            self.delete_chunk_files(audio_chunks)
+            if audio_file_path.exists():
+                audio_file_path.unlink()

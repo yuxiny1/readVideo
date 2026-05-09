@@ -1,49 +1,75 @@
-import yt_dlp
 import logging
 import os
+from pathlib import Path
+from typing import Optional
 
-def download_video(url: str, access_token: str, download_path: str) -> str:
-    logging.basicConfig(filename='yt_dlp_download.log', level=logging.INFO)
-    
-    # Ensure the download directory exists
-    os.makedirs(download_path, exist_ok=True)
-    
+import yt_dlp
+
+
+logger = logging.getLogger(__name__)
+
+
+def _downloaded_file_from_info(info_dict: dict) -> Optional[str]:
+    """Best-effort extraction of the final media path from yt-dlp metadata."""
+    requested_downloads = info_dict.get("requested_downloads") or []
+    for download in requested_downloads:
+        filepath = download.get("filepath") or download.get("_filename")
+        if filepath and os.path.exists(filepath):
+            return filepath
+
+    filepath = info_dict.get("filepath") or info_dict.get("_filename")
+    if filepath and os.path.exists(filepath):
+        return filepath
+
+    return None
+
+
+def download_video(url: str, download_path: str = "downloads/youtube_videos") -> str:
+    """Download a video with yt-dlp and return the path to the downloaded file."""
+    logging.basicConfig(filename="yt_dlp_download.log", level=logging.INFO)
+
+    output_dir = Path(download_path)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    files_before_download = {path.resolve() for path in output_dir.iterdir() if path.is_file()}
+
     ydl_opts = {
         "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best",
-        "outtmpl": os.path.join(download_path, "%(title)s.%(ext)s"),  # Filename template for yt-dlp
+        "merge_output_format": "mp4",
+        "outtmpl": str(output_dir / "%(title).200s.%(ext)s"),
         "logger": logging.getLogger(),
-        "progress_hooks": [lambda d: logging.info(f"Progress: {d['status']}")],
-        "http_headers": {
-            "Authorization": f"Bearer {access_token}"
-        }
+        "progress_hooks": [lambda d: logger.info("yt-dlp progress: %s", d.get("status"))],
+        "noplaylist": True,
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         try:
-            info_dict = ydl.extract_info(url, download=False)
-            video_title = info_dict.get("title", "Unknown Video Title")
-            
-            # Expected file path
-            expected_output_file = os.path.join(download_path, f"{video_title}.mp4")
-            
-            # Download the video
-            ydl.download([url])
-            logging.info(f"Download completed for {url}")
-            print(f"Download completed for {url}")
-            
-            # Check if the expected file exists
-            if os.path.isfile(expected_output_file):
-                return expected_output_file
-            else:
-                # If the file is missing, search for any MP4 files in the directory
-                for file in os.listdir(download_path):
-                    if file.endswith(".mp4") and video_title in file:
-                        return os.path.join(download_path, file)
-                
-                logging.error("Download completed but file not found at expected path")
-                return None
+            info_dict = ydl.extract_info(url, download=True)
+            downloaded_file = _downloaded_file_from_info(info_dict)
+            if downloaded_file:
+                logger.info("Download completed for %s: %s", url, downloaded_file)
+                return downloaded_file
 
-        except Exception as e:
-            logging.error(f"Error downloading {url}: {e}")
-            print(f"Error downloading {url}: {e}")
-            return None
+            prepared = ydl.prepare_filename(info_dict)
+            candidates = [
+                prepared,
+                str(Path(prepared).with_suffix(".mp4")),
+            ]
+            for candidate in candidates:
+                if os.path.isfile(candidate):
+                    logger.info("Download completed for %s: %s", url, candidate)
+                    return candidate
+
+            files_after_download = {path.resolve() for path in output_dir.iterdir() if path.is_file()}
+            new_files = sorted(
+                files_after_download - files_before_download,
+                key=lambda path: path.stat().st_mtime,
+                reverse=True,
+            )
+            if new_files:
+                logger.info("Download completed for %s: %s", url, new_files[0])
+                return str(new_files[0])
+
+            raise FileNotFoundError("yt-dlp finished but the downloaded file could not be found")
+        except Exception:
+            logger.exception("Error downloading %s", url)
+            raise

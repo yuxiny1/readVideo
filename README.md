@@ -1,58 +1,91 @@
-readVideo
+# readVideo
 
-Convert videos into text ( this project learn from Yage Computing life to practice my builder skills ) 
-This project allows you to transcribe videos into text, so you can consume video content in written form, saving time and effort.
+Download a YouTube video, extract its audio, and transcribe it with the OpenAI audio transcription API through a small FastAPI service.
 
-Features
+## What It Does
 
-	•	Automatically downloads YouTube videos using yt-dlp.
-	•	Converts video audio to text using OpenAI transcription API.
-	•	Provides a FastAPI endpoint to trigger video downloads and transcriptions.
-	•	Simple configuration with OAuth for YouTube API access.
-	
-	Getting Started
-	
-	Prerequisites
+- Downloads a single video with `yt-dlp`.
+- Converts the video audio to WAV with MoviePy/ffmpeg.
+- Splits longer audio into chunks before sending it to OpenAI.
+- Transcribes speech in the original language; it does not translate between languages.
+- Saves the transcript next to the downloaded video.
+- Exposes task creation and task status endpoints with FastAPI.
 
-	1.	YouTube API Access: Obtain a YouTube API key and set up OAuth2 credentials. You’ll need this for the app to access and download YouTube videos.
-	2.	Define Download Location: Set your preferred download directory within the code.
-	3.	Install Dependencies: Install required libraries from requirements.txt.
-	
-	Installation
-	git clone <repository-url>
-	cd readVideo
+## Requirements
 
-	conda create -n "readvideo"
-  	conda activate readvideo
+- Python 3.11+
+- ffmpeg installed on your system
+- An OpenAI API key
 
-	2.	Install Requirements:  pip install -r requirements.txt
+On macOS:
 
-	pip install -r requirements.txt
+```bash
+brew install ffmpeg
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-Configuration
+## Configuration
 
-	1.	API Keys and OAuth Setup:
-	•	Follow the instructions in the google_auth.py file to authenticate with Google’s OAuth2.
-	•	Save the OAuth tokens and API keys in a token.json file for persistent access.
-	2.	Download Location: In download_video, change the download path variable to your preferred directory.
-	
-	Running the Application
-	Start the FastAPI server:
-	uvicorn main:app --reload
+Prefer environment variables:
 
+```bash
+export OPENAI_API_KEY="sk-..."
+export READVIDEO_DOWNLOAD_DIR="downloads/youtube_videos"
+export OPENAI_TRANSCRIPTION_MODEL="whisper-1"
+export READVIDEO_CHUNK_SECONDS="180"
+```
 
-Usage
+For backwards compatibility, the app also accepts an `apiKey.json` file:
 
-	1.	Use curl or another HTTP client to send the video URL to the FastAPI endpoint:
+```json
+{
+  "apiKey": "sk-..."
+}
+```
 
-	curl -X POST "http://localhost:8000/process_video/" -H "Content-Type: application/json" -d '{"task_id": "1", "url": "<VIDEO_URL>"}'
+The Google OAuth helper in `google_auth.py` is optional and only needed if you extend the project to call the YouTube Data API. Regular public video downloads use `yt-dlp` directly.
 
-	2.	Check task status:
-	curl -X GET "http://localhost:8000/task_status/1"
+## Run
 
-project Structure
+```bash
+uvicorn main:app --reload
+```
 
-	•	google_auth.py: Handles Google OAuth2 setup and token management.
-	•	yt_dl.py: Uses yt-dlp to download videos.
-	•	audioTranscription.py: Handles audio extraction and transcription using OpenAI’s API.
-	•	app.py: FastAPI app with endpoints to process videos and check task status.
+## Usage
+
+Create a background task:
+
+```bash
+curl -X POST "http://localhost:8000/process_video/" \
+  -H "Content-Type: application/json" \
+  -d '{"task_id": "demo-1", "url": "https://www.youtube.com/watch?v=<VIDEO_ID>"}'
+```
+
+Check task status:
+
+```bash
+curl "http://localhost:8000/task_status/demo-1"
+```
+
+Health check:
+
+```bash
+curl "http://localhost:8000/health"
+```
+
+## Tests
+
+```bash
+python -m unittest
+```
+
+## Project Structure
+
+- `main.py`: FastAPI app, task lifecycle, and configuration loading.
+- `config.py`: Environment and legacy `apiKey.json` configuration.
+- `yt_dl.py`: `yt-dlp` download wrapper.
+- `audioTranscription.py`: Audio extraction, chunking, transcription, and cleanup.
+- `google_auth.py`: Optional YouTube Data API OAuth helper.
+- `test_transcription.py`: Offline unit tests for transcription helpers.
