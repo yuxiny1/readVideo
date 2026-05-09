@@ -1,10 +1,16 @@
 *.mp4
+.DS_Store
 token.json
 yt_dlp_download.log
 client_secret.json
 *.log
 /downloads
+/notes
+readvideo.sqlite3
 apiKey.json
+.env
+.env.*
+!.env.example
 /__pycache__
 __pycache__/
 %(upload_date)s-%(title)s_transcription.txt
@@ -13,3 +19,5 @@ __pycache__/
 *.wav
 *_chunk_*.wav
 *_transcription.txt
+models/
+tmp/

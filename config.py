@@ -4,16 +4,30 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+from dotenv import load_dotenv
+
+
+load_dotenv()
+
 
 @dataclass(frozen=True)
 class Settings:
-    openai_api_key: str
+    transcription_backend: str = "local"
+    openai_api_key: Optional[str] = None
     download_dir: str = "downloads/youtube_videos"
-    transcription_model: str = "whisper-1"
+    transcription_model: str = "gpt-4o-mini-transcribe"
     chunk_seconds: int = 180
+    local_whisper_cli: str = "whisper-cli"
+    local_whisper_model: str = "models/ggml-small.bin"
+    local_whisper_language: str = "zh"
+    notes_dir: str = "notes"
+    notes_backend: str = "extractive"
+    ollama_model: str = "qwen2.5:3b"
+    ollama_url: str = "http://127.0.0.1:11434/api/generate"
+    database_path: str = "readvideo.sqlite3"
 
 
-def load_openai_api_key(config_path: str = "apiKey.json") -> str:
+def load_openai_api_key(config_path: str = "apiKey.json", required: bool = True) -> Optional[str]:
     env_key = os.getenv("OPENAI_API_KEY")
     if env_key:
         return env_key
@@ -26,7 +40,9 @@ def load_openai_api_key(config_path: str = "apiKey.json") -> str:
         if api_key:
             return api_key
 
-    raise RuntimeError("Set OPENAI_API_KEY or create apiKey.json with an apiKey value.")
+    if required:
+        raise RuntimeError("Set OPENAI_API_KEY or create apiKey.json with an apiKey value.")
+    return None
 
 
 def _load_chunk_seconds(raw_value: Optional[str]) -> int:
@@ -45,9 +61,26 @@ def _load_chunk_seconds(raw_value: Optional[str]) -> int:
 
 
 def load_settings() -> Settings:
+    transcription_backend = os.getenv("READVIDEO_TRANSCRIPTION_BACKEND", "local").lower()
+    if transcription_backend not in {"local", "openai"}:
+        raise RuntimeError("READVIDEO_TRANSCRIPTION_BACKEND must be local or openai.")
+
+    notes_backend = os.getenv("READVIDEO_NOTES_BACKEND", "extractive").lower()
+    if notes_backend not in {"extractive", "ollama"}:
+        raise RuntimeError("READVIDEO_NOTES_BACKEND must be extractive or ollama.")
+
     return Settings(
-        openai_api_key=load_openai_api_key(),
+        transcription_backend=transcription_backend,
+        openai_api_key=load_openai_api_key(required=transcription_backend == "openai"),
         download_dir=os.getenv("READVIDEO_DOWNLOAD_DIR", "downloads/youtube_videos"),
-        transcription_model=os.getenv("OPENAI_TRANSCRIPTION_MODEL", "whisper-1"),
+        transcription_model=os.getenv("OPENAI_TRANSCRIPTION_MODEL", "gpt-4o-mini-transcribe"),
         chunk_seconds=_load_chunk_seconds(os.getenv("READVIDEO_CHUNK_SECONDS")),
+        local_whisper_cli=os.getenv("READVIDEO_LOCAL_WHISPER_CLI", "whisper-cli"),
+        local_whisper_model=os.getenv("READVIDEO_LOCAL_WHISPER_MODEL", "models/ggml-small.bin"),
+        local_whisper_language=os.getenv("READVIDEO_LOCAL_WHISPER_LANGUAGE", "zh"),
+        notes_dir=os.getenv("READVIDEO_NOTES_DIR", "notes"),
+        notes_backend=notes_backend,
+        ollama_model=os.getenv("READVIDEO_OLLAMA_MODEL", "qwen2.5:3b"),
+        ollama_url=os.getenv("READVIDEO_OLLAMA_URL", "http://127.0.0.1:11434/api/generate"),
+        database_path=os.getenv("READVIDEO_DATABASE_PATH", "readvideo.sqlite3"),
     )
