@@ -6,4 +6,10 @@ client_secret.json
 /downloads
 apiKey.json
 /__pycache__
+__pycache__/
 %(upload_date)s-%(title)s_transcription.txt
+.venv/
+*.pyc
+*.wav
+*_chunk_*.wav
+*_transcription.txt
