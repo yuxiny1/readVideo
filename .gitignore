@@ -1,4 +1,5 @@
 *.mp4
+.DS_Store
 token.json
 yt_dlp_download.log
 client_secret.json
@@ -16,3 +17,5 @@ __pycache__/
 *.wav
 *_chunk_*.wav
 *_transcription.txt
+models/
+tmp/
