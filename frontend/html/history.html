@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>readVideo History</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>readVideo History</h1>
+      <div class="meta-row">
+        <span id="history-count" class="pill muted">Loading</span>
+      </div>
+    </div>
+    <nav class="topnav">
+      <a class="quiet-link" href="/">New Video</a>
+      <a class="quiet-link" href="/docs" target="_blank" rel="noreferrer">API Docs</a>
+    </nav>
+  </header>
+
+  <main class="history-workspace">
+    <section class="tool-panel">
+      <div class="panel-header">
+        <h2>Downloaded And Transcribed Videos</h2>
+        <button id="refresh-history" class="secondary-button small-button" type="button">Refresh</button>
+      </div>
+      <div id="history-list" class="history-list"></div>
+    </section>
+  </main>
+
+  <script type="module" src="/static/js/history.js"></script>
+</body>
+</html>

@@ -19,3 +19,8 @@ app.include_router(router)
 @app.get("/", include_in_schema=False)
 async def index():
     return FileResponse(HTML_DIR / "index.html")
+
+
+@app.get("/history", include_in_schema=False)
+async def history_page():
+    return FileResponse(HTML_DIR / "history.html")

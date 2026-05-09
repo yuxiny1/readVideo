@@ -43,11 +43,13 @@ class MainAppTest(unittest.TestCase):
         ):
             set_task_status(task_id, "completed", url=url)
 
-        with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}), patch.object(
-            routes,
-            "process_video",
-            fake_process_video,
-        ):
+        with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
+            "os.environ",
+            {
+                "READVIDEO_TRANSCRIPTION_BACKEND": "local",
+                "READVIDEO_DATABASE_PATH": str(Path(tmpdir) / "history.sqlite3"),
+            },
+        ), patch.object(routes, "process_video", fake_process_video):
             client = TestClient(app)
             response = client.post(
                 "/process_video/",
@@ -79,6 +81,15 @@ class MainAppTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("readVideo", response.text)
         self.assertIn("/static/js/app.js", response.text)
+        self.assertIn("/history", response.text)
+
+    def test_history_page_serves_frontend(self):
+        client = TestClient(app)
+        response = client.get("/history")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("readVideo History", response.text)
+        self.assertIn("/static/js/history.js", response.text)
 
     def test_app_config_exposes_non_secret_defaults(self):
         with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}, clear=True):
@@ -104,6 +115,31 @@ class MainAppTest(unittest.TestCase):
         self.assertIn("created_at", task)
         self.assertIn("updated_at", task)
         self.assertIn("completed_at", task)
+
+    def test_history_endpoint_lists_persisted_records(self):
+        with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
+            "os.environ",
+            {"READVIDEO_DATABASE_PATH": str(Path(tmpdir) / "history.sqlite3")},
+            clear=True,
+        ):
+            set_task_status(
+                "history-task",
+                "completed",
+                url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                video_path="downloads/video.mp4",
+                transcription_path="downloads/video_transcription.txt",
+                markdown_path="notes/video.md",
+            )
+            queued_task = TASKS["history-task"]
+            from backend.storage.history import HistoryStore
+
+            HistoryStore(str(Path(tmpdir) / "history.sqlite3")).upsert_task(queued_task)
+            client = TestClient(app)
+            response = client.get("/api/history")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()[0]["task_id"], "history-task")
+        self.assertEqual(response.json()[0]["markdown_path"], "notes/video.md")
 
     def test_openai_backend_requires_openai_key(self):
         with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "openai"}, clear=True):

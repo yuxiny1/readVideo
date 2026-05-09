@@ -15,6 +15,7 @@ The default transcription backend is local `whisper.cpp`, so OpenAI API access i
 - Lets you choose the Markdown output folder per request.
 - Provides a simple FastAPI frontend and JSON API.
 - Shows recent task status, elapsed time, and generated output paths in the browser.
+- Persists processed video history in SQLite, including video, transcript, and Markdown paths.
 - Saves a local watchlist of YouTube channels/playlists in SQLite.
 
 ## Requirements
@@ -93,6 +94,7 @@ http://localhost:8000
 ```
 
 The frontend is served from `frontend/` and calls the same FastAPI app for task status, Markdown output, and saved YouTube sources.
+Open `/history` to review previously downloaded/transcribed videos and their saved file paths.
 
 ## API Usage
 
@@ -122,6 +124,12 @@ Watchlist:
 curl "http://localhost:8000/watchlist"
 ```
 
+History:
+
+```bash
+curl "http://localhost:8000/api/history"
+```
+
 ## Tests
 
 ```bash
@@ -135,7 +143,7 @@ python -m unittest discover -s tests
 - `backend/api/`: HTTP routes and request schemas.
 - `backend/core/`: Settings and task state.
 - `backend/services/`: Download, transcription, video processing, and note generation.
-- `backend/storage/`: SQLite-backed watchlist storage.
+- `backend/storage/`: SQLite-backed watchlist and processing history storage.
 - `frontend/html/`: Browser HTML.
 - `frontend/css/`: Browser styles.
 - `frontend/js/`: Browser behavior and API calls.
