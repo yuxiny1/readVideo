@@ -60,6 +60,20 @@ class NotesTest(unittest.TestCase):
         self.assertTrue(any(item.startswith("去美元化:") for item in summary))
         self.assertTrue(all("訂閱" not in item for item in summary))
 
+    def test_summarize_transcript_handles_non_finance_topics(self):
+        transcript = "\n".join(
+            [
+                "白领工作或者 knowledge worker 的核心价值在于认知中介",
+                "很多人觉得工作没有意义是因为组织用 input 代理真正的 productivity",
+                "AI 会让自动化变得更便宜也会改变生产力和生产关系",
+                "个人应该把工作贴近可验收的结果并建立作品集",
+            ]
+        )
+        summary = summarize_transcript(transcript)
+
+        self.assertTrue(any(item.startswith("白领工作的本质:") for item in summary))
+        self.assertTrue(any(item.startswith("个人应对:") for item in summary))
+
 
 if __name__ == "__main__":
     unittest.main()

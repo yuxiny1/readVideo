@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from uuid import uuid4
@@ -40,7 +41,19 @@ class WatchItemRequest(BaseModel):
 
 
 def set_task_status(task_id: str, status: str, **details):
-    TASKS[task_id] = {"task_id": task_id, "status": status, **details}
+    now = datetime.now().isoformat(timespec="seconds")
+    previous = TASKS.get(task_id, {})
+    task = {
+        **previous,
+        "task_id": task_id,
+        "status": status,
+        "created_at": previous.get("created_at", now),
+        "updated_at": now,
+        **details,
+    }
+    if status in {"completed", "failed"}:
+        task["completed_at"] = now
+    TASKS[task_id] = task
 
 
 def get_store() -> WatchlistStore:
@@ -162,6 +175,15 @@ async def get_task_status(task_id: str):
 @app.get("/watchlist")
 async def list_watchlist():
     return [item.__dict__ for item in get_store().list_items()]
+
+
+@app.get("/tasks")
+async def list_tasks():
+    return sorted(
+        TASKS.values(),
+        key=lambda task: task.get("updated_at", ""),
+        reverse=True,
+    )
 
 
 @app.post("/watchlist")

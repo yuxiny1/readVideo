@@ -191,6 +191,12 @@ button:disabled {
   border: 1px solid #d4ddec;
 }
 
+.small-button {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
 .danger-button {
   background: #fff1f0;
   color: var(--red);
@@ -251,6 +257,10 @@ button:disabled {
   color: var(--muted);
   font-size: 12px;
   font-weight: 700;
+}
+
+.compact-header {
+  margin-bottom: 10px;
 }
 
 .progress-strip {
@@ -314,6 +324,47 @@ dd {
   background: #101828;
   color: #edf3ff;
   font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.recent-block {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.recent-tasks {
+  display: grid;
+  gap: 8px;
+}
+
+.task-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-strong);
+  text-align: left;
+}
+
+.task-row strong,
+.task-row span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.task-row strong {
+  font-size: 13px;
+}
+
+.task-row span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .watchlist {

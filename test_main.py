@@ -88,6 +88,21 @@ class MainAppTest(unittest.TestCase):
         self.assertEqual(data["transcription_backend"], "local")
         self.assertNotIn("openai_api_key", data)
 
+    def test_tasks_endpoint_lists_recent_task_metadata(self):
+        main.set_task_status("task-1", "queued", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        main.set_task_status("task-1", "completed", markdown_path="notes/demo.md")
+
+        client = TestClient(main.app)
+        response = client.get("/tasks")
+
+        self.assertEqual(response.status_code, 200)
+        task = response.json()[0]
+        self.assertEqual(task["task_id"], "task-1")
+        self.assertEqual(task["status"], "completed")
+        self.assertIn("created_at", task)
+        self.assertIn("updated_at", task)
+        self.assertIn("completed_at", task)
+
     def test_openai_backend_requires_openai_key(self):
         with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "openai"}, clear=True):
             client = TestClient(main.app)

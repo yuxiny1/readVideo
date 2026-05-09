@@ -20,6 +20,8 @@ const elements = {
   markdownPath: document.querySelector("#markdown-path"),
   summaryBox: document.querySelector("#summary-box"),
   copySummary: document.querySelector("#copy-summary"),
+  refreshTasks: document.querySelector("#refresh-tasks"),
+  recentTasks: document.querySelector("#recent-tasks"),
   watchForm: document.querySelector("#watch-form"),
   watchName: document.querySelector("#watch-name"),
   watchUrl: document.querySelector("#watch-url"),
@@ -63,7 +65,8 @@ function setStep(status) {
     if (status === "failed") {
       step.classList.add("failed");
     } else if (currentIndex >= 0 && stepIndex <= currentIndex) {
-      step.classList.add(stepName === status ? "pending" : "active");
+      const stepClass = status === "completed" || stepName !== status ? "active" : "pending";
+      step.classList.add(stepClass);
     }
   });
 }
@@ -84,21 +87,24 @@ function renderTask(task) {
   elements.taskId.textContent = task.task_id ? `Task ${task.task_id}` : "";
   setStep(task.status);
   updateOutput(task);
+  const elapsed = formatElapsed(task);
 
   if (task.status === "completed") {
-    setNotice(`Completed\nMarkdown: ${task.markdown_path}`, "ok");
+    setNotice(`Completed in ${elapsed}\nMarkdown: ${task.markdown_path}`, "ok");
     elements.startButton.disabled = false;
+    loadRecentTasks();
     return;
   }
 
   if (task.status === "failed") {
-    setNotice(`Failed\n${task.error || "Unknown error"}`, "error");
+    setNotice(`Failed after ${elapsed}\n${task.error || "Unknown error"}`, "error");
     elements.startButton.disabled = false;
+    loadRecentTasks();
     return;
   }
 
   const label = task.status.replaceAll("_", " ");
-  setNotice(`Working: ${label}`, "pending");
+  setNotice(`Working: ${label}\nElapsed: ${elapsed}`, "pending");
 }
 
 async function pollTask(taskId) {
@@ -186,6 +192,28 @@ async function loadWatchlist() {
   }
 }
 
+async function loadRecentTasks() {
+  try {
+    const tasks = await api("/tasks");
+    if (!tasks.length) {
+      elements.recentTasks.innerHTML = '<div class="empty-state">No tasks yet.</div>';
+      return;
+    }
+
+    elements.recentTasks.innerHTML = tasks.slice(0, 6).map((task) => `
+      <button class="task-row" type="button" data-task-id="${escapeHtml(task.task_id)}">
+        <span>
+          <strong>${escapeHtml(task.status.replaceAll("_", " "))}</strong>
+          <span>${escapeHtml(task.url || "No URL")}</span>
+        </span>
+        <span>${escapeHtml(formatElapsed(task))}</span>
+      </button>
+    `).join("");
+  } catch (error) {
+    elements.recentTasks.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+  }
+}
+
 async function submitWatchItem(event) {
   event.preventDefault();
   try {
@@ -224,6 +252,17 @@ async function handleWatchlistClick(event) {
   }
 }
 
+async function handleRecentTaskClick(event) {
+  const button = event.target.closest("button[data-task-id]");
+  if (!button) return;
+
+  const task = await api(`/task_status/${encodeURIComponent(button.dataset.taskId)}`);
+  renderTask(task);
+  if (!["completed", "failed"].includes(task.status)) {
+    await pollTask(task.task_id);
+  }
+}
+
 async function copySummary() {
   if (!state.latestSummary) return;
   await navigator.clipboard.writeText(state.latestSummary);
@@ -244,10 +283,30 @@ function escapeHtml(value) {
   }[char]));
 }
 
+function formatElapsed(task) {
+  const start = Date.parse(task.created_at);
+  const end = Date.parse(task.completed_at || task.updated_at || new Date().toISOString());
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
+    return "0s";
+  }
+
+  const seconds = Math.round((end - start) / 1000);
+  if (seconds < 60) {
+    return `${seconds}s`;
+  }
+
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}m ${remainingSeconds}s`;
+}
+
 elements.processForm.addEventListener("submit", submitProcess);
 elements.watchForm.addEventListener("submit", submitWatchItem);
 elements.watchlist.addEventListener("click", handleWatchlistClick);
 elements.copySummary.addEventListener("click", copySummary);
+elements.refreshTasks.addEventListener("click", loadRecentTasks);
+elements.recentTasks.addEventListener("click", handleRecentTaskClick);
 
 loadConfig();
 loadWatchlist();
+loadRecentTasks();

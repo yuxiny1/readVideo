@@ -14,6 +14,7 @@ The default transcription backend is local `whisper.cpp`, so OpenAI API access i
 - Can summarize notes with either a local extractive summarizer or an optional Ollama local LLM.
 - Lets you choose the Markdown output folder per request.
 - Provides a simple FastAPI frontend and JSON API.
+- Shows recent task status, elapsed time, and generated output paths in the browser.
 - Saves a local watchlist of YouTube channels/playlists in SQLite.
 
 ## Requirements
