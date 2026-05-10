@@ -8,12 +8,15 @@ from backend.api.schemas import (
     FavoriteFolderAssignmentRequest,
     FavoriteFolderRequest,
     FavoriteRequest,
+    OllamaPullRequest,
     ProcessVideoRequest,
     WatchItemRequest,
+    WatchItemUpdateRequest,
 )
 from backend.core.config import load_settings
 from backend.core.task_state import get_task, list_tasks, set_task_status
 from backend.services.markdown_files import list_markdown_files, read_markdown_file, resolve_markdown_file
+from backend.services.ollama_models import list_installed_models, pull_model, recommended_models
 from backend.services.source_updates import list_source_updates
 from backend.services.video_processor import process_video, resolve_notes_backend
 from backend.storage.favorites import FavoriteStore
@@ -252,6 +255,14 @@ async def delete_watch_item(item_id: int):
     return {"deleted": True}
 
 
+@router.patch("/watchlist/{item_id}")
+async def update_watch_item(item_id: int, request: WatchItemUpdateRequest):
+    item = get_store().update_item(item_id, request.name, str(request.url), request.notes)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Watch item not found")
+    return item.__dict__
+
+
 @router.get("/watchlist/{item_id}/updates")
 async def list_watch_item_updates(item_id: int, limit: int = Query(default=8, ge=1, le=50)):
     item = get_store().get_item(item_id)
@@ -272,6 +283,23 @@ async def health():
     return {"status": "ok"}
 
 
+@router.get("/api/ollama/models")
+def get_ollama_models():
+    return {
+        "recommended": recommended_models(),
+        "installed": list_installed_models(),
+    }
+
+
+@router.post("/api/ollama/pull")
+def pull_ollama_model(request: OllamaPullRequest):
+    try:
+        output = pull_model(request.model)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"model": request.model, "output": output}
+
+
 @router.get("/app_config")
 async def app_config():
     settings = load_settings()
@@ -281,5 +309,6 @@ async def app_config():
         "notes_dir": settings.notes_dir,
         "notes_backend": settings.notes_backend,
         "ollama_model": settings.ollama_model,
+        "ollama_model_options": recommended_models(),
         "local_whisper_model": settings.local_whisper_model,
     }

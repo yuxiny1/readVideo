@@ -10,6 +10,10 @@ const elements = {
   folderForm: document.querySelector("#favorite-folder-form"),
   folderName: document.querySelector("#favorite-folder-name"),
   folderNotes: document.querySelector("#favorite-folder-notes"),
+  cancelFolderForm: document.querySelector("#cancel-folder-form"),
+  folderActionsButton: document.querySelector("#folder-actions-button"),
+  folderActionsMenu: document.querySelector("#folder-actions-menu"),
+  folderFeedback: document.querySelector("#folder-feedback"),
   folderCount: document.querySelector("#folder-count"),
   folderList: document.querySelector("#favorite-folders"),
   mdFolderForm: document.querySelector("#md-folder-form"),
@@ -172,9 +176,6 @@ function renderFolders() {
 
 function folderButton(id, name, count, notes = "") {
   const active = state.activeFolderId === id ? "active" : "";
-  const deleteButton = id === "all" || id === "unfiled" ? "" : `
-    <button class="danger-button small-button" type="button" data-action="delete-folder" data-folder-id="${escapeHtml(id)}">Delete</button>
-  `;
   return `
     <div class="folder-item">
       <button class="folder-chip ${active}" type="button" data-action="filter-folder" data-folder-id="${escapeHtml(id)}">
@@ -182,7 +183,6 @@ function folderButton(id, name, count, notes = "") {
         <span>${count}</span>
       </button>
       ${notes ? `<p>${escapeHtml(notes)}</p>` : ""}
-      ${deleteButton}
     </div>
   `;
 }
@@ -289,6 +289,8 @@ async function handleFolderSubmit(event) {
     }),
   });
   elements.folderForm.reset();
+  elements.folderForm.classList.add("hidden");
+  elements.folderFeedback.textContent = "Folder created.";
   await loadFolders();
   renderFavorites();
 }
@@ -300,13 +302,36 @@ async function handleFolderClick(event) {
 
   if (button.dataset.action === "filter-folder") {
     state.activeFolderId = button.dataset.folderId;
+    elements.folderFeedback.textContent = "Select a folder, then use Folder Actions.";
     renderFolders();
     renderFavorites();
   }
 
-  if (button.dataset.action === "delete-folder") {
-    await api(`/api/favorites/folders/${encodeURIComponent(button.dataset.folderId)}`, {method: "DELETE"});
+}
+
+function toggleFolderActions() {
+  elements.folderActionsMenu.classList.toggle("hidden");
+}
+
+async function handleFolderActionsClick(event) {
+  const actionButton = event.target.closest("button[data-folder-action]");
+  if (!actionButton) return;
+
+  elements.folderActionsMenu.classList.add("hidden");
+  if (actionButton.dataset.folderAction === "new") {
+    elements.folderForm.classList.remove("hidden");
+    elements.folderName.focus();
+    return;
+  }
+
+  if (actionButton.dataset.folderAction === "delete") {
+    if (state.activeFolderId === "all" || state.activeFolderId === "unfiled") {
+      elements.folderFeedback.textContent = "Select a custom folder before deleting.";
+      return;
+    }
+    await api(`/api/favorites/folders/${encodeURIComponent(state.activeFolderId)}`, {method: "DELETE"});
     state.activeFolderId = "all";
+    elements.folderFeedback.textContent = "Folder deleted. Favorites are now unfiled.";
     await loadFolders();
     await loadFavorites();
   }
@@ -330,6 +355,12 @@ elements.search.addEventListener("input", handleSearchInput);
 elements.list.addEventListener("click", handleFavoriteClick);
 elements.list.addEventListener("change", handleFavoriteChange);
 elements.folderForm.addEventListener("submit", handleFolderSubmit);
+elements.cancelFolderForm.addEventListener("click", () => {
+  elements.folderForm.classList.add("hidden");
+  elements.folderFeedback.textContent = "Select a folder, then use Folder Actions.";
+});
+elements.folderActionsButton.addEventListener("click", toggleFolderActions);
+elements.folderActionsMenu.addEventListener("click", handleFolderActionsClick);
 elements.folderList.addEventListener("click", handleFolderClick);
 elements.mdFolderForm.addEventListener("submit", handleMdFolderSubmit);
 elements.useDefaultFolder.addEventListener("click", () => loadMarkdownFiles(state.defaultNotesDir));

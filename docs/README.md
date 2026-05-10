@@ -12,6 +12,7 @@ The default transcription backend is local `whisper.cpp`, so OpenAI API access i
 - Saves the raw transcript next to the downloaded video.
 - Creates a Markdown note with summary, structured sections, and full transcript.
 - Can summarize notes with either a local extractive summarizer or an optional Ollama local LLM.
+- Lets you choose or pull larger Ollama models from the browser when you want stronger local summaries.
 - Lets you choose the Markdown output folder per request.
 - Provides a simple FastAPI frontend and JSON API.
 - Shows recent task status, elapsed time, and generated output paths in the browser.
@@ -68,11 +69,24 @@ READVIDEO_OLLAMA_MODEL=qwen2.5:3b
 READVIDEO_OLLAMA_URL=http://127.0.0.1:11434/api/generate
 ```
 
+`READVIDEO_LOCAL_WHISPER_MODEL` is the audio transcription model. By default it points at `models/ggml-small.bin`, which is used by `whisper.cpp` to turn speech into text.
+
+`READVIDEO_OLLAMA_MODEL` is only used for Markdown summary and note organization when `READVIDEO_NOTES_BACKEND=ollama`. It does not transcribe audio.
+
 Optional Ollama note summaries:
 
 ```bash
 ollama pull qwen2.5:3b
 READVIDEO_NOTES_BACKEND=ollama
+```
+
+The frontend includes recommended Ollama summary models. Lighter models are faster; larger models usually produce better structure and summaries if your machine has enough memory.
+
+```bash
+ollama pull qwen2.5:7b
+ollama pull qwen2.5:14b
+ollama pull qwen3:14b
+ollama pull llama3.1:8b
 ```
 
 Optional OpenAI backend:
@@ -129,6 +143,9 @@ Watchlist:
 
 ```bash
 curl "http://localhost:8000/watchlist"
+curl -X PATCH "http://localhost:8000/watchlist/1" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Updated source", "url": "https://www.youtube.com/@example", "notes": "Weekly"}'
 ```
 
 History:
@@ -171,6 +188,15 @@ Saved source updates:
 
 ```bash
 curl "http://localhost:8000/watchlist/1/updates?limit=8"
+```
+
+Ollama local summary models:
+
+```bash
+curl "http://localhost:8000/api/ollama/models"
+curl -X POST "http://localhost:8000/api/ollama/pull" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "qwen3:14b"}'
 ```
 
 ## Tests

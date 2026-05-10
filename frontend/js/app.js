@@ -5,6 +5,8 @@ const state = {
   pollTimer: null,
   latestSummary: "",
   latestTask: null,
+  ollamaModelOptions: [],
+  ollamaInstalledModels: [],
 };
 
 const elements = {
@@ -15,7 +17,11 @@ const elements = {
   videoUrl: document.querySelector("#video-url"),
   notesDir: document.querySelector("#notes-dir"),
   notesBackend: document.querySelector("#notes-backend"),
-  ollamaModel: document.querySelector("#ollama-model"),
+  ollamaModelSelect: document.querySelector("#ollama-model-select"),
+  ollamaModelCustom: document.querySelector("#ollama-model-custom"),
+  pullOllamaModel: document.querySelector("#pull-ollama-model"),
+  ollamaModelMessage: document.querySelector("#ollama-model-message"),
+  whisperModelPill: document.querySelector("#whisper-model-pill"),
   taskId: document.querySelector("#task-id"),
   taskMessage: document.querySelector("#task-message"),
   steps: Array.from(document.querySelectorAll(".step")),
@@ -137,16 +143,51 @@ async function pollTask(taskId) {
 
 async function loadConfig() {
   try {
-    const [health, config] = await Promise.all([api("/health"), api("/app_config")]);
+    const [health, config, models] = await Promise.all([
+      api("/health"),
+      api("/app_config"),
+      api("/api/ollama/models"),
+    ]);
     setPill(elements.healthPill, health.status === "ok" ? "Online" : "Check", health.status === "ok" ? "ok" : "muted");
     setPill(elements.backendPill, `${config.transcription_backend} / ${config.notes_backend}`, "muted");
     elements.notesDir.placeholder = config.notes_dir || "notes";
     elements.notesBackend.value = config.notes_backend || "extractive";
-    elements.ollamaModel.placeholder = config.ollama_model || "qwen2.5:3b";
+    setPill(elements.whisperModelPill, `Transcription: ${config.local_whisper_model}`, "muted");
+    state.ollamaModelOptions = models.recommended || config.ollama_model_options || [];
+    state.ollamaInstalledModels = models.installed || [];
+    renderOllamaModelOptions(state.ollamaModelOptions, config.ollama_model || "qwen2.5:3b");
   } catch (error) {
     setPill(elements.healthPill, "Offline", "error");
     setNotice(error.message, "error");
   }
+}
+
+function renderOllamaModelOptions(options, selectedModel) {
+  const knownModels = new Set(options.map((option) => option.name));
+  const fallback = knownModels.has(selectedModel) ? "" : `<option value="${escapeHtml(selectedModel)}" selected>${escapeHtml(selectedModel)} (configured)</option>`;
+  const installedModels = new Set(state.ollamaInstalledModels);
+  elements.ollamaModelSelect.innerHTML = `
+    ${fallback}
+    ${options.map((option) => `
+      <option value="${escapeHtml(option.name)}" ${option.name === selectedModel ? "selected" : ""}>
+        ${escapeHtml(option.label)} - ${escapeHtml(option.size)}${installedModels.has(option.name) ? " - installed" : ""}
+      </option>
+    `).join("")}
+  `;
+  updateOllamaModelMessage(options);
+}
+
+function selectedOllamaModel() {
+  return elements.ollamaModelCustom.value.trim() || elements.ollamaModelSelect.value;
+}
+
+function updateOllamaModelMessage(options = []) {
+  const model = selectedOllamaModel();
+  const option = options.find((item) => item.name === model);
+  const installText = state.ollamaInstalledModels.includes(model) ? "Installed." : "Not installed yet.";
+  elements.ollamaModelMessage.textContent = option
+    ? `${option.name}: ${installText} ${option.notes} Pull command: ollama pull ${option.name}`
+    : `${model || "Custom model"}: custom Ollama model for summary generation.`;
 }
 
 async function submitProcess(event) {
@@ -159,7 +200,7 @@ function buildProcessPayload(url) {
     url,
     notes_dir: elements.notesDir.value.trim() || null,
     notes_backend: elements.notesBackend.value,
-    ollama_model: elements.ollamaModel.value.trim() || null,
+    ollama_model: selectedOllamaModel() || null,
   };
 }
 
@@ -203,14 +244,31 @@ async function loadWatchlist() {
 
     elements.watchlist.innerHTML = items.map((item) => `
       <article class="watch-item" data-id="${item.id}">
-        <p class="watch-title">${escapeHtml(item.name)}</p>
+        <div class="history-card-header">
+          <div>
+            <p class="watch-title">${escapeHtml(item.name)}</p>
+          </div>
+          <div class="actions-wrap">
+            <button class="secondary-button small-button" type="button" data-action="toggle-actions">Actions</button>
+            <div class="actions-menu hidden">
+              <button type="button" data-action="use">Use</button>
+              <button type="button" data-action="updates">Updates</button>
+              <button type="button" data-action="edit-source">Edit</button>
+              <button class="danger-text" type="button" data-action="delete">Delete</button>
+            </div>
+          </div>
+        </div>
         <a class="watch-url" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">${escapeHtml(item.url)}</a>
         ${item.notes ? `<p class="watch-notes">${escapeHtml(item.notes)}</p>` : ""}
-        <div class="watch-actions">
-          <button class="secondary-button" type="button" data-action="use">Use</button>
-          <button class="secondary-button" type="button" data-action="updates">Updates</button>
-          <button class="danger-button" type="button" data-action="delete">Delete</button>
-        </div>
+        <form class="watch-edit-form hidden">
+          <label>Name<input name="name" required value="${escapeHtml(item.name)}"></label>
+          <label>URL<input name="url" required value="${escapeHtml(item.url)}"></label>
+          <label>Notes<textarea name="notes">${escapeHtml(item.notes || "")}</textarea></label>
+          <div class="button-row">
+            <button class="secondary-button small-button" type="submit">Save</button>
+            <button class="secondary-button small-button" type="button" data-action="cancel-edit">Cancel</button>
+          </div>
+        </form>
         <div class="source-updates"></div>
       </article>
     `).join("");
@@ -267,14 +325,32 @@ async function handleWatchlistClick(event) {
   const id = item.dataset.id;
   const action = button.dataset.action;
 
+  if (action === "toggle-actions") {
+    toggleActionsMenu(item);
+    return;
+  }
+
   if (action === "use") {
+    hideActionsMenu(item);
     elements.videoUrl.value = item.querySelector(".watch-url").textContent;
     elements.videoUrl.focus();
     return;
   }
 
   if (action === "updates") {
+    hideActionsMenu(item);
     await loadSourceUpdates(item, id);
+    return;
+  }
+
+  if (action === "edit-source") {
+    hideActionsMenu(item);
+    item.querySelector(".watch-edit-form").classList.remove("hidden");
+    return;
+  }
+
+  if (action === "cancel-edit") {
+    item.querySelector(".watch-edit-form").classList.add("hidden");
     return;
   }
 
@@ -290,9 +366,42 @@ async function handleWatchlistClick(event) {
   }
 
   if (action === "delete") {
+    hideActionsMenu(item);
     await api(`/watchlist/${encodeURIComponent(id)}`, {method: "DELETE"});
     await loadWatchlist();
   }
+}
+
+function toggleActionsMenu(container) {
+  const menu = container.querySelector(".actions-menu");
+  elements.watchlist.querySelectorAll(".actions-menu").forEach((item) => {
+    if (item !== menu) {
+      item.classList.add("hidden");
+    }
+  });
+  menu.classList.toggle("hidden");
+}
+
+function hideActionsMenu(container) {
+  container.querySelector(".actions-menu")?.classList.add("hidden");
+}
+
+async function handleWatchlistSubmit(event) {
+  const form = event.target.closest(".watch-edit-form");
+  if (!form) return;
+
+  event.preventDefault();
+  const item = form.closest(".watch-item");
+  const id = item.dataset.id;
+  await api(`/watchlist/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      name: form.elements.name.value.trim(),
+      url: form.elements.url.value.trim(),
+      notes: form.elements.notes.value.trim(),
+    }),
+  });
+  await loadWatchlist();
 }
 
 async function loadSourceUpdates(item, id) {
@@ -373,11 +482,41 @@ async function favoriteLatestSummary() {
   }
 }
 
+async function pullSelectedOllamaModel() {
+  const model = selectedOllamaModel();
+  if (!model) return;
+
+  const oldText = elements.pullOllamaModel.textContent;
+  elements.pullOllamaModel.disabled = true;
+  elements.pullOllamaModel.textContent = "Pulling...";
+  elements.ollamaModelMessage.textContent = `Running: ollama pull ${model}`;
+  try {
+    await api("/api/ollama/pull", {
+      method: "POST",
+      body: JSON.stringify({model}),
+    });
+    if (!state.ollamaInstalledModels.includes(model)) {
+      state.ollamaInstalledModels.push(model);
+    }
+    renderOllamaModelOptions(state.ollamaModelOptions, model);
+    elements.ollamaModelMessage.textContent = `Installed ${model}.`;
+  } catch (error) {
+    elements.ollamaModelMessage.textContent = error.message;
+  } finally {
+    elements.pullOllamaModel.disabled = false;
+    elements.pullOllamaModel.textContent = oldText;
+  }
+}
+
 elements.processForm.addEventListener("submit", submitProcess);
 elements.watchForm.addEventListener("submit", submitWatchItem);
 elements.watchlist.addEventListener("click", handleWatchlistClick);
+elements.watchlist.addEventListener("submit", handleWatchlistSubmit);
 elements.copySummary.addEventListener("click", copySummary);
 elements.favoriteSummary.addEventListener("click", favoriteLatestSummary);
+elements.pullOllamaModel.addEventListener("click", pullSelectedOllamaModel);
+elements.ollamaModelSelect.addEventListener("change", () => updateOllamaModelMessage(state.ollamaModelOptions));
+elements.ollamaModelCustom.addEventListener("input", () => updateOllamaModelMessage(state.ollamaModelOptions));
 elements.refreshTasks.addEventListener("click", loadRecentTasks);
 elements.recentTasks.addEventListener("click", handleRecentTaskClick);
 

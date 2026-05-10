@@ -123,6 +123,8 @@ class MainAppTest(unittest.TestCase):
         data = response.json()
         self.assertEqual(data["transcription_backend"], "local")
         self.assertNotIn("openai_api_key", data)
+        self.assertIn("ollama_model_options", data)
+        self.assertIn("local_whisper_model", data)
 
     def test_tasks_endpoint_lists_recent_task_metadata(self):
         set_task_status("task-1", "queued", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")
@@ -292,6 +294,43 @@ class MainAppTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["updates"][0]["title"], "Latest")
+
+    def test_watchlist_endpoint_updates_saved_source(self):
+        with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
+            "os.environ",
+            {"READVIDEO_DATABASE_PATH": str(Path(tmpdir) / "watchlist.sqlite3")},
+            clear=True,
+        ):
+            client = TestClient(app)
+            created = client.post(
+                "/watchlist",
+                json={"name": "Demo", "url": "https://www.youtube.com/@demo", "notes": ""},
+            )
+            response = client.patch(
+                f"/watchlist/{created.json()['id']}",
+                json={"name": "Updated", "url": "https://www.youtube.com/@updated", "notes": "better"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["name"], "Updated")
+        self.assertEqual(response.json()["notes"], "better")
+
+    def test_ollama_models_endpoint_exposes_recommendations(self):
+        with patch.object(routes, "list_installed_models", return_value=["qwen2.5:3b"]):
+            client = TestClient(app)
+            response = client.get("/api/ollama/models")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("recommended", response.json())
+        self.assertIn("qwen2.5:3b", response.json()["installed"])
+
+    def test_ollama_pull_endpoint_calls_service(self):
+        with patch.object(routes, "pull_model", return_value="done"):
+            client = TestClient(app)
+            response = client.post("/api/ollama/pull", json={"model": "qwen3:14b"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["model"], "qwen3:14b")
 
     def test_openai_backend_requires_openai_key(self):
         with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "openai"}, clear=True):

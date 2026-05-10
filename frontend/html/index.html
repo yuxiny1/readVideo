@@ -57,9 +57,25 @@
             </select>
           </div>
           <div>
-            <label for="ollama-model">Ollama Model</label>
-            <input id="ollama-model" name="ollama_model" placeholder="qwen2.5:3b">
+            <label for="ollama-model-select">Ollama Summary Model</label>
+            <select id="ollama-model-select" name="ollama_model_select"></select>
           </div>
+        </div>
+
+        <div class="form-grid">
+          <div>
+            <label for="ollama-model-custom">Custom Ollama Model</label>
+            <input id="ollama-model-custom" name="ollama_model_custom" placeholder="Optional, e.g. qwen3:14b">
+          </div>
+          <div>
+            <label for="pull-ollama-model">Model Tools</label>
+            <button id="pull-ollama-model" class="secondary-button full" type="button">Pull Selected Model</button>
+          </div>
+        </div>
+
+        <div class="model-status">
+          <span id="whisper-model-pill" class="pill muted">Transcription model</span>
+          <span id="ollama-model-message" class="caption">Ollama is used for summaries, not audio transcription.</span>
         </div>
 
         <button id="start-button" class="primary-button" type="submit">Start Processing</button>

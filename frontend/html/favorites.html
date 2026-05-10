@@ -46,10 +46,21 @@
       <section class="tool-panel folder-panel">
         <div class="panel-header">
           <h2>Note Folders</h2>
-          <span id="folder-count" class="caption">0 folders</span>
+          <div class="button-row">
+            <span id="folder-count" class="caption">0 folders</span>
+            <div class="actions-wrap">
+              <button id="folder-actions-button" class="secondary-button small-button" type="button">Folder Actions</button>
+              <div id="folder-actions-menu" class="actions-menu hidden">
+                <button type="button" data-folder-action="new">New Folder</button>
+                <button class="danger-text" type="button" data-folder-action="delete">Delete Selected Folder</button>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <form id="favorite-folder-form" class="stack compact">
+        <p id="folder-feedback" class="caption">Select a folder, then use Folder Actions.</p>
+
+        <form id="favorite-folder-form" class="stack compact hidden">
           <div>
             <label for="favorite-folder-name">Folder Name</label>
             <input id="favorite-folder-name" required placeholder="Research, AI, Writing...">
@@ -58,7 +69,10 @@
             <label for="favorite-folder-notes">Notes</label>
             <textarea id="favorite-folder-notes" placeholder="What belongs here"></textarea>
           </div>
-          <button class="secondary-button full" type="submit">Create Folder</button>
+          <div class="button-row">
+            <button class="secondary-button" type="submit">Create Folder</button>
+            <button id="cancel-folder-form" class="secondary-button" type="button">Cancel</button>
+          </div>
         </form>
 
         <div id="favorite-folders" class="folder-list"></div>

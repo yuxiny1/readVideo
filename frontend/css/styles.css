@@ -543,6 +543,56 @@ dd {
   margin-top: 12px;
 }
 
+.model-status {
+  display: flex;
+  gap: 8px 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.actions-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.actions-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  min-width: 170px;
+  padding: 6px;
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.actions-menu button {
+  min-height: 34px;
+  padding: 7px 9px;
+  border-radius: 6px;
+  background: transparent;
+  color: #1d2b42;
+  text-align: left;
+}
+
+.actions-menu button:hover {
+  background: #eef3fb;
+}
+
+.actions-menu .danger-text {
+  color: var(--red);
+}
+
+.watch-edit-form {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+}
+
 .source-updates {
   margin-top: 12px;
 }
