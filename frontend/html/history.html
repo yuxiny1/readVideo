@@ -7,18 +7,27 @@
   <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
-  <header class="topbar">
-    <div>
-      <h1>readVideo History</h1>
-      <div class="meta-row">
-        <span id="history-count" class="pill muted">Loading</span>
-      </div>
-    </div>
-    <nav class="topnav">
-      <a class="quiet-link" href="/">New Video</a>
-      <a class="quiet-link" href="/docs" target="_blank" rel="noreferrer">API Docs</a>
-    </nav>
-  </header>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <a class="brand-link" href="/">readVideo</a>
+      <nav class="side-nav">
+        <a class="side-link" href="/">New Video</a>
+        <a class="side-link active" href="/history">History</a>
+        <a class="side-link" href="/favorites">Favorites</a>
+        <a class="side-link" href="/reader">Reader</a>
+        <a class="side-link" href="/docs" target="_blank" rel="noreferrer">API Docs</a>
+      </nav>
+    </aside>
+
+    <div class="page-content">
+      <header class="topbar">
+        <div>
+          <h1>readVideo History</h1>
+          <div class="meta-row">
+            <span id="history-count" class="pill muted">Loading</span>
+          </div>
+        </div>
+      </header>
 
   <main class="history-workspace">
     <section class="tool-panel">
@@ -29,6 +38,8 @@
       <div id="history-list" class="history-list"></div>
     </section>
   </main>
+    </div>
+  </div>
 
   <script type="module" src="/static/js/history.js"></script>
 </body>

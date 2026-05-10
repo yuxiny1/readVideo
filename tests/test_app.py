@@ -10,6 +10,7 @@ from backend.api import routes
 from backend.app import app
 from backend.core.config import load_openai_api_key, load_settings
 from backend.core.task_state import TASKS, clear_tasks, set_task_status
+from backend.services.source_updates import SourceVideo
 
 
 class MainAppTest(unittest.TestCase):
@@ -82,6 +83,10 @@ class MainAppTest(unittest.TestCase):
         self.assertIn("readVideo", response.text)
         self.assertIn("/static/js/app.js", response.text)
         self.assertIn("/history", response.text)
+        self.assertIn("/favorites", response.text)
+        self.assertIn("/reader", response.text)
+        self.assertIn("favorite-summary", response.text)
+        self.assertIn("read-summary", response.text)
 
     def test_history_page_serves_frontend(self):
         client = TestClient(app)
@@ -90,6 +95,25 @@ class MainAppTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("readVideo History", response.text)
         self.assertIn("/static/js/history.js", response.text)
+
+    def test_favorites_page_serves_frontend(self):
+        client = TestClient(app)
+        response = client.get("/favorites")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("readVideo Favorites", response.text)
+        self.assertIn("favorite-search", response.text)
+        self.assertIn("Note Folders", response.text)
+        self.assertIn("/static/js/favorites.js", response.text)
+
+    def test_reader_page_serves_frontend(self):
+        client = TestClient(app)
+        response = client.get("/reader")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Markdown Reader", response.text)
+        self.assertIn("reader-search", response.text)
+        self.assertIn("/static/js/reader.js", response.text)
 
     def test_app_config_exposes_non_secret_defaults(self):
         with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}, clear=True):
@@ -100,6 +124,8 @@ class MainAppTest(unittest.TestCase):
         data = response.json()
         self.assertEqual(data["transcription_backend"], "local")
         self.assertNotIn("openai_api_key", data)
+        self.assertIn("ollama_model_options", data)
+        self.assertIn("local_whisper_model", data)
 
     def test_tasks_endpoint_lists_recent_task_metadata(self):
         set_task_status("task-1", "queued", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")
@@ -140,6 +166,172 @@ class MainAppTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()[0]["task_id"], "history-task")
         self.assertEqual(response.json()[0]["markdown_path"], "notes/video.md")
+
+    def test_history_file_endpoint_downloads_task_output(self):
+        with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
+            "os.environ",
+            {"READVIDEO_DATABASE_PATH": str(Path(tmpdir) / "history.sqlite3")},
+            clear=True,
+        ):
+            transcript = Path(tmpdir) / "video_transcription.txt"
+            transcript.write_text("hello transcript", encoding="utf-8")
+            set_task_status(
+                "file-task",
+                "completed",
+                url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                transcription_path=str(transcript),
+            )
+            from backend.storage.history import HistoryStore
+
+            HistoryStore(str(Path(tmpdir) / "history.sqlite3")).upsert_task(TASKS["file-task"])
+            client = TestClient(app)
+            response = client.get("/api/history/file-task/files/transcript")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.text, "hello transcript")
+
+    def test_favorites_endpoint_adds_history_record(self):
+        with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
+            "os.environ",
+            {"READVIDEO_DATABASE_PATH": str(Path(tmpdir) / "history.sqlite3")},
+            clear=True,
+        ):
+            set_task_status(
+                "favorite-task",
+                "completed",
+                url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                title="Favorite video",
+                markdown_path="notes/favorite-video.md",
+                summary="- useful",
+            )
+            from backend.storage.history import HistoryStore
+
+            HistoryStore(str(Path(tmpdir) / "history.sqlite3")).upsert_task(TASKS["favorite-task"])
+            client = TestClient(app)
+            response = client.post("/api/favorites", json={"task_id": "favorite-task"})
+            list_response = client.get("/api/favorites")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["notes_dir"], "notes")
+        self.assertEqual(list_response.json()[0]["task_id"], "favorite-task")
+
+    def test_favorite_folders_endpoint_assigns_favorite(self):
+        with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
+            "os.environ",
+            {"READVIDEO_DATABASE_PATH": str(Path(tmpdir) / "history.sqlite3")},
+            clear=True,
+        ):
+            note = Path(tmpdir) / "favorite-video.md"
+            note.write_text("# Favorite\n\nBody", encoding="utf-8")
+            set_task_status(
+                "favorite-task",
+                "completed",
+                url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                title="Favorite video",
+                markdown_path=str(note),
+                summary="- useful",
+            )
+            from backend.storage.history import HistoryStore
+
+            HistoryStore(str(Path(tmpdir) / "history.sqlite3")).upsert_task(TASKS["favorite-task"])
+            client = TestClient(app)
+            favorite = client.post("/api/favorites", json={"task_id": "favorite-task"}).json()
+            folder = client.post("/api/favorites/folders", json={"name": "AI", "notes": "models"}).json()
+            direct_favorite = client.post(
+                "/api/favorites",
+                json={"task_id": "favorite-task", "folder_id": folder["id"]},
+            )
+            assigned = client.patch(
+                f"/api/favorites/{favorite['id']}/folder",
+                json={"folder_id": folder["id"]},
+            )
+            markdown = client.get(f"/api/favorites/{favorite['id']}/markdown")
+
+        self.assertEqual(assigned.status_code, 200)
+        self.assertEqual(assigned.json()["folder_name"], "AI")
+        self.assertEqual(direct_favorite.status_code, 200)
+        self.assertEqual(direct_favorite.json()["folder_name"], "AI")
+        self.assertEqual(markdown.status_code, 200)
+        self.assertEqual(markdown.json()["content"], "# Favorite\n\nBody")
+
+    def test_markdown_files_endpoint_lists_and_downloads_files(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            note = Path(tmpdir) / "note.md"
+            note.write_text("# Note", encoding="utf-8")
+            client = TestClient(app)
+            list_response = client.get(f"/api/markdown_files?directory={tmpdir}")
+            download_response = client.get(f"/api/markdown_files/download?path={note}")
+            read_response = client.get(f"/api/markdown_files/read?path={note}")
+
+        self.assertEqual(list_response.status_code, 200)
+        self.assertEqual(list_response.json()[0]["name"], "note.md")
+        self.assertEqual(download_response.status_code, 200)
+        self.assertEqual(download_response.text, "# Note")
+        self.assertEqual(read_response.status_code, 200)
+        self.assertEqual(read_response.json()["content"], "# Note")
+
+    def test_watchlist_updates_endpoint_uses_saved_source(self):
+        updates = [
+            SourceVideo(
+                title="Latest",
+                url="https://www.youtube.com/watch?v=abc123",
+                video_id="abc123",
+                uploader="Demo",
+                upload_date="20260509",
+                duration=120,
+            )
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
+            "os.environ",
+            {"READVIDEO_DATABASE_PATH": str(Path(tmpdir) / "watchlist.sqlite3")},
+            clear=True,
+        ), patch.object(routes, "list_source_updates", return_value=updates):
+            client = TestClient(app)
+            created = client.post(
+                "/watchlist",
+                json={"name": "Demo", "url": "https://www.youtube.com/@demo", "notes": ""},
+            )
+            response = client.get(f"/watchlist/{created.json()['id']}/updates?limit=1")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["updates"][0]["title"], "Latest")
+
+    def test_watchlist_endpoint_updates_saved_source(self):
+        with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
+            "os.environ",
+            {"READVIDEO_DATABASE_PATH": str(Path(tmpdir) / "watchlist.sqlite3")},
+            clear=True,
+        ):
+            client = TestClient(app)
+            created = client.post(
+                "/watchlist",
+                json={"name": "Demo", "url": "https://www.youtube.com/@demo", "notes": ""},
+            )
+            response = client.patch(
+                f"/watchlist/{created.json()['id']}",
+                json={"name": "Updated", "url": "https://www.youtube.com/@updated", "notes": "better"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["name"], "Updated")
+        self.assertEqual(response.json()["notes"], "better")
+
+    def test_ollama_models_endpoint_exposes_recommendations(self):
+        with patch.object(routes, "list_installed_models", return_value=["qwen2.5:3b"]):
+            client = TestClient(app)
+            response = client.get("/api/ollama/models")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("recommended", response.json())
+        self.assertIn("qwen2.5:3b", response.json()["installed"])
+
+    def test_ollama_pull_endpoint_calls_service(self):
+        with patch.object(routes, "pull_model", return_value="done"):
+            client = TestClient(app)
+            response = client.post("/api/ollama/pull", json={"model": "qwen3:14b"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["model"], "qwen3:14b")
 
     def test_openai_backend_requires_openai_key(self):
         with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "openai"}, clear=True):

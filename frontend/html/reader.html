@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>readVideo Reader</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <a class="brand-link" href="/">readVideo</a>
+      <nav class="side-nav">
+        <a class="side-link" href="/">New Video</a>
+        <a class="side-link" href="/history">History</a>
+        <a class="side-link" href="/favorites">Favorites</a>
+        <a class="side-link active" href="/reader">Reader</a>
+        <a class="side-link" href="/docs" target="_blank" rel="noreferrer">API Docs</a>
+      </nav>
+    </aside>
+
+    <div class="page-content">
+      <header class="topbar">
+        <div>
+          <h1>Markdown Reader</h1>
+          <div class="meta-row">
+            <span id="reader-status" class="pill muted">Idle</span>
+          </div>
+        </div>
+      </header>
+
+      <main class="reader-workspace">
+        <section class="tool-panel reader-index-panel">
+          <div class="panel-header">
+            <h2>Favorite Notes</h2>
+            <span id="reader-count" class="caption">0 notes</span>
+          </div>
+
+          <div class="stack compact">
+            <div>
+              <label for="reader-search">Search</label>
+              <input id="reader-search" placeholder="Search title, summary, URL, folder">
+            </div>
+            <div>
+              <label for="reader-folder-filter">Folder Filter</label>
+              <select id="reader-folder-filter">
+                <option value="all">All</option>
+                <option value="unfiled">Unfiled</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="reader-favorites" class="reader-favorite-list"></div>
+        </section>
+
+        <section class="tool-panel reader-document-panel">
+          <div class="panel-header">
+            <h2 id="reader-title">Open a Markdown note</h2>
+            <a id="reader-download" class="quiet-link small-link hidden" href="#">Download MD</a>
+          </div>
+
+          <div id="reader-folder-picker" class="folder-picker hidden">
+            <label for="reader-folder-select">Favorite Folder</label>
+            <select id="reader-folder-select"></select>
+          </div>
+
+          <p id="reader-path" class="reader-path">Choose a favorite note on the left, or open from Favorites.</p>
+          <article id="reader-content" class="markdown-reader reader-document"></article>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script type="module" src="/static/js/reader.js"></script>
+</body>
+</html>

@@ -61,6 +61,16 @@ class WatchlistStore:
             cursor = conn.execute("DELETE FROM watchlist WHERE id = ?", (item_id,))
             return cursor.rowcount > 0
 
+    def update_item(self, item_id: int, name: str, url: str, notes: str = "") -> Optional[WatchItem]:
+        with self._connect() as conn:
+            cursor = conn.execute(
+                "UPDATE watchlist SET name = ?, url = ?, notes = ? WHERE id = ?",
+                (name.strip(), url.strip(), notes.strip(), item_id),
+            )
+            if cursor.rowcount == 0:
+                return None
+        return self.get_item(item_id)
+
     def get_item(self, item_id: int) -> Optional[WatchItem]:
         with self._connect() as conn:
             row = conn.execute(

@@ -97,13 +97,36 @@ def summarize_transcript_with_ollama(
     model: str = "qwen2.5:3b",
     url: str = "http://127.0.0.1:11434/api/generate",
     timeout_seconds: int = 180,
+    max_items: int = 8,
+    chunk_chars: int = 7000,
 ) -> list[str]:
-    prompt = (
-        "你是一个视频笔记助手。请根据下面的 YouTube 转录文本，输出 6 条中文 Markdown bullet。"
-        "每条格式为「主题: 一句话总结」。只总结文本里明确出现的内容，不要编造，"
-        "不要加入广告、订阅提醒或投资建议免责声明。\n\n"
-        f"转录文本:\n{_prompt_excerpt(transcript_text)}"
-    )
+    chunks = _prompt_chunks(transcript_text, max_chars=chunk_chars)
+    if not chunks:
+        return []
+
+    if len(chunks) == 1:
+        prompt = _final_summary_prompt(chunks[0], max_items)
+        items = _request_ollama_summary(prompt, model, url, timeout_seconds)
+        if not items:
+            raise RuntimeError("Ollama summary did not return usable bullet points.")
+        return items[:max_items]
+
+    chunk_notes: list[str] = []
+    for index, chunk in enumerate(chunks, start=1):
+        prompt = _chunk_summary_prompt(chunk, index, len(chunks))
+        chunk_notes.extend(_request_ollama_summary(prompt, model, url, timeout_seconds))
+
+    if not chunk_notes:
+        raise RuntimeError("Ollama summary did not return usable bullet points.")
+
+    prompt = _final_summary_prompt("\n".join(f"- {item}" for item in chunk_notes), max_items)
+    items = _request_ollama_summary(prompt, model, url, timeout_seconds)
+    if not items:
+        return chunk_notes[:max_items]
+    return items[:max_items]
+
+
+def _request_ollama_summary(prompt: str, model: str, url: str, timeout_seconds: int) -> list[str]:
     payload = json.dumps(
         {
             "model": model,
@@ -128,10 +151,27 @@ def summarize_transcript_with_ollama(
         ) from exc
 
     text = str(data.get("response", "")).strip()
-    items = _parse_markdown_bullets(text)
-    if not items:
-        raise RuntimeError("Ollama summary did not return usable bullet points.")
-    return items[:6]
+    return _parse_markdown_bullets(text)
+
+
+def _chunk_summary_prompt(chunk: str, index: int, total: int) -> str:
+    return (
+        "你是一个严谨的视频笔记助手。下面是 YouTube 转录文本的一段。"
+        "请输出 4 到 6 条中文 Markdown bullet，保留这一段里的关键事实、观点、例子、数字、因果关系和行动建议。"
+        "每条格式为「主题: 具体总结」。只总结文本里明确出现的内容，不要编造，"
+        "不要加入广告、订阅提醒或投资建议免责声明。\n\n"
+        f"片段 {index}/{total}:\n{chunk}"
+    )
+
+
+def _final_summary_prompt(notes_text: str, max_items: int) -> str:
+    return (
+        "你是一个视频笔记编辑。请把下面的转录文本或分段笔记合并成一份高质量中文总结。"
+        f"输出最多 {max_items} 条 Markdown bullet。每条格式为「主题: 具体总结」。"
+        "要求：去重，按逻辑顺序组织，保留具体论点、例子、数字和行动点；"
+        "不要泛泛而谈，不要编造，不要加入广告、订阅提醒或免责声明。\n\n"
+        f"内容:\n{notes_text}"
+    )
 
 
 def _tokens(sentence: str) -> list[str]:
@@ -157,17 +197,24 @@ def _content_lines(transcript_text: str) -> list[str]:
     return lines
 
 
-def _prompt_excerpt(transcript_text: str, max_chars: int = 9000) -> str:
+def _prompt_chunks(transcript_text: str, max_chars: int = 7000) -> list[str]:
     lines = _content_lines(transcript_text)
-    text = "\n".join(lines)
-    if len(text) <= max_chars:
-        return text
+    chunks = []
+    current = []
+    current_len = 0
 
-    head = text[: max_chars // 3]
-    middle_start = max(0, len(text) // 2 - max_chars // 6)
-    middle = text[middle_start : middle_start + max_chars // 3]
-    tail = text[-max_chars // 3 :]
-    return "\n...\n".join([head, middle, tail])
+    for line in lines:
+        if current and current_len + len(line) + 1 > max_chars:
+            chunks.append("\n".join(current))
+            current = []
+            current_len = 0
+        current.append(line)
+        current_len += len(line) + 1
+
+    if current:
+        chunks.append("\n".join(current))
+
+    return chunks
 
 
 def _parse_markdown_bullets(text: str) -> list[str]:

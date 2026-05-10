@@ -7,19 +7,28 @@
   <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
-  <header class="topbar">
-    <div>
-      <h1>readVideo</h1>
-      <div class="meta-row">
-        <span id="health-pill" class="pill muted">Checking</span>
-        <span id="backend-pill" class="pill muted">Backend</span>
-      </div>
-    </div>
-    <nav class="topnav">
-      <a class="quiet-link" href="/history">History</a>
-      <a class="quiet-link" href="/docs" target="_blank" rel="noreferrer">API Docs</a>
-    </nav>
-  </header>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <a class="brand-link" href="/">readVideo</a>
+      <nav class="side-nav">
+        <a class="side-link active" href="/">New Video</a>
+        <a class="side-link" href="/history">History</a>
+        <a class="side-link" href="/favorites">Favorites</a>
+        <a class="side-link" href="/reader">Reader</a>
+        <a class="side-link" href="/docs" target="_blank" rel="noreferrer">API Docs</a>
+      </nav>
+    </aside>
+
+    <div class="page-content">
+      <header class="topbar">
+        <div>
+          <h1>readVideo</h1>
+          <div class="meta-row">
+            <span id="health-pill" class="pill muted">Checking</span>
+            <span id="backend-pill" class="pill muted">Backend</span>
+          </div>
+        </div>
+      </header>
 
   <main class="workspace">
     <section class="tool-panel process-panel">
@@ -48,9 +57,25 @@
             </select>
           </div>
           <div>
-            <label for="ollama-model">Ollama Model</label>
-            <input id="ollama-model" name="ollama_model" placeholder="qwen2.5:3b">
+            <label for="ollama-model-select">Ollama Summary Model</label>
+            <select id="ollama-model-select" name="ollama_model_select"></select>
           </div>
+        </div>
+
+        <div class="form-grid">
+          <div>
+            <label for="ollama-model-custom">Custom Ollama Model</label>
+            <input id="ollama-model-custom" name="ollama_model_custom" placeholder="Optional, e.g. qwen3:14b">
+          </div>
+          <div>
+            <label for="pull-ollama-model">Model Tools</label>
+            <button id="pull-ollama-model" class="secondary-button full" type="button">Pull Selected Model</button>
+          </div>
+        </div>
+
+        <div class="model-status">
+          <span id="whisper-model-pill" class="pill muted">Transcription model</span>
+          <span id="ollama-model-message" class="caption">Ollama is used for summaries, not audio transcription.</span>
         </div>
 
         <button id="start-button" class="primary-button" type="submit">Start Processing</button>
@@ -70,7 +95,11 @@
     <section class="tool-panel output-panel">
       <div class="panel-header">
         <h2>Latest Output</h2>
-        <button id="copy-summary" class="secondary-button" type="button" disabled>Copy Summary</button>
+        <div class="button-row">
+          <a id="read-summary" class="quiet-link disabled-link" href="/reader" target="_blank" rel="noreferrer" aria-disabled="true">Read Summary</a>
+          <button id="favorite-summary" class="secondary-button" type="button" disabled>Favorite Summary</button>
+          <button id="copy-summary" class="secondary-button" type="button" disabled>Copy Summary</button>
+        </div>
       </div>
 
       <dl class="output-list">
@@ -124,6 +153,8 @@
       <div id="watchlist" class="watchlist"></div>
     </aside>
   </main>
+    </div>
+  </div>
 
   <script type="module" src="/static/js/app.js"></script>
 </body>

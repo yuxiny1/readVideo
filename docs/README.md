@@ -12,11 +12,18 @@ The default transcription backend is local `whisper.cpp`, so OpenAI API access i
 - Saves the raw transcript next to the downloaded video.
 - Creates a Markdown note with summary, structured sections, and full transcript.
 - Can summarize notes with either a local extractive summarizer or an optional Ollama local LLM.
+- Uses a full-transcript chunk-and-combine workflow for Ollama summaries so long videos are not summarized from only an excerpt.
+- Lets you choose or pull larger Ollama models from the browser when you want stronger local summaries.
 - Lets you choose the Markdown output folder per request.
 - Provides a simple FastAPI frontend and JSON API.
 - Shows recent task status, elapsed time, and generated output paths in the browser.
-- Persists processed video history in SQLite, including video, transcript, and Markdown paths.
-- Saves a local watchlist of YouTube channels/playlists in SQLite.
+- Persists processed video history in SQLite, including source URL, video, transcript, and Markdown paths.
+- Lets you search favorite summaries and keep their Markdown locations in one page.
+- Lets you open, favorite, or copy a summary from the current Latest Output panel after a download finishes, with optional folder assignment from History.
+- Lets you open favorite Markdown notes in a dedicated reader page.
+- Lets you create virtual note folders for favorite Markdown notes without moving the original files on disk.
+- Lists Markdown files from a chosen notes folder and serves them for reading or download.
+- Saves a local watchlist of YouTube channels/playlists in SQLite and can check recent source updates with `yt-dlp`.
 
 ## Requirements
 
@@ -63,11 +70,24 @@ READVIDEO_OLLAMA_MODEL=qwen2.5:3b
 READVIDEO_OLLAMA_URL=http://127.0.0.1:11434/api/generate
 ```
 
+`READVIDEO_LOCAL_WHISPER_MODEL` is the audio transcription model. By default it points at `models/ggml-small.bin`, which is used by `whisper.cpp` to turn speech into text.
+
+`READVIDEO_OLLAMA_MODEL` is only used for Markdown summary and note organization when `READVIDEO_NOTES_BACKEND=ollama`. It does not transcribe audio.
+
 Optional Ollama note summaries:
 
 ```bash
 ollama pull qwen2.5:3b
 READVIDEO_NOTES_BACKEND=ollama
+```
+
+The frontend includes recommended Ollama summary models. Lighter models are faster; larger models usually produce better structure and summaries if your machine has enough memory.
+
+```bash
+ollama pull qwen2.5:7b
+ollama pull qwen2.5:14b
+ollama pull qwen3:14b
+ollama pull llama3.1:8b
 ```
 
 Optional OpenAI backend:
@@ -93,8 +113,10 @@ Open:
 http://localhost:8000
 ```
 
-The frontend is served from `frontend/` and calls the same FastAPI app for task status, Markdown output, and saved YouTube sources.
+The frontend is served from `frontend/` and calls the same FastAPI app for task status, Markdown output, and saved YouTube sources. Main navigation lives in the left sidebar.
 Open `/history` to review previously downloaded/transcribed videos and their saved file paths.
+Open `/favorites` to search favorite summaries, organize them into note folders, jump to their Markdown folders, list `.md` files, and download notes.
+Open `/reader` to read favorite Markdown notes in a focused page with a left-side searchable note list and folder selector.
 
 ## API Usage
 
@@ -122,12 +144,60 @@ Watchlist:
 
 ```bash
 curl "http://localhost:8000/watchlist"
+curl -X PATCH "http://localhost:8000/watchlist/1" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Updated source", "url": "https://www.youtube.com/@example", "notes": "Weekly"}'
 ```
 
 History:
 
 ```bash
 curl "http://localhost:8000/api/history"
+```
+
+Favorites:
+
+```bash
+curl "http://localhost:8000/api/favorites"
+curl -X POST "http://localhost:8000/api/favorites" \
+  -H "Content-Type: application/json" \
+  -d '{"task_id": "demo-1", "folder_id": 1}'
+```
+
+Markdown files:
+
+```bash
+curl "http://localhost:8000/api/markdown_files?directory=notes"
+curl "http://localhost:8000/api/markdown_files/read?path=notes/demo.md"
+curl -OJ "http://localhost:8000/api/markdown_files/download?path=notes/demo.md"
+```
+
+Favorite folders:
+
+```bash
+curl "http://localhost:8000/api/favorites/folders"
+curl -X POST "http://localhost:8000/api/favorites/folders" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "AI notes", "notes": "Local model and agent videos"}'
+curl -X PATCH "http://localhost:8000/api/favorites/1/folder" \
+  -H "Content-Type: application/json" \
+  -d '{"folder_id": 1}'
+curl "http://localhost:8000/api/favorites/1/markdown"
+```
+
+Saved source updates:
+
+```bash
+curl "http://localhost:8000/watchlist/1/updates?limit=8"
+```
+
+Ollama local summary models:
+
+```bash
+curl "http://localhost:8000/api/ollama/models"
+curl -X POST "http://localhost:8000/api/ollama/pull" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "qwen3:14b"}'
 ```
 
 ## Tests
@@ -142,8 +212,8 @@ python -m unittest discover -s tests
 - `backend/app.py`: FastAPI app factory surface, frontend mounting, router registration.
 - `backend/api/`: HTTP routes and request schemas.
 - `backend/core/`: Settings and task state.
-- `backend/services/`: Download, transcription, video processing, and note generation.
-- `backend/storage/`: SQLite-backed watchlist and processing history storage.
+- `backend/services/`: Download, transcription, video processing, note generation, Markdown file listing, and saved source update discovery.
+- `backend/storage/`: SQLite-backed watchlist, processing history, and favorite summary storage.
 - `frontend/html/`: Browser HTML.
 - `frontend/css/`: Browser styles.
 - `frontend/js/`: Browser behavior and API calls.

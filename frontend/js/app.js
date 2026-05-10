@@ -4,6 +4,9 @@ import {escapeHtml, formatElapsed} from "./format.js";
 const state = {
   pollTimer: null,
   latestSummary: "",
+  latestTask: null,
+  ollamaModelOptions: [],
+  ollamaInstalledModels: [],
 };
 
 const elements = {
@@ -14,7 +17,11 @@ const elements = {
   videoUrl: document.querySelector("#video-url"),
   notesDir: document.querySelector("#notes-dir"),
   notesBackend: document.querySelector("#notes-backend"),
-  ollamaModel: document.querySelector("#ollama-model"),
+  ollamaModelSelect: document.querySelector("#ollama-model-select"),
+  ollamaModelCustom: document.querySelector("#ollama-model-custom"),
+  pullOllamaModel: document.querySelector("#pull-ollama-model"),
+  ollamaModelMessage: document.querySelector("#ollama-model-message"),
+  whisperModelPill: document.querySelector("#whisper-model-pill"),
   taskId: document.querySelector("#task-id"),
   taskMessage: document.querySelector("#task-message"),
   steps: Array.from(document.querySelectorAll(".step")),
@@ -22,6 +29,8 @@ const elements = {
   transcriptPath: document.querySelector("#transcript-path"),
   markdownPath: document.querySelector("#markdown-path"),
   summaryBox: document.querySelector("#summary-box"),
+  readSummary: document.querySelector("#read-summary"),
+  favoriteSummary: document.querySelector("#favorite-summary"),
   copySummary: document.querySelector("#copy-summary"),
   refreshTasks: document.querySelector("#refresh-tasks"),
   recentTasks: document.querySelector("#recent-tasks"),
@@ -62,15 +71,58 @@ function setStep(status) {
 }
 
 function updateOutput(task) {
-  elements.videoPath.textContent = task.video_path || "-";
-  elements.transcriptPath.textContent = task.transcription_path || "-";
-  elements.markdownPath.textContent = task.markdown_path || "-";
+  state.latestTask = task;
+  renderOutputPath(elements.videoPath, task, "video", task.video_path);
+  renderOutputPath(elements.transcriptPath, task, "transcript", task.transcription_path);
+  renderOutputPath(elements.markdownPath, task, "markdown", task.markdown_path);
 
   if (task.summary) {
     state.latestSummary = task.summary;
     elements.summaryBox.textContent = task.summary;
     elements.copySummary.disabled = false;
+  } else {
+    state.latestSummary = "";
+    elements.copySummary.disabled = true;
+    elements.summaryBox.textContent = ["completed", "failed"].includes(task.status)
+      ? "No summary available."
+      : "Waiting for task output...";
   }
+
+  const canFavorite = Boolean(task.task_id && (task.summary || task.markdown_path));
+  elements.favoriteSummary.disabled = !canFavorite;
+  if (canFavorite) {
+    elements.favoriteSummary.textContent = "Favorite Summary";
+  }
+
+  updateReadSummaryLink(task.markdown_path);
+}
+
+function renderOutputPath(element, task, kind, value) {
+  if (!value) {
+    element.textContent = "-";
+    return;
+  }
+
+  if (!task.task_id) {
+    element.textContent = value;
+    return;
+  }
+
+  const href = `/api/history/${encodeURIComponent(task.task_id)}/files/${kind}`;
+  element.innerHTML = `<a class="path-anchor" href="${href}" target="_blank" rel="noreferrer">${escapeHtml(value)}</a>`;
+}
+
+function updateReadSummaryLink(markdownPath) {
+  if (!markdownPath) {
+    elements.readSummary.href = "/reader";
+    elements.readSummary.classList.add("disabled-link");
+    elements.readSummary.setAttribute("aria-disabled", "true");
+    return;
+  }
+
+  elements.readSummary.href = `/reader?path=${encodeURIComponent(markdownPath)}`;
+  elements.readSummary.classList.remove("disabled-link");
+  elements.readSummary.setAttribute("aria-disabled", "false");
 }
 
 function renderTask(task) {
@@ -113,33 +165,83 @@ async function pollTask(taskId) {
 
 async function loadConfig() {
   try {
-    const [health, config] = await Promise.all([api("/health"), api("/app_config")]);
+    const [health, config, models] = await Promise.all([
+      api("/health"),
+      api("/app_config"),
+      api("/api/ollama/models"),
+    ]);
     setPill(elements.healthPill, health.status === "ok" ? "Online" : "Check", health.status === "ok" ? "ok" : "muted");
     setPill(elements.backendPill, `${config.transcription_backend} / ${config.notes_backend}`, "muted");
     elements.notesDir.placeholder = config.notes_dir || "notes";
     elements.notesBackend.value = config.notes_backend || "extractive";
-    elements.ollamaModel.placeholder = config.ollama_model || "qwen2.5:3b";
+    setPill(elements.whisperModelPill, `Transcription: ${config.local_whisper_model}`, "muted");
+    state.ollamaModelOptions = models.recommended || config.ollama_model_options || [];
+    state.ollamaInstalledModels = models.installed || [];
+    renderOllamaModelOptions(state.ollamaModelOptions, config.ollama_model || "qwen2.5:3b");
   } catch (error) {
     setPill(elements.healthPill, "Offline", "error");
     setNotice(error.message, "error");
   }
 }
 
+function renderOllamaModelOptions(options, selectedModel) {
+  const knownModels = new Set(options.map((option) => option.name));
+  const fallback = knownModels.has(selectedModel) ? "" : `<option value="${escapeHtml(selectedModel)}" selected>${escapeHtml(selectedModel)} (configured)</option>`;
+  const installedModels = new Set(state.ollamaInstalledModels);
+  elements.ollamaModelSelect.innerHTML = `
+    ${fallback}
+    ${options.map((option) => `
+      <option value="${escapeHtml(option.name)}" ${option.name === selectedModel ? "selected" : ""}>
+        ${escapeHtml(option.label)} - ${escapeHtml(option.size)}${installedModels.has(option.name) ? " - installed" : ""}
+      </option>
+    `).join("")}
+  `;
+  updateOllamaModelMessage(options);
+}
+
+function selectedOllamaModel() {
+  return elements.ollamaModelCustom.value.trim() || elements.ollamaModelSelect.value;
+}
+
+function updateOllamaModelMessage(options = []) {
+  const model = selectedOllamaModel();
+  const option = options.find((item) => item.name === model);
+  const installText = state.ollamaInstalledModels.includes(model) ? "Installed." : "Not installed yet.";
+  const backendHint = elements.notesBackend.value === "ollama"
+    ? "Active for this run."
+    : "Select Summary Backend = Ollama Local LLM to use this model.";
+  elements.ollamaModelMessage.textContent = option
+    ? `${option.name}: ${backendHint} ${installText} ${option.notes} Pull command: ollama pull ${option.name}`
+    : `${model || "Custom model"}: ${backendHint} Custom Ollama model for summary generation.`;
+}
+
 async function submitProcess(event) {
   event.preventDefault();
-  window.clearTimeout(state.pollTimer);
+  await startProcessingUrl(elements.videoUrl.value.trim());
+}
 
-  const payload = {
-    url: elements.videoUrl.value.trim(),
+function buildProcessPayload(url) {
+  return {
+    url,
     notes_dir: elements.notesDir.value.trim() || null,
     notes_backend: elements.notesBackend.value,
-    ollama_model: elements.ollamaModel.value.trim() || null,
+    ollama_model: selectedOllamaModel() || null,
   };
+}
 
+async function startProcessingUrl(url) {
+  window.clearTimeout(state.pollTimer);
+
+  const payload = buildProcessPayload(url);
+  elements.videoUrl.value = url;
   elements.startButton.disabled = true;
   elements.summaryBox.textContent = "Waiting for task output...";
   elements.copySummary.disabled = true;
+  elements.favoriteSummary.disabled = true;
+  elements.favoriteSummary.textContent = "Favorite Summary";
+  updateReadSummaryLink(null);
   state.latestSummary = "";
+  state.latestTask = null;
   setStep("queued");
   setNotice("Queued", "pending");
 
@@ -168,13 +270,32 @@ async function loadWatchlist() {
 
     elements.watchlist.innerHTML = items.map((item) => `
       <article class="watch-item" data-id="${item.id}">
-        <p class="watch-title">${escapeHtml(item.name)}</p>
+        <div class="history-card-header">
+          <div>
+            <p class="watch-title">${escapeHtml(item.name)}</p>
+          </div>
+          <div class="actions-wrap">
+            <button class="secondary-button small-button" type="button" data-action="toggle-actions">Actions</button>
+            <div class="actions-menu hidden">
+              <button type="button" data-action="use">Use</button>
+              <button type="button" data-action="updates">Updates</button>
+              <button type="button" data-action="edit-source">Edit</button>
+              <button class="danger-text" type="button" data-action="delete">Delete</button>
+            </div>
+          </div>
+        </div>
         <a class="watch-url" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">${escapeHtml(item.url)}</a>
         ${item.notes ? `<p class="watch-notes">${escapeHtml(item.notes)}</p>` : ""}
-        <div class="watch-actions">
-          <button class="secondary-button" type="button" data-action="use">Use</button>
-          <button class="danger-button" type="button" data-action="delete">Delete</button>
-        </div>
+        <form class="watch-edit-form hidden">
+          <label>Name<input name="name" required value="${escapeHtml(item.name)}"></label>
+          <label>URL<input name="url" required value="${escapeHtml(item.url)}"></label>
+          <label>Notes<textarea name="notes">${escapeHtml(item.notes || "")}</textarea></label>
+          <div class="button-row">
+            <button class="secondary-button small-button" type="submit">Save</button>
+            <button class="secondary-button small-button" type="button" data-action="cancel-edit">Cancel</button>
+          </div>
+        </form>
+        <div class="source-updates"></div>
       </article>
     `).join("");
   } catch (error) {
@@ -230,16 +351,121 @@ async function handleWatchlistClick(event) {
   const id = item.dataset.id;
   const action = button.dataset.action;
 
+  if (action === "toggle-actions") {
+    toggleActionsMenu(item);
+    return;
+  }
+
   if (action === "use") {
+    hideActionsMenu(item);
     elements.videoUrl.value = item.querySelector(".watch-url").textContent;
     elements.videoUrl.focus();
     return;
   }
 
+  if (action === "updates") {
+    hideActionsMenu(item);
+    await loadSourceUpdates(item, id);
+    return;
+  }
+
+  if (action === "edit-source") {
+    hideActionsMenu(item);
+    item.querySelector(".watch-edit-form").classList.remove("hidden");
+    return;
+  }
+
+  if (action === "cancel-edit") {
+    item.querySelector(".watch-edit-form").classList.add("hidden");
+    return;
+  }
+
+  if (action === "use-update" || action === "download-update") {
+    const update = button.closest(".source-update");
+    const url = update.dataset.url;
+    elements.videoUrl.value = url;
+    elements.videoUrl.focus();
+    if (action === "download-update") {
+      await startProcessingUrl(url);
+    }
+    return;
+  }
+
   if (action === "delete") {
+    hideActionsMenu(item);
     await api(`/watchlist/${encodeURIComponent(id)}`, {method: "DELETE"});
     await loadWatchlist();
   }
+}
+
+function toggleActionsMenu(container) {
+  const menu = container.querySelector(".actions-menu");
+  elements.watchlist.querySelectorAll(".actions-menu").forEach((item) => {
+    if (item !== menu) {
+      item.classList.add("hidden");
+    }
+  });
+  menu.classList.toggle("hidden");
+}
+
+function hideActionsMenu(container) {
+  container.querySelector(".actions-menu")?.classList.add("hidden");
+}
+
+async function handleWatchlistSubmit(event) {
+  const form = event.target.closest(".watch-edit-form");
+  if (!form) return;
+
+  event.preventDefault();
+  const item = form.closest(".watch-item");
+  const id = item.dataset.id;
+  await api(`/watchlist/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      name: form.elements.name.value.trim(),
+      url: form.elements.url.value.trim(),
+      notes: form.elements.notes.value.trim(),
+    }),
+  });
+  await loadWatchlist();
+}
+
+async function loadSourceUpdates(item, id) {
+  const container = item.querySelector(".source-updates");
+  container.innerHTML = '<div class="empty-state">Checking source updates...</div>';
+
+  try {
+    const result = await api(`/watchlist/${encodeURIComponent(id)}/updates?limit=8`);
+    if (!result.updates.length) {
+      container.innerHTML = '<div class="empty-state">No videos found for this source.</div>';
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="source-update-list">
+        ${result.updates.map(renderSourceUpdate).join("")}
+      </div>
+    `;
+  } catch (error) {
+    container.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+  }
+}
+
+function renderSourceUpdate(update) {
+  const meta = [update.uploader, update.upload_date].filter(Boolean).join(" / ");
+  return `
+    <div class="source-update" data-url="${escapeHtml(update.url)}">
+      <div>
+        <p class="watch-title">${escapeHtml(update.title)}</p>
+        <a class="watch-url" href="${escapeHtml(update.url)}" target="_blank" rel="noreferrer">${escapeHtml(update.url)}</a>
+        ${meta ? `<p class="watch-notes">${escapeHtml(meta)}</p>` : ""}
+      </div>
+      <div class="watch-actions">
+        <button class="secondary-button small-button" type="button" data-action="use-update">Use</button>
+        <button class="secondary-button small-button" type="button" data-action="download-update">Download</button>
+      </div>
+    </div>
+  `;
 }
 
 async function handleRecentTaskClick(event) {
@@ -263,10 +489,61 @@ async function copySummary() {
   }, 1200);
 }
 
+async function favoriteLatestSummary() {
+  if (!state.latestTask?.task_id) return;
+
+  const oldText = elements.favoriteSummary.textContent;
+  elements.favoriteSummary.disabled = true;
+  elements.favoriteSummary.textContent = "Saving";
+  try {
+    await api("/api/favorites", {
+      method: "POST",
+      body: JSON.stringify({task_id: state.latestTask.task_id}),
+    });
+    elements.favoriteSummary.textContent = "Favorited";
+  } catch (error) {
+    elements.favoriteSummary.disabled = false;
+    elements.favoriteSummary.textContent = oldText;
+    setNotice(error.message, "error");
+  }
+}
+
+async function pullSelectedOllamaModel() {
+  const model = selectedOllamaModel();
+  if (!model) return;
+
+  const oldText = elements.pullOllamaModel.textContent;
+  elements.pullOllamaModel.disabled = true;
+  elements.pullOllamaModel.textContent = "Pulling...";
+  elements.ollamaModelMessage.textContent = `Running: ollama pull ${model}`;
+  try {
+    await api("/api/ollama/pull", {
+      method: "POST",
+      body: JSON.stringify({model}),
+    });
+    if (!state.ollamaInstalledModels.includes(model)) {
+      state.ollamaInstalledModels.push(model);
+    }
+    renderOllamaModelOptions(state.ollamaModelOptions, model);
+    elements.ollamaModelMessage.textContent = `Installed ${model}.`;
+  } catch (error) {
+    elements.ollamaModelMessage.textContent = error.message;
+  } finally {
+    elements.pullOllamaModel.disabled = false;
+    elements.pullOllamaModel.textContent = oldText;
+  }
+}
+
 elements.processForm.addEventListener("submit", submitProcess);
 elements.watchForm.addEventListener("submit", submitWatchItem);
 elements.watchlist.addEventListener("click", handleWatchlistClick);
+elements.watchlist.addEventListener("submit", handleWatchlistSubmit);
 elements.copySummary.addEventListener("click", copySummary);
+elements.favoriteSummary.addEventListener("click", favoriteLatestSummary);
+elements.pullOllamaModel.addEventListener("click", pullSelectedOllamaModel);
+elements.notesBackend.addEventListener("change", () => updateOllamaModelMessage(state.ollamaModelOptions));
+elements.ollamaModelSelect.addEventListener("change", () => updateOllamaModelMessage(state.ollamaModelOptions));
+elements.ollamaModelCustom.addEventListener("input", () => updateOllamaModelMessage(state.ollamaModelOptions));
 elements.refreshTasks.addEventListener("click", loadRecentTasks);
 elements.recentTasks.addEventListener("click", handleRecentTaskClick);
 

@@ -1,11 +1,13 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from backend.services.notes import (
     chunk_transcript,
     summarize_transcript,
     summarize_transcript_with_backend,
+    summarize_transcript_with_ollama,
     write_markdown_note,
 )
 
@@ -78,6 +80,33 @@ class NotesTest(unittest.TestCase):
 
         self.assertTrue(any(item.startswith("白领工作的本质:") for item in summary))
         self.assertTrue(any(item.startswith("个人应对:") for item in summary))
+
+    def test_ollama_summary_summarizes_all_chunks_then_combines(self):
+        transcript = "\n".join(
+            [
+                f"第一部分讲产品定位和用户问题 {index}"
+                for index in range(10)
+            ]
+            + [
+                f"第二部分讲执行步骤和后续行动 {index}"
+                for index in range(10)
+            ]
+        )
+        prompts = []
+
+        def fake_request(prompt, model, url, timeout_seconds):
+            prompts.append(prompt)
+            if prompt.startswith("你是一个严谨"):
+                return [f"片段要点: {len(prompts)}"]
+            return ["全局总结: 覆盖产品定位、用户问题、执行步骤和后续行动"]
+
+        with patch("backend.services.transcript_summarizer._request_ollama_summary", side_effect=fake_request):
+            summary = summarize_transcript_with_ollama(transcript, chunk_chars=90)
+
+        self.assertGreater(len(prompts), 2)
+        self.assertIn("片段", prompts[0])
+        self.assertIn("高质量中文总结", prompts[-1])
+        self.assertEqual(summary, ["全局总结: 覆盖产品定位、用户问题、执行步骤和后续行动"])
 
 
 if __name__ == "__main__":

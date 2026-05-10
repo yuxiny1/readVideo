@@ -15,3 +15,27 @@ class WatchItemRequest(BaseModel):
     name: str = Field(min_length=1)
     url: HttpUrl
     notes: str = ""
+
+
+class WatchItemUpdateRequest(BaseModel):
+    name: str = Field(min_length=1)
+    url: HttpUrl
+    notes: str = ""
+
+
+class OllamaPullRequest(BaseModel):
+    model: str = Field(min_length=1)
+
+
+class FavoriteRequest(BaseModel):
+    task_id: str = Field(min_length=1)
+    folder_id: Optional[int] = None
+
+
+class FavoriteFolderRequest(BaseModel):
+    name: str = Field(min_length=1)
+    notes: str = ""
+
+
+class FavoriteFolderAssignmentRequest(BaseModel):
+    folder_id: Optional[int] = None

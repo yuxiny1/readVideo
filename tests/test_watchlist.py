@@ -15,6 +15,9 @@ class WatchlistStoreTest(unittest.TestCase):
             self.assertEqual(len(items), 1)
             self.assertEqual(items[0].id, item.id)
             self.assertEqual(items[0].notes, "important")
+            updated = store.update_item(item.id, "Channel 2", "https://www.youtube.com/@channel2", "updated")
+            self.assertEqual(updated.name, "Channel 2")
+            self.assertEqual(updated.notes, "updated")
             self.assertTrue(store.delete_item(item.id))
             self.assertEqual(store.list_items(), [])
 
