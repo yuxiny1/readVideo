@@ -207,9 +207,12 @@ function updateOllamaModelMessage(options = []) {
   const model = selectedOllamaModel();
   const option = options.find((item) => item.name === model);
   const installText = state.ollamaInstalledModels.includes(model) ? "Installed." : "Not installed yet.";
+  const backendHint = elements.notesBackend.value === "ollama"
+    ? "Active for this run."
+    : "Select Summary Backend = Ollama Local LLM to use this model.";
   elements.ollamaModelMessage.textContent = option
-    ? `${option.name}: ${installText} ${option.notes} Pull command: ollama pull ${option.name}`
-    : `${model || "Custom model"}: custom Ollama model for summary generation.`;
+    ? `${option.name}: ${backendHint} ${installText} ${option.notes} Pull command: ollama pull ${option.name}`
+    : `${model || "Custom model"}: ${backendHint} Custom Ollama model for summary generation.`;
 }
 
 async function submitProcess(event) {
@@ -538,6 +541,7 @@ elements.watchlist.addEventListener("submit", handleWatchlistSubmit);
 elements.copySummary.addEventListener("click", copySummary);
 elements.favoriteSummary.addEventListener("click", favoriteLatestSummary);
 elements.pullOllamaModel.addEventListener("click", pullSelectedOllamaModel);
+elements.notesBackend.addEventListener("change", () => updateOllamaModelMessage(state.ollamaModelOptions));
 elements.ollamaModelSelect.addEventListener("change", () => updateOllamaModelMessage(state.ollamaModelOptions));
 elements.ollamaModelCustom.addEventListener("input", () => updateOllamaModelMessage(state.ollamaModelOptions));
 elements.refreshTasks.addEventListener("click", loadRecentTasks);
