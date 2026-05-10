@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from backend.services.markdown_files import list_markdown_files, resolve_markdown_file
+from backend.services.markdown_files import list_markdown_files, read_markdown_file, resolve_markdown_file
 
 
 class MarkdownFilesTest(unittest.TestCase):
@@ -26,6 +26,16 @@ class MarkdownFilesTest(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "Only Markdown"):
                 resolve_markdown_file(str(text_file))
+
+    def test_read_markdown_file_returns_content(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            note = Path(tmpdir) / "note.md"
+            note.write_text("# Note\n\nBody", encoding="utf-8")
+
+            document = read_markdown_file(str(note))
+
+        self.assertEqual(document.name, "note.md")
+        self.assertEqual(document.content, "# Note\n\nBody")
 
 
 if __name__ == "__main__":

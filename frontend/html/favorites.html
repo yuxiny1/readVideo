@@ -37,24 +37,56 @@
       <div id="favorites-list" class="favorite-list"></div>
     </section>
 
-    <aside class="tool-panel files-panel">
-      <div class="panel-header">
-        <h2>Markdown Files</h2>
-        <span id="md-count" class="caption">0 files</span>
-      </div>
-
-      <form id="md-folder-form" class="stack compact">
-        <div>
-          <label for="md-folder">Markdown Folder Path</label>
-          <input id="md-folder" placeholder="notes">
+    <aside class="favorites-side">
+      <section class="tool-panel folder-panel">
+        <div class="panel-header">
+          <h2>Note Folders</h2>
+          <span id="folder-count" class="caption">0 folders</span>
         </div>
-        <div class="button-row">
-          <button class="secondary-button" type="submit">Load Folder</button>
-          <button id="use-default-folder" class="secondary-button" type="button">Use Default</button>
-        </div>
-      </form>
 
-      <div id="md-files" class="file-list"></div>
+        <form id="favorite-folder-form" class="stack compact">
+          <div>
+            <label for="favorite-folder-name">Folder Name</label>
+            <input id="favorite-folder-name" required placeholder="Research, AI, Writing...">
+          </div>
+          <div>
+            <label for="favorite-folder-notes">Notes</label>
+            <textarea id="favorite-folder-notes" placeholder="What belongs here"></textarea>
+          </div>
+          <button class="secondary-button full" type="submit">Create Folder</button>
+        </form>
+
+        <div id="favorite-folders" class="folder-list"></div>
+      </section>
+
+      <section class="tool-panel reader-panel">
+        <div class="panel-header">
+          <h2>Markdown Reader</h2>
+          <span id="reader-status" class="caption">Idle</span>
+        </div>
+        <p id="reader-path" class="reader-path">Open a favorite Markdown note to read it here.</p>
+        <article id="reader-content" class="markdown-reader"></article>
+      </section>
+
+      <section class="tool-panel files-panel">
+        <div class="panel-header">
+          <h2>Markdown Files</h2>
+          <span id="md-count" class="caption">0 files</span>
+        </div>
+
+        <form id="md-folder-form" class="stack compact">
+          <div>
+            <label for="md-folder">Markdown Folder Path</label>
+            <input id="md-folder" placeholder="notes">
+          </div>
+          <div class="button-row">
+            <button class="secondary-button" type="submit">Load Folder</button>
+            <button id="use-default-folder" class="secondary-button" type="button">Use Default</button>
+          </div>
+        </form>
+
+        <div id="md-files" class="file-list"></div>
+      </section>
     </aside>
   </main>
     </div>

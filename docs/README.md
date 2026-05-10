@@ -18,7 +18,9 @@ The default transcription backend is local `whisper.cpp`, so OpenAI API access i
 - Persists processed video history in SQLite, including source URL, video, transcript, and Markdown paths.
 - Lets you favorite valuable summaries and keep their Markdown locations in one page.
 - Lets you favorite a summary from either the History page or the current Latest Output panel after a download finishes.
-- Lists Markdown files from a chosen notes folder and serves them for download.
+- Lets you open favorite Markdown notes in a built-in reader without leaving the browser.
+- Lets you create virtual note folders for favorite Markdown notes without moving the original files on disk.
+- Lists Markdown files from a chosen notes folder and serves them for reading or download.
 - Saves a local watchlist of YouTube channels/playlists in SQLite and can check recent source updates with `yt-dlp`.
 
 ## Requirements
@@ -98,7 +100,7 @@ http://localhost:8000
 
 The frontend is served from `frontend/` and calls the same FastAPI app for task status, Markdown output, and saved YouTube sources. Main navigation lives in the left sidebar.
 Open `/history` to review previously downloaded/transcribed videos and their saved file paths.
-Open `/favorites` to review favorite summaries, jump to their Markdown folders, list `.md` files, and download notes.
+Open `/favorites` to review favorite summaries, organize them into note folders, read Markdown files inline, jump to their Markdown folders, list `.md` files, and download notes.
 
 ## API Usage
 
@@ -147,7 +149,21 @@ Markdown files:
 
 ```bash
 curl "http://localhost:8000/api/markdown_files?directory=notes"
+curl "http://localhost:8000/api/markdown_files/read?path=notes/demo.md"
 curl -OJ "http://localhost:8000/api/markdown_files/download?path=notes/demo.md"
+```
+
+Favorite folders:
+
+```bash
+curl "http://localhost:8000/api/favorites/folders"
+curl -X POST "http://localhost:8000/api/favorites/folders" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "AI notes", "notes": "Local model and agent videos"}'
+curl -X PATCH "http://localhost:8000/api/favorites/1/folder" \
+  -H "Content-Type: application/json" \
+  -d '{"folder_id": 1}'
+curl "http://localhost:8000/api/favorites/1/markdown"
 ```
 
 Saved source updates:

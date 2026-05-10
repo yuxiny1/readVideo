@@ -100,6 +100,8 @@ class MainAppTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("readVideo Favorites", response.text)
+        self.assertIn("Note Folders", response.text)
+        self.assertIn("Markdown Reader", response.text)
         self.assertIn("/static/js/favorites.js", response.text)
 
     def test_app_config_exposes_non_secret_defaults(self):
@@ -200,6 +202,39 @@ class MainAppTest(unittest.TestCase):
         self.assertEqual(response.json()["notes_dir"], "notes")
         self.assertEqual(list_response.json()[0]["task_id"], "favorite-task")
 
+    def test_favorite_folders_endpoint_assigns_favorite(self):
+        with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
+            "os.environ",
+            {"READVIDEO_DATABASE_PATH": str(Path(tmpdir) / "history.sqlite3")},
+            clear=True,
+        ):
+            note = Path(tmpdir) / "favorite-video.md"
+            note.write_text("# Favorite\n\nBody", encoding="utf-8")
+            set_task_status(
+                "favorite-task",
+                "completed",
+                url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                title="Favorite video",
+                markdown_path=str(note),
+                summary="- useful",
+            )
+            from backend.storage.history import HistoryStore
+
+            HistoryStore(str(Path(tmpdir) / "history.sqlite3")).upsert_task(TASKS["favorite-task"])
+            client = TestClient(app)
+            favorite = client.post("/api/favorites", json={"task_id": "favorite-task"}).json()
+            folder = client.post("/api/favorites/folders", json={"name": "AI", "notes": "models"}).json()
+            assigned = client.patch(
+                f"/api/favorites/{favorite['id']}/folder",
+                json={"folder_id": folder["id"]},
+            )
+            markdown = client.get(f"/api/favorites/{favorite['id']}/markdown")
+
+        self.assertEqual(assigned.status_code, 200)
+        self.assertEqual(assigned.json()["folder_name"], "AI")
+        self.assertEqual(markdown.status_code, 200)
+        self.assertEqual(markdown.json()["content"], "# Favorite\n\nBody")
+
     def test_markdown_files_endpoint_lists_and_downloads_files(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             note = Path(tmpdir) / "note.md"
@@ -207,11 +242,14 @@ class MainAppTest(unittest.TestCase):
             client = TestClient(app)
             list_response = client.get(f"/api/markdown_files?directory={tmpdir}")
             download_response = client.get(f"/api/markdown_files/download?path={note}")
+            read_response = client.get(f"/api/markdown_files/read?path={note}")
 
         self.assertEqual(list_response.status_code, 200)
         self.assertEqual(list_response.json()[0]["name"], "note.md")
         self.assertEqual(download_response.status_code, 200)
         self.assertEqual(download_response.text, "# Note")
+        self.assertEqual(read_response.status_code, 200)
+        self.assertEqual(read_response.json()["content"], "# Note")
 
     def test_watchlist_updates_endpoint_uses_saved_source(self):
         updates = [

@@ -12,6 +12,15 @@ class MarkdownFile:
     modified_at: str
 
 
+@dataclass(frozen=True)
+class MarkdownDocument:
+    name: str
+    path: str
+    directory: str
+    content: str
+    modified_at: str
+
+
 def list_markdown_files(directory: str) -> list[MarkdownFile]:
     folder = Path(directory).expanduser()
     if not folder.exists():
@@ -30,6 +39,18 @@ def resolve_markdown_file(path: str) -> Path:
     if not markdown_path.exists() or not markdown_path.is_file():
         raise FileNotFoundError(f"Markdown file does not exist: {path}")
     return markdown_path
+
+
+def read_markdown_file(path: str) -> MarkdownDocument:
+    markdown_path = resolve_markdown_file(path)
+    stats = markdown_path.stat()
+    return MarkdownDocument(
+        name=markdown_path.name,
+        path=str(markdown_path),
+        directory=str(markdown_path.parent),
+        content=markdown_path.read_text(encoding="utf-8"),
+        modified_at=datetime.fromtimestamp(stats.st_mtime).isoformat(timespec="seconds"),
+    )
 
 
 def _file_to_record(path: Path) -> MarkdownFile:

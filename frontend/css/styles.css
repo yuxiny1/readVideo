@@ -160,8 +160,14 @@ h3 {
   margin: 0 auto;
   padding: 24px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-columns: minmax(0, 1fr) 420px;
   gap: 18px;
+}
+
+.favorites-side {
+  display: grid;
+  gap: 18px;
+  align-self: start;
 }
 
 .tool-panel {
@@ -591,7 +597,8 @@ dd {
 }
 
 .favorite-list,
-.file-list {
+.file-list,
+.folder-list {
   display: grid;
   gap: 12px;
 }
@@ -617,6 +624,99 @@ dd {
   margin: 0;
   overflow-wrap: anywhere;
   font-weight: 750;
+}
+
+.folder-picker {
+  margin-top: 14px;
+}
+
+.folder-item {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-strong);
+}
+
+.folder-item p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.folder-chip {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: #1d2b42;
+  text-align: left;
+}
+
+.folder-chip.active,
+.folder-chip:hover {
+  border-color: #b9c8e8;
+  background: #eef3fb;
+}
+
+.reader-path {
+  margin: 0 0 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.markdown-reader {
+  max-height: 620px;
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.markdown-reader h1,
+.markdown-reader h2,
+.markdown-reader h3 {
+  margin: 16px 0 8px;
+  color: var(--text);
+  text-transform: none;
+}
+
+.markdown-reader h1:first-child,
+.markdown-reader h2:first-child,
+.markdown-reader h3:first-child {
+  margin-top: 0;
+}
+
+.markdown-reader p,
+.markdown-reader li {
+  color: #273244;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.markdown-reader p {
+  margin: 0 0 10px;
+}
+
+.markdown-reader ul {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+
+.markdown-reader pre {
+  overflow: auto;
+  padding: 12px;
+  border-radius: 6px;
+  background: #101828;
+  color: #edf3ff;
 }
 
 .file-row {
