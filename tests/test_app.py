@@ -84,6 +84,7 @@ class MainAppTest(unittest.TestCase):
         self.assertIn("/static/js/app.js", response.text)
         self.assertIn("/history", response.text)
         self.assertIn("/favorites", response.text)
+        self.assertIn("/reader", response.text)
         self.assertIn("favorite-summary", response.text)
 
     def test_history_page_serves_frontend(self):
@@ -100,9 +101,18 @@ class MainAppTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("readVideo Favorites", response.text)
+        self.assertIn("favorite-search", response.text)
         self.assertIn("Note Folders", response.text)
-        self.assertIn("Markdown Reader", response.text)
         self.assertIn("/static/js/favorites.js", response.text)
+
+    def test_reader_page_serves_frontend(self):
+        client = TestClient(app)
+        response = client.get("/reader")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Markdown Reader", response.text)
+        self.assertIn("reader-search", response.text)
+        self.assertIn("/static/js/reader.js", response.text)
 
     def test_app_config_exposes_non_secret_defaults(self):
         with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}, clear=True):
@@ -224,6 +234,10 @@ class MainAppTest(unittest.TestCase):
             client = TestClient(app)
             favorite = client.post("/api/favorites", json={"task_id": "favorite-task"}).json()
             folder = client.post("/api/favorites/folders", json={"name": "AI", "notes": "models"}).json()
+            direct_favorite = client.post(
+                "/api/favorites",
+                json={"task_id": "favorite-task", "folder_id": folder["id"]},
+            )
             assigned = client.patch(
                 f"/api/favorites/{favorite['id']}/folder",
                 json={"folder_id": folder["id"]},
@@ -232,6 +246,8 @@ class MainAppTest(unittest.TestCase):
 
         self.assertEqual(assigned.status_code, 200)
         self.assertEqual(assigned.json()["folder_name"], "AI")
+        self.assertEqual(direct_favorite.status_code, 200)
+        self.assertEqual(direct_favorite.json()["folder_name"], "AI")
         self.assertEqual(markdown.status_code, 200)
         self.assertEqual(markdown.json()["content"], "# Favorite\n\nBody")
 

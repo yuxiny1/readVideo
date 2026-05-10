@@ -19,6 +19,7 @@ class WatchItemRequest(BaseModel):
 
 class FavoriteRequest(BaseModel):
     task_id: str = Field(min_length=1)
+    folder_id: Optional[int] = None
 
 
 class FavoriteFolderRequest(BaseModel):

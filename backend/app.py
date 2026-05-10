@@ -29,3 +29,8 @@ async def history_page():
 @app.get("/favorites", include_in_schema=False)
 async def favorites_page():
     return FileResponse(HTML_DIR / "favorites.html")
+
+
+@app.get("/reader", include_in_schema=False)
+async def reader_page():
+    return FileResponse(HTML_DIR / "reader.html")

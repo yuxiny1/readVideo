@@ -14,6 +14,7 @@
         <a class="side-link" href="/">New Video</a>
         <a class="side-link" href="/history">History</a>
         <a class="side-link active" href="/favorites">Favorites</a>
+        <a class="side-link" href="/reader">Reader</a>
         <a class="side-link" href="/docs" target="_blank" rel="noreferrer">API Docs</a>
       </nav>
     </aside>
@@ -33,6 +34,10 @@
       <div class="panel-header">
         <h2>Favorite Summaries</h2>
         <button id="refresh-favorites" class="secondary-button small-button" type="button">Refresh</button>
+      </div>
+      <div class="search-row">
+        <label for="favorite-search">Search Favorites</label>
+        <input id="favorite-search" placeholder="Search title, summary, URL, folder, or Markdown path">
       </div>
       <div id="favorites-list" class="favorite-list"></div>
     </section>
@@ -57,15 +62,6 @@
         </form>
 
         <div id="favorite-folders" class="folder-list"></div>
-      </section>
-
-      <section class="tool-panel reader-panel">
-        <div class="panel-header">
-          <h2>Markdown Reader</h2>
-          <span id="reader-status" class="caption">Idle</span>
-        </div>
-        <p id="reader-path" class="reader-path">Open a favorite Markdown note to read it here.</p>
-        <article id="reader-content" class="markdown-reader"></article>
       </section>
 
       <section class="tool-panel files-panel">

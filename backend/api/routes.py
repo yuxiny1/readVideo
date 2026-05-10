@@ -162,7 +162,10 @@ async def add_favorite(request: FavoriteRequest):
     if not record.summary and not record.markdown_path:
         raise HTTPException(status_code=400, detail="This task has no summary or Markdown note yet.")
 
-    item = get_favorite_store().add_from_history(record)
+    try:
+        item = get_favorite_store().add_from_history(record, request.folder_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     return item.__dict__
 
 

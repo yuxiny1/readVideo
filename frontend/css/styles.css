@@ -170,6 +170,15 @@ h3 {
   align-self: start;
 }
 
+.reader-workspace {
+  width: min(1320px, 100%);
+  margin: 0 auto;
+  padding: 24px;
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 18px;
+}
+
 .tool-panel {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -203,6 +212,10 @@ h3 {
 
 .compact {
   gap: 10px;
+}
+
+.hidden {
+  display: none !important;
 }
 
 .form-grid {
@@ -596,6 +609,15 @@ dd {
   background: #fff1f0;
 }
 
+.search-row,
+.history-favorite-row {
+  margin-bottom: 14px;
+}
+
+.history-favorite-row {
+  margin-top: 14px;
+}
+
 .favorite-list,
 .file-list,
 .folder-list {
@@ -672,6 +694,41 @@ dd {
   font-weight: 700;
 }
 
+.reader-favorite-list {
+  margin-top: 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.reader-note {
+  width: 100%;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-strong);
+  color: var(--text);
+  text-align: left;
+}
+
+.reader-note.active,
+.reader-note:hover {
+  border-color: #b9c8e8;
+  background: #eef3fb;
+}
+
+.reader-note strong,
+.reader-note span {
+  overflow-wrap: anywhere;
+}
+
+.reader-note span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .markdown-reader {
   max-height: 620px;
   overflow: auto;
@@ -679,6 +736,11 @@ dd {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
+}
+
+.reader-document {
+  max-height: none;
+  min-height: 620px;
 }
 
 .markdown-reader h1,
@@ -748,7 +810,7 @@ dd {
   }
 
   .side-nav {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .side-link {
@@ -757,7 +819,8 @@ dd {
   }
 
   .workspace,
-  .favorites-workspace {
+  .favorites-workspace,
+  .reader-workspace {
     grid-template-columns: 1fr;
     grid-template-areas:
       "process"

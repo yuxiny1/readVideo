@@ -8,10 +8,24 @@ const elements = {
   refresh: document.querySelector("#refresh-history"),
 };
 
+const state = {
+  folders: [],
+};
+
+
+async function loadFolders() {
+  try {
+    state.folders = await api("/api/favorites/folders");
+  } catch {
+    state.folders = [];
+  }
+}
+
 
 async function loadHistory() {
   elements.count.textContent = "Loading";
   try {
+    await loadFolders();
     const records = await api("/api/history");
     elements.count.textContent = `${records.length} records`;
 
@@ -56,8 +70,17 @@ function renderRecord(record) {
         <span>Summary: ${escapeHtml(record.summary_backend || "-")}</span>
       </div>
 
+      <div class="history-favorite-row">
+        <label for="history-folder-${escapeHtml(record.task_id)}">Favorite Folder</label>
+        <select id="history-folder-${escapeHtml(record.task_id)}" data-role="favorite-folder" ${canFavorite ? "" : "disabled"}>
+          <option value="">Unfiled</option>
+          ${state.folders.map((folder) => `<option value="${folder.id}">${escapeHtml(folder.name)}</option>`).join("")}
+        </select>
+      </div>
+
       <div class="card-actions">
         <button class="secondary-button small-button" type="button" data-action="favorite" data-task-id="${escapeHtml(record.task_id)}" ${canFavorite ? "" : "disabled"}>Favorite</button>
+        ${record.markdown_path ? `<a class="quiet-link small-link" href="/reader?path=${encodeURIComponent(record.markdown_path)}" target="_blank" rel="noreferrer">Read MD</a>` : ""}
         ${record.markdown_path ? `<a class="quiet-link small-link" href="/api/markdown_files/download?path=${encodeURIComponent(record.markdown_path)}">Download MD</a>` : ""}
       </div>
 
@@ -83,12 +106,18 @@ async function handleHistoryClick(event) {
   if (!button) return;
 
   const oldText = button.textContent;
+  const card = button.closest(".history-card");
+  const folderSelect = card.querySelector("select[data-role='favorite-folder']");
+  const folderId = folderSelect?.value ? Number(folderSelect.value) : null;
   button.disabled = true;
   button.textContent = "Saving";
   try {
     await api("/api/favorites", {
       method: "POST",
-      body: JSON.stringify({task_id: button.dataset.taskId}),
+      body: JSON.stringify({
+        task_id: button.dataset.taskId,
+        folder_id: folderId,
+      }),
     });
     button.textContent = "Favorited";
   } catch (error) {

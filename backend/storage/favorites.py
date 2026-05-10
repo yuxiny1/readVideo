@@ -87,18 +87,24 @@ class FavoriteStore:
             ).fetchall()
         return [_row_to_favorite(row) for row in rows]
 
-    def add_from_history(self, record: HistoryRecord) -> FavoriteSummary:
+    def add_from_history(self, record: HistoryRecord, folder_id: Optional[int] = None) -> FavoriteSummary:
         now = datetime.now().isoformat(timespec="seconds")
         notes_dir = str(Path(record.markdown_path).parent) if record.markdown_path else ""
         with self._connect() as conn:
+            if folder_id is not None:
+                folder = conn.execute("SELECT id FROM favorite_folders WHERE id = ?", (folder_id,)).fetchone()
+                if folder is None:
+                    raise ValueError("Favorite folder does not exist.")
+
             conn.execute(
                 """
                 INSERT INTO favorite_summaries (
-                    task_id, title, url, summary, markdown_path, notes_dir,
+                    task_id, folder_id, title, url, summary, markdown_path, notes_dir,
                     created_at, updated_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(task_id) DO UPDATE SET
+                    folder_id = excluded.folder_id,
                     title = excluded.title,
                     url = excluded.url,
                     summary = excluded.summary,
@@ -108,6 +114,7 @@ class FavoriteStore:
                 """,
                 (
                     record.task_id,
+                    folder_id,
                     record.title,
                     record.url,
                     record.summary,

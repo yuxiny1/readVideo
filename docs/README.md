@@ -16,9 +16,9 @@ The default transcription backend is local `whisper.cpp`, so OpenAI API access i
 - Provides a simple FastAPI frontend and JSON API.
 - Shows recent task status, elapsed time, and generated output paths in the browser.
 - Persists processed video history in SQLite, including source URL, video, transcript, and Markdown paths.
-- Lets you favorite valuable summaries and keep their Markdown locations in one page.
-- Lets you favorite a summary from either the History page or the current Latest Output panel after a download finishes.
-- Lets you open favorite Markdown notes in a built-in reader without leaving the browser.
+- Lets you search favorite summaries and keep their Markdown locations in one page.
+- Lets you favorite a summary from either the History page or the current Latest Output panel after a download finishes, with optional folder assignment from History.
+- Lets you open favorite Markdown notes in a dedicated reader page.
 - Lets you create virtual note folders for favorite Markdown notes without moving the original files on disk.
 - Lists Markdown files from a chosen notes folder and serves them for reading or download.
 - Saves a local watchlist of YouTube channels/playlists in SQLite and can check recent source updates with `yt-dlp`.
@@ -100,7 +100,8 @@ http://localhost:8000
 
 The frontend is served from `frontend/` and calls the same FastAPI app for task status, Markdown output, and saved YouTube sources. Main navigation lives in the left sidebar.
 Open `/history` to review previously downloaded/transcribed videos and their saved file paths.
-Open `/favorites` to review favorite summaries, organize them into note folders, read Markdown files inline, jump to their Markdown folders, list `.md` files, and download notes.
+Open `/favorites` to search favorite summaries, organize them into note folders, jump to their Markdown folders, list `.md` files, and download notes.
+Open `/reader` to read favorite Markdown notes in a focused page with a left-side searchable note list and folder selector.
 
 ## API Usage
 
@@ -142,7 +143,7 @@ Favorites:
 curl "http://localhost:8000/api/favorites"
 curl -X POST "http://localhost:8000/api/favorites" \
   -H "Content-Type: application/json" \
-  -d '{"task_id": "demo-1"}'
+  -d '{"task_id": "demo-1", "folder_id": 1}'
 ```
 
 Markdown files:

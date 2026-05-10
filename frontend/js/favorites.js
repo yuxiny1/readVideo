@@ -5,15 +5,13 @@ import {escapeHtml} from "./format.js";
 const elements = {
   count: document.querySelector("#favorites-count"),
   list: document.querySelector("#favorites-list"),
+  search: document.querySelector("#favorite-search"),
   refresh: document.querySelector("#refresh-favorites"),
   folderForm: document.querySelector("#favorite-folder-form"),
   folderName: document.querySelector("#favorite-folder-name"),
   folderNotes: document.querySelector("#favorite-folder-notes"),
   folderCount: document.querySelector("#folder-count"),
   folderList: document.querySelector("#favorite-folders"),
-  readerStatus: document.querySelector("#reader-status"),
-  readerPath: document.querySelector("#reader-path"),
-  readerContent: document.querySelector("#reader-content"),
   mdFolderForm: document.querySelector("#md-folder-form"),
   mdFolder: document.querySelector("#md-folder"),
   useDefaultFolder: document.querySelector("#use-default-folder"),
@@ -26,6 +24,7 @@ const state = {
   favorites: [],
   folders: [],
   activeFolderId: "all",
+  query: "",
 };
 
 
@@ -54,6 +53,7 @@ async function loadFavorites() {
   elements.count.textContent = "Loading";
   try {
     state.favorites = await api("/api/favorites");
+    renderFolders();
     renderFavorites();
   } catch (error) {
     elements.count.textContent = "Error";
@@ -67,7 +67,7 @@ function renderFavorites() {
   elements.count.textContent = `${favorites.length} shown / ${state.favorites.length} saved`;
 
   if (!favorites.length) {
-    elements.list.innerHTML = '<div class="empty-state">No favorite summaries in this folder yet.</div>';
+    elements.list.innerHTML = '<div class="empty-state">No favorite summaries match this view.</div>';
     return;
   }
 
@@ -76,11 +76,28 @@ function renderFavorites() {
 
 
 function filteredFavorites() {
-  if (state.activeFolderId === "all") return state.favorites;
-  if (state.activeFolderId === "unfiled") {
-    return state.favorites.filter((item) => !item.folder_id);
-  }
-  return state.favorites.filter((item) => String(item.folder_id) === state.activeFolderId);
+  const query = state.query.trim().toLowerCase();
+  return state.favorites.filter((item) => {
+    const folderMatches = state.activeFolderId === "all"
+      || (state.activeFolderId === "unfiled" && !item.folder_id)
+      || String(item.folder_id) === state.activeFolderId;
+    if (!folderMatches) return false;
+    if (!query) return true;
+
+    return searchableFavoriteText(item).includes(query);
+  });
+}
+
+
+function searchableFavoriteText(item) {
+  return [
+    item.title,
+    item.url,
+    item.summary,
+    item.markdown_path,
+    item.notes_dir,
+    item.folder_name,
+  ].join(" ").toLowerCase();
 }
 
 
@@ -123,7 +140,7 @@ function renderFavorite(item) {
       </div>
 
       <div class="card-actions">
-        ${item.markdown_path ? `<button class="secondary-button small-button" type="button" data-action="read-favorite">Read MD</button>` : ""}
+        ${item.markdown_path ? `<a class="quiet-link small-link" href="/reader?favorite_id=${encodeURIComponent(item.id)}" target="_blank" rel="noreferrer">Read MD</a>` : ""}
         ${item.markdown_path ? `<a class="quiet-link small-link" href="/api/markdown_files/download?path=${encodeURIComponent(item.markdown_path)}">Download MD</a>` : ""}
         ${item.notes_dir ? `<button class="secondary-button small-button" type="button" data-action="open-folder" data-folder="${escapeHtml(item.notes_dir)}">Show Folder</button>` : ""}
         <button class="danger-button small-button" type="button" data-action="delete">Remove</button>
@@ -216,7 +233,7 @@ function renderMarkdownFile(file) {
         </div>
       </div>
       <div class="card-actions">
-        <button class="secondary-button small-button" type="button" data-action="read-md-file">Read</button>
+        <a class="quiet-link small-link" href="/reader?path=${encodeURIComponent(file.path)}" target="_blank" rel="noreferrer">Read</a>
         <a class="quiet-link small-link" href="/api/markdown_files/download?path=${encodeURIComponent(file.path)}">Download</a>
       </div>
     </article>
@@ -240,15 +257,10 @@ async function handleFavoriteClick(event) {
   if (button.dataset.action === "delete") {
     await api(`/api/favorites/${encodeURIComponent(card.dataset.id)}`, {method: "DELETE"});
     await loadFavorites();
-    renderFolders();
   }
 
   if (button.dataset.action === "open-folder") {
     await loadMarkdownFiles(button.dataset.folder);
-  }
-
-  if (button.dataset.action === "read-favorite") {
-    await openFavoriteMarkdown(card.dataset.id);
   }
 }
 
@@ -264,7 +276,6 @@ async function handleFavoriteChange(event) {
     body: JSON.stringify({folder_id: folderId}),
   });
   await loadFavorites();
-  renderFolders();
 }
 
 
@@ -308,134 +319,19 @@ async function handleMdFolderSubmit(event) {
 }
 
 
-async function handleMarkdownFileClick(event) {
-  const button = event.target.closest("button[data-action='read-md-file']");
-  if (!button) return;
-
-  const row = button.closest(".file-row");
-  await openMarkdownPath(row.dataset.path);
-}
-
-
-async function openFavoriteMarkdown(itemId) {
-  setReaderLoading();
-  try {
-    const document = await api(`/api/favorites/${encodeURIComponent(itemId)}/markdown`);
-    renderDocument(document);
-  } catch (error) {
-    renderReaderError(error.message);
-  }
-}
-
-
-async function openMarkdownPath(path) {
-  setReaderLoading();
-  try {
-    const document = await api(`/api/markdown_files/read?path=${encodeURIComponent(path)}`);
-    renderDocument(document);
-  } catch (error) {
-    renderReaderError(error.message);
-  }
-}
-
-
-function setReaderLoading() {
-  elements.readerStatus.textContent = "Loading";
-  elements.readerPath.textContent = "";
-  elements.readerContent.innerHTML = '<div class="empty-state">Opening Markdown...</div>';
-}
-
-
-function renderDocument(document) {
-  elements.readerStatus.textContent = "Open";
-  elements.readerPath.textContent = document.path;
-  elements.readerContent.innerHTML = renderMarkdown(document.content);
-}
-
-
-function renderReaderError(message) {
-  elements.readerStatus.textContent = "Error";
-  elements.readerPath.textContent = "";
-  elements.readerContent.innerHTML = `<div class="empty-state">${escapeHtml(message)}</div>`;
-}
-
-
-function renderMarkdown(markdown) {
-  const lines = markdown.split(/\r?\n/);
-  const html = [];
-  let inList = false;
-  let inCode = false;
-  let codeLines = [];
-
-  const closeList = () => {
-    if (inList) {
-      html.push("</ul>");
-      inList = false;
-    }
-  };
-
-  const closeCode = () => {
-    html.push(`<pre><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
-    codeLines = [];
-    inCode = false;
-  };
-
-  lines.forEach((line) => {
-    if (line.trim().startsWith("```")) {
-      if (inCode) {
-        closeCode();
-      } else {
-        closeList();
-        inCode = true;
-      }
-      return;
-    }
-
-    if (inCode) {
-      codeLines.push(line);
-      return;
-    }
-
-    if (!line.trim()) {
-      closeList();
-      return;
-    }
-
-    const heading = line.match(/^(#{1,3})\s+(.+)$/);
-    if (heading) {
-      closeList();
-      const level = heading[1].length;
-      html.push(`<h${level}>${escapeHtml(heading[2])}</h${level}>`);
-      return;
-    }
-
-    const bullet = line.match(/^[-*]\s+(.+)$/);
-    if (bullet) {
-      if (!inList) {
-        html.push("<ul>");
-        inList = true;
-      }
-      html.push(`<li>${escapeHtml(bullet[1])}</li>`);
-      return;
-    }
-
-    closeList();
-    html.push(`<p>${escapeHtml(line)}</p>`);
-  });
-
-  closeList();
-  if (inCode) closeCode();
-  return html.join("");
+function handleSearchInput() {
+  state.query = elements.search.value;
+  renderFavorites();
 }
 
 
 elements.refresh.addEventListener("click", loadFavorites);
+elements.search.addEventListener("input", handleSearchInput);
 elements.list.addEventListener("click", handleFavoriteClick);
 elements.list.addEventListener("change", handleFavoriteChange);
 elements.folderForm.addEventListener("submit", handleFolderSubmit);
 elements.folderList.addEventListener("click", handleFolderClick);
 elements.mdFolderForm.addEventListener("submit", handleMdFolderSubmit);
-elements.files.addEventListener("click", handleMarkdownFileClick);
 elements.useDefaultFolder.addEventListener("click", () => loadMarkdownFiles(state.defaultNotesDir));
 
 await loadConfig();
