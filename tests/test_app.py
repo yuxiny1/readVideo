@@ -86,6 +86,7 @@ class MainAppTest(unittest.TestCase):
         self.assertIn("/favorites", response.text)
         self.assertIn("/reader", response.text)
         self.assertIn("favorite-summary", response.text)
+        self.assertIn("read-summary", response.text)
 
     def test_history_page_serves_frontend(self):
         client = TestClient(app)

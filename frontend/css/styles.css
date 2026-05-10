@@ -320,6 +320,12 @@ button:disabled {
   border: 1px solid #d4ddec;
 }
 
+.disabled-link {
+  pointer-events: none;
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .small-link {
   min-height: 32px;
   padding: 6px 10px;

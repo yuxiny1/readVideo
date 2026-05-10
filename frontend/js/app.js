@@ -29,6 +29,7 @@ const elements = {
   transcriptPath: document.querySelector("#transcript-path"),
   markdownPath: document.querySelector("#markdown-path"),
   summaryBox: document.querySelector("#summary-box"),
+  readSummary: document.querySelector("#read-summary"),
   favoriteSummary: document.querySelector("#favorite-summary"),
   copySummary: document.querySelector("#copy-summary"),
   refreshTasks: document.querySelector("#refresh-tasks"),
@@ -79,6 +80,12 @@ function updateOutput(task) {
     state.latestSummary = task.summary;
     elements.summaryBox.textContent = task.summary;
     elements.copySummary.disabled = false;
+  } else {
+    state.latestSummary = "";
+    elements.copySummary.disabled = true;
+    elements.summaryBox.textContent = ["completed", "failed"].includes(task.status)
+      ? "No summary available."
+      : "Waiting for task output...";
   }
 
   const canFavorite = Boolean(task.task_id && (task.summary || task.markdown_path));
@@ -86,6 +93,8 @@ function updateOutput(task) {
   if (canFavorite) {
     elements.favoriteSummary.textContent = "Favorite Summary";
   }
+
+  updateReadSummaryLink(task.markdown_path);
 }
 
 function renderOutputPath(element, task, kind, value) {
@@ -101,6 +110,19 @@ function renderOutputPath(element, task, kind, value) {
 
   const href = `/api/history/${encodeURIComponent(task.task_id)}/files/${kind}`;
   element.innerHTML = `<a class="path-anchor" href="${href}" target="_blank" rel="noreferrer">${escapeHtml(value)}</a>`;
+}
+
+function updateReadSummaryLink(markdownPath) {
+  if (!markdownPath) {
+    elements.readSummary.href = "/reader";
+    elements.readSummary.classList.add("disabled-link");
+    elements.readSummary.setAttribute("aria-disabled", "true");
+    return;
+  }
+
+  elements.readSummary.href = `/reader?path=${encodeURIComponent(markdownPath)}`;
+  elements.readSummary.classList.remove("disabled-link");
+  elements.readSummary.setAttribute("aria-disabled", "false");
 }
 
 function renderTask(task) {
@@ -214,6 +236,7 @@ async function startProcessingUrl(url) {
   elements.copySummary.disabled = true;
   elements.favoriteSummary.disabled = true;
   elements.favoriteSummary.textContent = "Favorite Summary";
+  updateReadSummaryLink(null);
   state.latestSummary = "";
   state.latestTask = null;
   setStep("queued");

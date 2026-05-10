@@ -12,13 +12,14 @@ The default transcription backend is local `whisper.cpp`, so OpenAI API access i
 - Saves the raw transcript next to the downloaded video.
 - Creates a Markdown note with summary, structured sections, and full transcript.
 - Can summarize notes with either a local extractive summarizer or an optional Ollama local LLM.
+- Uses a full-transcript chunk-and-combine workflow for Ollama summaries so long videos are not summarized from only an excerpt.
 - Lets you choose or pull larger Ollama models from the browser when you want stronger local summaries.
 - Lets you choose the Markdown output folder per request.
 - Provides a simple FastAPI frontend and JSON API.
 - Shows recent task status, elapsed time, and generated output paths in the browser.
 - Persists processed video history in SQLite, including source URL, video, transcript, and Markdown paths.
 - Lets you search favorite summaries and keep their Markdown locations in one page.
-- Lets you favorite a summary from either the History page or the current Latest Output panel after a download finishes, with optional folder assignment from History.
+- Lets you open, favorite, or copy a summary from the current Latest Output panel after a download finishes, with optional folder assignment from History.
 - Lets you open favorite Markdown notes in a dedicated reader page.
 - Lets you create virtual note folders for favorite Markdown notes without moving the original files on disk.
 - Lists Markdown files from a chosen notes folder and serves them for reading or download.
