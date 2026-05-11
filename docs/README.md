@@ -207,6 +207,7 @@ curl -X POST "http://localhost:8000/api/ollama/pull" \
 
 ```bash
 python -m unittest discover -s tests
+node --test frontend/tests/*.test.js
 ```
 
 ## Project Structure

@@ -1,5 +1,12 @@
 import {api} from "./api.js";
 import {escapeHtml, formatElapsed} from "./format.js";
+import {
+  applyLocalSortOrder,
+  buildDroppedOrder,
+  buildMovedOrder,
+  sortWatchItems,
+  watchSortStatus,
+} from "./saved_sources.js";
 
 const state = {
   pollTimer: null,
@@ -324,28 +331,11 @@ function renderWatchlist() {
 }
 
 function sortedWatchItems() {
-  const items = [...state.watchItems];
-  const sorters = {
-    manual: (a, b) => (a.sort_order || 0) - (b.sort_order || 0) || b.created_at.localeCompare(a.created_at),
-    newest: (a, b) => b.created_at.localeCompare(a.created_at),
-    oldest: (a, b) => a.created_at.localeCompare(b.created_at),
-    "name-asc": (a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: "base"}),
-    "name-desc": (a, b) => b.name.localeCompare(a.name, undefined, {sensitivity: "base"}),
-    "url-asc": (a, b) => a.url.localeCompare(b.url, undefined, {sensitivity: "base"}),
-  };
-  return items.sort(sorters[state.watchSort] || sorters.manual);
+  return sortWatchItems(state.watchItems, state.watchSort);
 }
 
 function sortStatusText() {
-  const labels = {
-    manual: "Manual order",
-    newest: "Newest first",
-    oldest: "Oldest first",
-    "name-asc": "Name A-Z",
-    "name-desc": "Name Z-A",
-    "url-asc": "URL A-Z",
-  };
-  return labels[state.watchSort] || labels.manual;
+  return watchSortStatus(state.watchSort);
 }
 
 function formatSavedDate(value) {
@@ -519,25 +509,17 @@ async function handleWatchlistDrop(event) {
   if (!target || state.draggedWatchId === null) return;
   event.preventDefault();
 
-  const targetId = Number(target.dataset.id);
-  const currentIds = sortedWatchItems().map((item) => item.id);
-  const draggedId = state.draggedWatchId;
-  const draggedIndex = currentIds.indexOf(draggedId);
-  if (draggedIndex === -1 || targetId === draggedId) {
-    clearWatchDragState();
-    return;
+  const itemIds = buildDroppedOrder(
+    state.watchItems,
+    state.draggedWatchId,
+    Number(target.dataset.id),
+    shouldDropAfter(event, target),
+    state.watchSort,
+  );
+  clearWatchDragState();
+  if (itemIds) {
+    await saveWatchOrder(itemIds);
   }
-
-  currentIds.splice(draggedIndex, 1);
-  const targetIndex = currentIds.indexOf(targetId);
-  if (targetIndex === -1) {
-    clearWatchDragState();
-    return;
-  }
-
-  const insertIndex = targetIndex + (shouldDropAfter(event, target) ? 1 : 0);
-  currentIds.splice(insertIndex, 0, draggedId);
-  await saveWatchOrder(currentIds);
 }
 
 function shouldDropAfter(event, item) {
@@ -603,17 +585,10 @@ async function handleWatchPointerUp(event) {
   clearWatchDragState();
   if (!shouldSave) return;
 
-  const itemIds = sortedWatchItems().map((item) => item.id);
-  const draggedIndex = itemIds.indexOf(drag.id);
-  if (draggedIndex === -1) return;
-
-  itemIds.splice(draggedIndex, 1);
-  const targetIndex = itemIds.indexOf(drag.targetId);
-  if (targetIndex === -1) return;
-
-  const insertIndex = targetIndex + (drag.dropAfter ? 1 : 0);
-  itemIds.splice(insertIndex, 0, drag.id);
-  await saveWatchOrder(itemIds);
+  const itemIds = buildDroppedOrder(state.watchItems, drag.id, drag.targetId, drag.dropAfter, state.watchSort);
+  if (itemIds) {
+    await saveWatchOrder(itemIds);
+  }
 }
 
 function handleWatchPointerCancel() {
@@ -645,8 +620,7 @@ function clearWatchDragState() {
 
 async function saveWatchOrder(itemIds) {
   const previousItems = state.watchItems;
-  const byId = new Map(state.watchItems.map((item) => [item.id, item]));
-  state.watchItems = itemIds.map((id, index) => ({...byId.get(id), sort_order: index + 1}));
+  state.watchItems = applyLocalSortOrder(state.watchItems, itemIds);
   state.watchSort = "manual";
   elements.watchSort.value = "manual";
   renderWatchlist();
@@ -665,13 +639,10 @@ async function saveWatchOrder(itemIds) {
 }
 
 async function moveWatchItem(itemId, direction) {
-  const itemIds = sortedWatchItems().map((item) => item.id);
-  const currentIndex = itemIds.indexOf(itemId);
-  const nextIndex = currentIndex + direction;
-  if (currentIndex === -1 || nextIndex < 0 || nextIndex >= itemIds.length) return;
-
-  [itemIds[currentIndex], itemIds[nextIndex]] = [itemIds[nextIndex], itemIds[currentIndex]];
-  await saveWatchOrder(itemIds);
+  const itemIds = buildMovedOrder(state.watchItems, itemId, direction, state.watchSort);
+  if (itemIds) {
+    await saveWatchOrder(itemIds);
+  }
 }
 
 async function handleWatchlistSubmit(event) {

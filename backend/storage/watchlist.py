@@ -43,7 +43,7 @@ class WatchlistStore:
             columns = {row["name"] for row in conn.execute("PRAGMA table_info(watchlist)").fetchall()}
             if "sort_order" not in columns:
                 conn.execute("ALTER TABLE watchlist ADD COLUMN sort_order INTEGER")
-                conn.execute("UPDATE watchlist SET sort_order = id WHERE sort_order IS NULL")
+            conn.execute("UPDATE watchlist SET sort_order = id WHERE sort_order IS NULL OR sort_order <= 0")
 
     def list_items(self) -> list[WatchItem]:
         with self._connect() as conn:

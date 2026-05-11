@@ -339,6 +339,49 @@ class MainAppTest(unittest.TestCase):
         self.assertEqual([item["id"] for item in response.json()[:2]], [second["id"], first["id"]])
         self.assertEqual([item["id"] for item in listed.json()[:2]], [second["id"], first["id"]])
 
+    def test_watchlist_reorder_endpoint_handles_partial_duplicate_order(self):
+        with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
+            "os.environ",
+            {"READVIDEO_DATABASE_PATH": str(Path(tmpdir) / "watchlist.sqlite3")},
+            clear=True,
+        ):
+            client = TestClient(app)
+            first = client.post(
+                "/watchlist",
+                json={"name": "First", "url": "https://www.youtube.com/@first", "notes": ""},
+            ).json()
+            second = client.post(
+                "/watchlist",
+                json={"name": "Second", "url": "https://www.youtube.com/@second", "notes": ""},
+            ).json()
+            third = client.post(
+                "/watchlist",
+                json={"name": "Third", "url": "https://www.youtube.com/@third", "notes": ""},
+            ).json()
+            response = client.patch("/watchlist/reorder", json={"item_ids": [third["id"], third["id"]]})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item["id"] for item in response.json()], [third["id"], first["id"], second["id"]])
+        self.assertEqual([item["sort_order"] for item in response.json()], [1, 2, 3])
+
+    def test_watchlist_reorder_endpoint_rejects_empty_and_unknown_ids(self):
+        with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
+            "os.environ",
+            {"READVIDEO_DATABASE_PATH": str(Path(tmpdir) / "watchlist.sqlite3")},
+            clear=True,
+        ):
+            client = TestClient(app)
+            created = client.post(
+                "/watchlist",
+                json={"name": "First", "url": "https://www.youtube.com/@first", "notes": ""},
+            ).json()
+            empty_response = client.patch("/watchlist/reorder", json={"item_ids": []})
+            unknown_response = client.patch("/watchlist/reorder", json={"item_ids": [created["id"], 9999]})
+
+        self.assertEqual(empty_response.status_code, 422)
+        self.assertEqual(unknown_response.status_code, 404)
+        self.assertIn("Unknown watch item ids", unknown_response.json()["detail"])
+
     def test_ollama_models_endpoint_exposes_recommendations(self):
         with patch.object(routes, "list_installed_models", return_value=["qwen2.5:3b"]):
             client = TestClient(app)
