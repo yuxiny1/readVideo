@@ -12,6 +12,10 @@ const state = {
   pollTimer: null,
   latestSummary: "",
   latestTask: null,
+  whisperModelOptions: [],
+  whisperInstalledModels: [],
+  transcriptionLanguages: [],
+  openaiTranscriptionModels: [],
   ollamaModelOptions: [],
   ollamaInstalledModels: [],
   watchItems: [],
@@ -27,12 +31,20 @@ const elements = {
   startButton: document.querySelector("#start-button"),
   videoUrl: document.querySelector("#video-url"),
   notesDir: document.querySelector("#notes-dir"),
+  transcriptionBackend: document.querySelector("#transcription-backend"),
+  transcriptionLanguage: document.querySelector("#transcription-language"),
+  localWhisperModelSelect: document.querySelector("#local-whisper-model-select"),
+  localWhisperModelCustom: document.querySelector("#local-whisper-model-custom"),
+  downloadWhisperModel: document.querySelector("#download-whisper-model"),
+  openaiTranscriptionModel: document.querySelector("#openai-transcription-model"),
+  transcriptionPrompt: document.querySelector("#transcription-prompt"),
   notesBackend: document.querySelector("#notes-backend"),
   ollamaModelSelect: document.querySelector("#ollama-model-select"),
   ollamaModelCustom: document.querySelector("#ollama-model-custom"),
   pullOllamaModel: document.querySelector("#pull-ollama-model"),
   ollamaModelMessage: document.querySelector("#ollama-model-message"),
   whisperModelPill: document.querySelector("#whisper-model-pill"),
+  whisperModelMessage: document.querySelector("#whisper-model-message"),
   taskId: document.querySelector("#task-id"),
   taskMessage: document.querySelector("#task-message"),
   steps: Array.from(document.querySelectorAll(".step")),
@@ -178,23 +190,98 @@ async function pollTask(taskId) {
 
 async function loadConfig() {
   try {
-    const [health, config, models] = await Promise.all([
+    const [health, config, models, transcriptionModels] = await Promise.all([
       api("/health"),
       api("/app_config"),
       api("/api/ollama/models"),
+      api("/api/transcription/models"),
     ]);
     setPill(elements.healthPill, health.status === "ok" ? "Online" : "Check", health.status === "ok" ? "ok" : "muted");
     setPill(elements.backendPill, `${config.transcription_backend} / ${config.notes_backend}`, "muted");
     elements.notesDir.placeholder = config.notes_dir || "notes";
+    elements.transcriptionBackend.value = config.transcription_backend || "local";
+    elements.transcriptionPrompt.value = config.transcription_prompt || "";
     elements.notesBackend.value = config.notes_backend || "extractive";
-    setPill(elements.whisperModelPill, `Transcription: ${config.local_whisper_model}`, "muted");
+    state.whisperModelOptions = transcriptionModels.whisper || [];
+    state.whisperInstalledModels = transcriptionModels.installed_whisper || [];
+    state.transcriptionLanguages = transcriptionModels.languages || [];
+    state.openaiTranscriptionModels = transcriptionModels.openai || config.openai_transcription_model_options || [];
+    renderTranscriptionLanguageOptions(state.transcriptionLanguages, config.local_whisper_language || "auto");
+    renderWhisperModelOptions(state.whisperModelOptions, config.local_whisper_model || "models/ggml-small.bin");
+    renderOpenAITranscriptionOptions(state.openaiTranscriptionModels, config.transcription_model || "gpt-4o-mini-transcribe");
     state.ollamaModelOptions = models.recommended || config.ollama_model_options || [];
     state.ollamaInstalledModels = models.installed || [];
     renderOllamaModelOptions(state.ollamaModelOptions, config.ollama_model || "qwen2.5:3b");
+    updateTranscriptionStatus();
   } catch (error) {
     setPill(elements.healthPill, "Offline", "error");
     setNotice(error.message, "error");
   }
+}
+
+function renderTranscriptionLanguageOptions(options, selectedLanguage) {
+  const languages = options.length ? options : [{code: "auto", label: "Auto detect"}];
+  elements.transcriptionLanguage.innerHTML = languages.map((option) => `
+    <option value="${escapeHtml(option.code)}" ${option.code === selectedLanguage ? "selected" : ""}>
+      ${escapeHtml(option.label)}
+    </option>
+  `).join("");
+  if (!languages.some((option) => option.code === selectedLanguage)) {
+    elements.transcriptionLanguage.insertAdjacentHTML(
+      "afterbegin",
+      `<option value="${escapeHtml(selectedLanguage)}" selected>${escapeHtml(selectedLanguage)}</option>`,
+    );
+  }
+}
+
+function renderWhisperModelOptions(options, selectedModel) {
+  const installed = new Set(state.whisperInstalledModels);
+  const knownModels = new Set(options.flatMap((option) => [option.name, option.path]));
+  const fallback = knownModels.has(selectedModel)
+    ? ""
+    : `<option value="${escapeHtml(selectedModel)}" selected>${escapeHtml(selectedModel)} (configured)</option>`;
+  elements.localWhisperModelSelect.innerHTML = `
+    ${fallback}
+    ${options.map((option) => `
+      <option value="${escapeHtml(option.path)}" ${option.path === selectedModel || option.name === selectedModel ? "selected" : ""}>
+        ${escapeHtml(option.label)} - ${escapeHtml(option.size)}${installed.has(option.path) ? " - installed" : ""}
+      </option>
+    `).join("")}
+  `;
+}
+
+function renderOpenAITranscriptionOptions(options, selectedModel) {
+  const knownModels = new Set(options.map((option) => option.name));
+  const fallback = knownModels.has(selectedModel) ? "" : `<option value="${escapeHtml(selectedModel)}" selected>${escapeHtml(selectedModel)}</option>`;
+  elements.openaiTranscriptionModel.innerHTML = `
+    ${fallback}
+    ${options.map((option) => `
+      <option value="${escapeHtml(option.name)}" ${option.name === selectedModel ? "selected" : ""}>
+        ${escapeHtml(option.label)}
+      </option>
+    `).join("")}
+  `;
+}
+
+function selectedWhisperModel() {
+  return elements.localWhisperModelCustom.value.trim() || elements.localWhisperModelSelect.value;
+}
+
+function updateTranscriptionStatus() {
+  const backend = elements.transcriptionBackend.value;
+  const language = elements.transcriptionLanguage.value || "auto";
+  const model = backend === "openai" ? elements.openaiTranscriptionModel.value : selectedWhisperModel();
+  setPill(elements.whisperModelPill, `Transcription: ${backend} / ${language}`, "muted");
+  const option = state.whisperModelOptions.find((item) => item.path === model || item.name === model);
+  const installedText = option
+    ? state.whisperInstalledModels.includes(option.path) ? "Installed." : "Not installed yet."
+    : "Custom model path.";
+  const languageHint = language === "auto"
+    ? "Auto language detection is active; this is the safest choice for English, Chinese, and mixed videos."
+    : `${language} is forced; use this only when the whole video is that language.`;
+  elements.whisperModelMessage.textContent = backend === "openai"
+    ? `${model}: OpenAI transcription. ${languageHint}`
+    : `${model}: ${installedText} ${languageHint} ${option?.notes || ""}`;
 }
 
 function renderOllamaModelOptions(options, selectedModel) {
@@ -236,6 +323,11 @@ async function submitProcess(event) {
 function buildProcessPayload(url) {
   return {
     url,
+    transcription_backend: elements.transcriptionBackend.value,
+    transcription_model: elements.openaiTranscriptionModel.value,
+    transcription_prompt: elements.transcriptionPrompt.value.trim() || null,
+    local_whisper_model: selectedWhisperModel() || null,
+    local_whisper_language: elements.transcriptionLanguage.value || "auto",
     notes_dir: elements.notesDir.value.trim() || null,
     notes_backend: elements.notesBackend.value,
     ollama_model: selectedOllamaModel() || null,
@@ -767,6 +859,36 @@ async function pullSelectedOllamaModel() {
   }
 }
 
+async function downloadSelectedWhisperModel() {
+  const model = elements.localWhisperModelSelect.value;
+  if (!model) return;
+
+  const oldText = elements.downloadWhisperModel.textContent;
+  elements.downloadWhisperModel.disabled = true;
+  elements.downloadWhisperModel.textContent = "Downloading...";
+  elements.whisperModelMessage.textContent = `Downloading ${model}. This can take a while for medium or large models.`;
+  try {
+    const result = await api("/api/transcription/models/download", {
+      method: "POST",
+      body: JSON.stringify({model}),
+    });
+    if (!state.whisperInstalledModels.includes(result.path)) {
+      state.whisperInstalledModels.push(result.path);
+    }
+    renderWhisperModelOptions(state.whisperModelOptions, result.path);
+    elements.localWhisperModelCustom.value = "";
+    elements.whisperModelMessage.textContent = result.downloaded
+      ? `Downloaded ${result.path}.`
+      : `${result.path} is already installed.`;
+    updateTranscriptionStatus();
+  } catch (error) {
+    elements.whisperModelMessage.textContent = error.message;
+  } finally {
+    elements.downloadWhisperModel.disabled = false;
+    elements.downloadWhisperModel.textContent = oldText;
+  }
+}
+
 elements.processForm.addEventListener("submit", submitProcess);
 elements.watchForm.addEventListener("submit", submitWatchItem);
 elements.watchlist.addEventListener("click", handleWatchlistClick);
@@ -783,6 +905,12 @@ window.addEventListener("pointercancel", handleWatchPointerCancel);
 elements.copySummary.addEventListener("click", copySummary);
 elements.favoriteSummary.addEventListener("click", favoriteLatestSummary);
 elements.pullOllamaModel.addEventListener("click", pullSelectedOllamaModel);
+elements.downloadWhisperModel.addEventListener("click", downloadSelectedWhisperModel);
+elements.transcriptionBackend.addEventListener("change", updateTranscriptionStatus);
+elements.transcriptionLanguage.addEventListener("change", updateTranscriptionStatus);
+elements.localWhisperModelSelect.addEventListener("change", updateTranscriptionStatus);
+elements.localWhisperModelCustom.addEventListener("input", updateTranscriptionStatus);
+elements.openaiTranscriptionModel.addEventListener("change", updateTranscriptionStatus);
 elements.watchSort.addEventListener("change", () => {
   state.watchSort = elements.watchSort.value;
   renderWatchlist();

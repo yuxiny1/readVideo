@@ -9,6 +9,7 @@ The default transcription backend is local `whisper.cpp`, so OpenAI API access i
 - Downloads a single YouTube video with `yt-dlp`.
 - Transcribes speech in the original language; it does not translate between languages.
 - Uses local `whisper.cpp` by default, with optional OpenAI transcription support.
+- Lets you choose transcription backend, spoken-language detection, prompt terms, and larger local Whisper models per run.
 - Saves the raw transcript next to the downloaded video.
 - Creates a Markdown note with summary, structured sections, and full transcript.
 - Can summarize notes with either a local extractive summarizer or an optional Ollama local LLM.
@@ -64,13 +65,26 @@ READVIDEO_DOWNLOAD_DIR=downloads/youtube_videos
 READVIDEO_NOTES_DIR=notes
 READVIDEO_LOCAL_WHISPER_CLI=whisper-cli
 READVIDEO_LOCAL_WHISPER_MODEL=models/ggml-small.bin
-READVIDEO_LOCAL_WHISPER_LANGUAGE=zh
+READVIDEO_LOCAL_WHISPER_LANGUAGE=auto
+READVIDEO_LOCAL_WHISPER_PROMPT=
+READVIDEO_LOCAL_WHISPER_AUDIO_FILTER=highpass=f=80,lowpass=f=8000,loudnorm=I=-16:TP=-1.5:LRA=11
 READVIDEO_NOTES_BACKEND=extractive
 READVIDEO_OLLAMA_MODEL=qwen2.5:3b
 READVIDEO_OLLAMA_URL=http://127.0.0.1:11434/api/generate
 ```
 
-`READVIDEO_LOCAL_WHISPER_MODEL` is the audio transcription model. By default it points at `models/ggml-small.bin`, which is used by `whisper.cpp` to turn speech into text.
+`READVIDEO_LOCAL_WHISPER_MODEL` is the audio transcription model. If you do not set it, the app picks the strongest installed local model in this order: `ggml-large-v3-turbo.bin`, `ggml-medium.bin`, `ggml-small.bin`, then `ggml-base.bin`. `READVIDEO_LOCAL_WHISPER_LANGUAGE=auto` is recommended for YouTube because forcing `zh` on English or mixed-language videos can produce Chinese-looking nonsense text.
+
+For better local transcription quality, use the browser model picker or download a larger GGML model manually:
+
+```bash
+curl -L -o models/ggml-medium.bin \
+  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin
+curl -L -o models/ggml-large-v3-turbo.bin \
+  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin
+```
+
+`READVIDEO_LOCAL_WHISPER_PROMPT` can contain names and technical terms that appear in the video, such as `Jim Keller, CUDA, OpenAI`. The app also applies a light speech audio filter before local transcription to normalize volume and reduce low/high frequency noise.
 
 `READVIDEO_OLLAMA_MODEL` is only used for Markdown summary and note organization when `READVIDEO_NOTES_BACKEND=ollama`. It does not transcribe audio.
 
@@ -128,6 +142,10 @@ curl -X POST "http://localhost:8000/process_video/" \
   -d '{
     "task_id": "demo-1",
     "url": "https://www.youtube.com/watch?v=<VIDEO_ID>",
+    "transcription_backend": "local",
+    "local_whisper_model": "models/ggml-large-v3-turbo.bin",
+    "local_whisper_language": "auto",
+    "transcription_prompt": "Jim Keller, CUDA, OpenAI",
     "notes_dir": "/Users/you/Documents/Notes",
     "notes_backend": "extractive",
     "ollama_model": "qwen2.5:3b"
@@ -201,6 +219,15 @@ curl "http://localhost:8000/api/ollama/models"
 curl -X POST "http://localhost:8000/api/ollama/pull" \
   -H "Content-Type: application/json" \
   -d '{"model": "qwen3:14b"}'
+```
+
+Transcription model options:
+
+```bash
+curl "http://localhost:8000/api/transcription/models"
+curl -X POST "http://localhost:8000/api/transcription/models/download" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "ggml-large-v3-turbo.bin"}'
 ```
 
 ## Tests

@@ -22,6 +22,24 @@ class FakeClient:
     audio = FakeAudio()
 
 
+class CapturingTranscriptions:
+    payload = None
+
+    def create(self, **payload):
+        self.payload = payload
+        return FakeTranscription()
+
+
+class CapturingAudio:
+    def __init__(self):
+        self.transcriptions = CapturingTranscriptions()
+
+
+class CapturingClient:
+    def __init__(self):
+        self.audio = CapturingAudio()
+
+
 class DictTranscriptions:
     def create(self, model, file):
         return {"text": "hello from dict response"}
@@ -65,6 +83,21 @@ class AudioTranscriptionTest(unittest.TestCase):
         with tempfile.NamedTemporaryFile(suffix=".wav") as audio_file:
             service = AudioTranscription(client=DictClient())
             self.assertEqual(service.transcribe_audio(audio_file.name), "hello from dict response")
+
+    def test_transcribe_audio_sends_language_and_prompt_when_configured(self):
+        client = CapturingClient()
+        with tempfile.NamedTemporaryFile(suffix=".wav") as audio_file:
+            service = AudioTranscription(
+                model="gpt-4o-transcribe",
+                language="en",
+                prompt="Jim Keller, CUDA",
+                client=client,
+            )
+            service.transcribe_audio(audio_file.name)
+
+        self.assertEqual(client.audio.transcriptions.payload["model"], "gpt-4o-transcribe")
+        self.assertEqual(client.audio.transcriptions.payload["language"], "en")
+        self.assertEqual(client.audio.transcriptions.payload["prompt"], "Jim Keller, CUDA")
 
     def test_process_video_requires_existing_file(self):
         service = AudioTranscription(client=FakeClient())

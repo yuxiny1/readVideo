@@ -6,6 +6,11 @@ from pydantic import BaseModel, Field, HttpUrl
 class ProcessVideoRequest(BaseModel):
     url: HttpUrl
     task_id: Optional[str] = Field(default=None, min_length=1)
+    transcription_backend: Optional[str] = Field(default=None, min_length=1)
+    transcription_model: Optional[str] = Field(default=None, min_length=1)
+    transcription_prompt: Optional[str] = Field(default=None)
+    local_whisper_model: Optional[str] = Field(default=None, min_length=1)
+    local_whisper_language: Optional[str] = Field(default=None, min_length=1)
     notes_dir: Optional[str] = Field(default=None, min_length=1)
     notes_backend: Optional[str] = Field(default=None, min_length=1)
     ollama_model: Optional[str] = Field(default=None, min_length=1)
@@ -28,6 +33,10 @@ class WatchlistReorderRequest(BaseModel):
 
 
 class OllamaPullRequest(BaseModel):
+    model: str = Field(min_length=1)
+
+
+class WhisperModelDownloadRequest(BaseModel):
     model: str = Field(min_length=1)
 
 

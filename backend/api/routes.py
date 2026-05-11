@@ -13,13 +13,19 @@ from backend.api.schemas import (
     WatchItemRequest,
     WatchItemUpdateRequest,
     WatchlistReorderRequest,
+    WhisperModelDownloadRequest,
 )
 from backend.core.config import load_settings
 from backend.core.task_state import get_task, list_tasks, set_task_status
 from backend.services.markdown_files import list_markdown_files, read_markdown_file, resolve_markdown_file
 from backend.services.ollama_models import list_installed_models, pull_model, recommended_models
 from backend.services.source_updates import list_source_updates
-from backend.services.video_processor import process_video, resolve_notes_backend
+from backend.services.video_processor import process_video, resolve_notes_backend, resolve_transcription_settings
+from backend.services.whisper_models import (
+    download_whisper_model,
+    list_installed_whisper_models,
+    recommended_whisper_models,
+)
 from backend.storage.favorites import FavoriteStore
 from backend.storage.history import HistoryStore
 from backend.storage.watchlist import WatchlistStore
@@ -27,6 +33,11 @@ from backend.storage.watchlist import WatchlistStore
 
 router = APIRouter()
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+OPENAI_TRANSCRIPTION_MODELS = [
+    {"name": "gpt-4o-mini-transcribe", "label": "GPT-4o Mini Transcribe", "notes": "Lower cost OpenAI transcription."},
+    {"name": "gpt-4o-transcribe", "label": "GPT-4o Transcribe", "notes": "Higher quality OpenAI transcription."},
+    {"name": "whisper-1", "label": "Whisper 1", "notes": "Legacy OpenAI Whisper model."},
+]
 
 
 def get_store() -> WatchlistStore:
@@ -55,7 +66,15 @@ async def create_task(request: ProcessVideoRequest, background_tasks: Background
     try:
         settings = load_settings()
         resolve_notes_backend(request.notes_backend, settings.notes_backend)
-    except RuntimeError as exc:
+        resolve_transcription_settings(
+            settings,
+            request.transcription_backend,
+            request.transcription_model,
+            request.transcription_prompt,
+            request.local_whisper_model,
+            request.local_whisper_language,
+        )
+    except (RuntimeError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     task_id = request.task_id or str(uuid4())
@@ -67,9 +86,14 @@ async def create_task(request: ProcessVideoRequest, background_tasks: Background
         process_video,
         task_id,
         str(request.url),
-        request.notes_dir,
-        request.notes_backend,
-        request.ollama_model,
+        transcription_backend=request.transcription_backend,
+        transcription_model=request.transcription_model,
+        transcription_prompt=request.transcription_prompt,
+        local_whisper_model=request.local_whisper_model,
+        local_whisper_language=request.local_whisper_language,
+        notes_dir=request.notes_dir,
+        notes_backend=request.notes_backend,
+        ollama_model=request.ollama_model,
     )
 
     return {
@@ -310,6 +334,34 @@ def pull_ollama_model(request: OllamaPullRequest):
     return {"model": request.model, "output": output}
 
 
+@router.get("/api/transcription/models")
+def get_transcription_models():
+    return {
+        "whisper": recommended_whisper_models(),
+        "installed_whisper": list_installed_whisper_models(),
+        "openai": OPENAI_TRANSCRIPTION_MODELS,
+        "languages": [
+            {"code": "auto", "label": "Auto detect"},
+            {"code": "zh", "label": "Chinese"},
+            {"code": "en", "label": "English"},
+            {"code": "ja", "label": "Japanese"},
+            {"code": "ko", "label": "Korean"},
+            {"code": "es", "label": "Spanish"},
+            {"code": "fr", "label": "French"},
+        ],
+    }
+
+
+@router.post("/api/transcription/models/download")
+def download_transcription_model(request: WhisperModelDownloadRequest):
+    try:
+        return download_whisper_model(request.model)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except OSError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.get("/app_config")
 async def app_config():
     settings = load_settings()
@@ -321,4 +373,8 @@ async def app_config():
         "ollama_model": settings.ollama_model,
         "ollama_model_options": recommended_models(),
         "local_whisper_model": settings.local_whisper_model,
+        "local_whisper_language": settings.local_whisper_language,
+        "transcription_model": settings.transcription_model,
+        "transcription_prompt": settings.local_whisper_prompt,
+        "openai_transcription_model_options": OPENAI_TRANSCRIPTION_MODELS,
     }

@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from backend.api import routes
 from backend.app import app
+from backend.core import config
 from backend.core.config import load_openai_api_key, load_settings
 from backend.core.task_state import TASKS, clear_tasks, set_task_status
 from backend.services.source_updates import SourceVideo
@@ -34,14 +35,62 @@ class MainAppTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "greater than 0"):
                 load_settings()
 
+    def test_load_settings_prefers_best_installed_local_whisper_model(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            models_dir = Path(tmpdir) / "models"
+            models_dir.mkdir()
+            (models_dir / "ggml-small.bin").write_text("small", encoding="utf-8")
+            (models_dir / "ggml-large-v3-turbo.bin").write_text("large", encoding="utf-8")
+
+            with patch.object(config, "PROJECT_ROOT", Path(tmpdir)), patch.dict(
+                "os.environ",
+                {"READVIDEO_TRANSCRIPTION_BACKEND": "local"},
+                clear=True,
+            ):
+                settings = load_settings()
+
+        self.assertEqual(settings.local_whisper_model, "models/ggml-large-v3-turbo.bin")
+
+    def test_load_settings_respects_explicit_local_whisper_model(self):
+        with tempfile.TemporaryDirectory() as tmpdir, patch.object(config, "PROJECT_ROOT", Path(tmpdir)), patch.dict(
+            "os.environ",
+            {
+                "READVIDEO_TRANSCRIPTION_BACKEND": "local",
+                "READVIDEO_LOCAL_WHISPER_MODEL": "models/custom.bin",
+            },
+            clear=True,
+        ):
+            settings = load_settings()
+
+        self.assertEqual(settings.local_whisper_model, "models/custom.bin")
+
     def test_process_video_endpoint_accepts_json_body(self):
+        captured = {}
+
         async def fake_process_video(
             task_id,
             url,
+            transcription_backend=None,
+            transcription_model=None,
+            transcription_prompt=None,
+            local_whisper_model=None,
+            local_whisper_language=None,
             notes_dir=None,
             notes_backend=None,
             ollama_model=None,
         ):
+            captured.update(
+                {
+                    "transcription_backend": transcription_backend,
+                    "transcription_model": transcription_model,
+                    "transcription_prompt": transcription_prompt,
+                    "local_whisper_model": local_whisper_model,
+                    "local_whisper_language": local_whisper_language,
+                    "notes_dir": notes_dir,
+                    "notes_backend": notes_backend,
+                    "ollama_model": ollama_model,
+                }
+            )
             set_task_status(task_id, "completed", url=url)
 
         with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
@@ -54,12 +103,24 @@ class MainAppTest(unittest.TestCase):
             client = TestClient(app)
             response = client.post(
                 "/process_video/",
-                json={"task_id": "test-task", "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"},
+                json={
+                    "task_id": "test-task",
+                    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                    "transcription_backend": "local",
+                    "local_whisper_model": "models/ggml-medium.bin",
+                    "local_whisper_language": "auto",
+                    "transcription_prompt": "Jim Keller, CUDA",
+                    "notes_backend": "extractive",
+                    "ollama_model": "qwen3:14b",
+                },
             )
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["task_id"], "test-task")
         self.assertEqual(TASKS["test-task"]["status"], "completed")
+        self.assertEqual(captured["local_whisper_model"], "models/ggml-medium.bin")
+        self.assertEqual(captured["local_whisper_language"], "auto")
+        self.assertEqual(captured["transcription_prompt"], "Jim Keller, CUDA")
 
     def test_process_video_endpoint_validates_notes_backend(self):
         with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}):
@@ -75,6 +136,35 @@ class MainAppTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
 
+    def test_process_video_endpoint_validates_transcription_backend(self):
+        with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}):
+            client = TestClient(app)
+            response = client.post(
+                "/process_video/",
+                json={
+                    "task_id": "test-task",
+                    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                    "transcription_backend": "missing",
+                },
+            )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_process_video_endpoint_requires_key_for_openai_override(self):
+        with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}, clear=True):
+            client = TestClient(app)
+            response = client.post(
+                "/process_video/",
+                json={
+                    "task_id": "test-task",
+                    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                    "transcription_backend": "openai",
+                },
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("OPENAI_API_KEY", response.json()["detail"])
+
     def test_index_serves_frontend(self):
         client = TestClient(app)
         response = client.get("/")
@@ -88,6 +178,8 @@ class MainAppTest(unittest.TestCase):
         self.assertIn("favorite-summary", response.text)
         self.assertIn("read-summary", response.text)
         self.assertIn("watch-sort", response.text)
+        self.assertIn("transcription-backend", response.text)
+        self.assertIn("local-whisper-model-select", response.text)
 
     def test_history_page_serves_frontend(self):
         client = TestClient(app)
@@ -127,6 +219,8 @@ class MainAppTest(unittest.TestCase):
         self.assertNotIn("openai_api_key", data)
         self.assertIn("ollama_model_options", data)
         self.assertIn("local_whisper_model", data)
+        self.assertEqual(data["local_whisper_language"], "auto")
+        self.assertIn("openai_transcription_model_options", data)
 
     def test_tasks_endpoint_lists_recent_task_metadata(self):
         set_task_status("task-1", "queued", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")
@@ -398,6 +492,30 @@ class MainAppTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["model"], "qwen3:14b")
+
+    def test_transcription_models_endpoint_exposes_local_and_openai_options(self):
+        with patch.object(routes, "list_installed_whisper_models", return_value=["models/ggml-small.bin"]):
+            client = TestClient(app)
+            response = client.get("/api/transcription/models")
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("whisper", data)
+        self.assertIn("openai", data)
+        self.assertIn("languages", data)
+        self.assertIn("models/ggml-small.bin", data["installed_whisper"])
+
+    def test_transcription_model_download_endpoint_calls_service(self):
+        with patch.object(
+            routes,
+            "download_whisper_model",
+            return_value={"model": "ggml-medium.bin", "path": "models/ggml-medium.bin", "downloaded": True},
+        ):
+            client = TestClient(app)
+            response = client.post("/api/transcription/models/download", json={"model": "ggml-medium.bin"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["path"], "models/ggml-medium.bin")
 
     def test_openai_backend_requires_openai_key(self):
         with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "openai"}, clear=True):

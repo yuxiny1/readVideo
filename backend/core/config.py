@@ -21,7 +21,9 @@ class Settings:
     chunk_seconds: int = 180
     local_whisper_cli: str = "whisper-cli"
     local_whisper_model: str = "models/ggml-small.bin"
-    local_whisper_language: str = "zh"
+    local_whisper_language: str = "auto"
+    local_whisper_prompt: str = ""
+    local_whisper_audio_filter: str = "highpass=f=80,lowpass=f=8000,loudnorm=I=-16:TP=-1.5:LRA=11"
     notes_dir: str = "notes"
     notes_backend: str = "extractive"
     ollama_model: str = "qwen2.5:3b"
@@ -64,6 +66,22 @@ def _load_chunk_seconds(raw_value: Optional[str]) -> int:
     return chunk_seconds
 
 
+def _default_local_whisper_model() -> str:
+    configured_model = os.getenv("READVIDEO_LOCAL_WHISPER_MODEL")
+    if configured_model:
+        return configured_model
+
+    for model_path in (
+        "models/ggml-large-v3-turbo.bin",
+        "models/ggml-medium.bin",
+        "models/ggml-small.bin",
+        "models/ggml-base.bin",
+    ):
+        if (PROJECT_ROOT / model_path).is_file():
+            return model_path
+    return "models/ggml-small.bin"
+
+
 def load_settings() -> Settings:
     transcription_backend = os.getenv("READVIDEO_TRANSCRIPTION_BACKEND", "local").lower()
     if transcription_backend not in {"local", "openai"}:
@@ -80,8 +98,13 @@ def load_settings() -> Settings:
         transcription_model=os.getenv("OPENAI_TRANSCRIPTION_MODEL", "gpt-4o-mini-transcribe"),
         chunk_seconds=_load_chunk_seconds(os.getenv("READVIDEO_CHUNK_SECONDS")),
         local_whisper_cli=os.getenv("READVIDEO_LOCAL_WHISPER_CLI", "whisper-cli"),
-        local_whisper_model=os.getenv("READVIDEO_LOCAL_WHISPER_MODEL", "models/ggml-small.bin"),
-        local_whisper_language=os.getenv("READVIDEO_LOCAL_WHISPER_LANGUAGE", "zh"),
+        local_whisper_model=_default_local_whisper_model(),
+        local_whisper_language=os.getenv("READVIDEO_LOCAL_WHISPER_LANGUAGE", "auto"),
+        local_whisper_prompt=os.getenv("READVIDEO_LOCAL_WHISPER_PROMPT", ""),
+        local_whisper_audio_filter=os.getenv(
+            "READVIDEO_LOCAL_WHISPER_AUDIO_FILTER",
+            "highpass=f=80,lowpass=f=8000,loudnorm=I=-16:TP=-1.5:LRA=11",
+        ),
         notes_dir=os.getenv("READVIDEO_NOTES_DIR", "notes"),
         notes_backend=notes_backend,
         ollama_model=os.getenv("READVIDEO_OLLAMA_MODEL", "qwen2.5:3b"),
