@@ -333,6 +333,13 @@ button:disabled {
   opacity: 0.55;
 }
 
+button:focus-visible,
+.quiet-link:focus-visible,
+.drag-handle:focus-visible {
+  outline: 3px solid rgba(10, 132, 255, 0.18);
+  outline-offset: 2px;
+}
+
 .primary-button {
   width: fit-content;
   background: linear-gradient(135deg, var(--blue), var(--teal));
@@ -606,6 +613,7 @@ dd {
 }
 
 .watch-item {
+  position: relative;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
@@ -634,6 +642,8 @@ dd {
 .drag-handle {
   min-height: 28px;
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
   padding: 5px 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -641,10 +651,18 @@ dd {
   color: var(--muted);
   cursor: grab;
   font-size: 11px;
+  font-weight: 720;
+  user-select: none;
 }
 
 .drag-handle:active {
   cursor: grabbing;
+}
+
+.drag-handle:hover {
+  border-color: rgba(10, 132, 255, 0.22);
+  background: #ffffff;
+  color: var(--blue-dark);
 }
 
 .watch-item.dragging {
@@ -655,6 +673,26 @@ dd {
 .watch-item.drop-target {
   border-color: rgba(10, 132, 255, 0.46);
   box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.12), var(--shadow-soft);
+}
+
+.watch-item.drop-before::before,
+.watch-item.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--blue), var(--teal));
+  box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.1);
+}
+
+.watch-item.drop-before::before {
+  top: -7px;
+}
+
+.watch-item.drop-after::after {
+  bottom: -7px;
 }
 
 .watch-url {

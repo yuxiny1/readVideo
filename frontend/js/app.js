@@ -275,6 +275,7 @@ async function loadWatchlist() {
 function renderWatchlist() {
   const items = sortedWatchItems();
   elements.watchCount.textContent = `${state.watchItems.length} saved`;
+  elements.watchSort.value = state.watchSort;
 
   if (!items.length) {
     elements.watchlist.innerHTML = '<div class="empty-state">No saved sources yet.</div>';
@@ -285,7 +286,7 @@ function renderWatchlist() {
       <article class="watch-item" data-id="${item.id}" draggable="true">
         <div class="history-card-header">
           <div class="watch-title-wrap">
-            <button class="drag-handle" type="button" title="Drag to reorder source" aria-label="Drag to reorder source">Move</button>
+            <span class="drag-handle" title="Drag this source to reorder">Move</span>
             <p class="watch-title">${escapeHtml(item.name)}</p>
           </div>
           <div class="actions-wrap">
@@ -293,6 +294,8 @@ function renderWatchlist() {
             <div class="actions-menu hidden">
               <button type="button" data-action="use">Use</button>
               <button type="button" data-action="updates">Updates</button>
+              <button type="button" data-action="move-up">Move Up</button>
+              <button type="button" data-action="move-down">Move Down</button>
               <button type="button" data-action="edit-source">Edit</button>
               <button class="danger-text" type="button" data-action="delete">Delete</button>
             </div>
@@ -411,6 +414,12 @@ async function handleWatchlistClick(event) {
     return;
   }
 
+  if (action === "move-up" || action === "move-down") {
+    hideActionsMenu(item);
+    await moveWatchItem(Number(id), action === "move-up" ? -1 : 1);
+    return;
+  }
+
   if (action === "cancel-edit") {
     item.querySelector(".watch-edit-form").classList.add("hidden");
     return;
@@ -449,9 +458,8 @@ function hideActionsMenu(container) {
 }
 
 function handleWatchlistDragStart(event) {
-  const handle = event.target.closest(".drag-handle");
   const item = event.target.closest(".watch-item");
-  if (!handle || !item) {
+  if (!item || event.target.closest("a, button, input, textarea, select")) {
     event.preventDefault();
     return;
   }
@@ -466,14 +474,21 @@ function handleWatchlistDragOver(event) {
   const item = event.target.closest(".watch-item");
   if (!item || state.draggedWatchId === null) return;
   event.preventDefault();
+  elements.watchlist.querySelectorAll(".drop-target, .drop-before, .drop-after").forEach((target) => {
+    if (target !== item) {
+      target.classList.remove("drop-target", "drop-before", "drop-after");
+    }
+  });
   item.classList.add("drop-target");
+  item.classList.toggle("drop-after", shouldDropAfter(event, item));
+  item.classList.toggle("drop-before", !shouldDropAfter(event, item));
   event.dataTransfer.dropEffect = "move";
 }
 
 function handleWatchlistDragLeave(event) {
   const item = event.target.closest(".watch-item");
-  if (item) {
-    item.classList.remove("drop-target");
+  if (item && !item.contains(event.relatedTarget)) {
+    item.classList.remove("drop-target", "drop-before", "drop-after");
   }
 }
 
@@ -484,16 +499,28 @@ async function handleWatchlistDrop(event) {
 
   const targetId = Number(target.dataset.id);
   const currentIds = sortedWatchItems().map((item) => item.id);
-  const draggedIndex = currentIds.indexOf(state.draggedWatchId);
-  const targetIndex = currentIds.indexOf(targetId);
-  if (draggedIndex === -1 || targetIndex === -1 || draggedIndex === targetIndex) {
+  const draggedId = state.draggedWatchId;
+  const draggedIndex = currentIds.indexOf(draggedId);
+  if (draggedIndex === -1 || targetId === draggedId) {
     clearWatchDragState();
     return;
   }
 
   currentIds.splice(draggedIndex, 1);
-  currentIds.splice(targetIndex, 0, state.draggedWatchId);
+  const targetIndex = currentIds.indexOf(targetId);
+  if (targetIndex === -1) {
+    clearWatchDragState();
+    return;
+  }
+
+  const insertIndex = targetIndex + (shouldDropAfter(event, target) ? 1 : 0);
+  currentIds.splice(insertIndex, 0, draggedId);
   await saveWatchOrder(currentIds);
+}
+
+function shouldDropAfter(event, item) {
+  const rect = item.getBoundingClientRect();
+  return event.clientY > rect.top + rect.height / 2;
 }
 
 function handleWatchlistDragEnd() {
@@ -502,8 +529,8 @@ function handleWatchlistDragEnd() {
 
 function clearWatchDragState() {
   state.draggedWatchId = null;
-  elements.watchlist.querySelectorAll(".dragging, .drop-target").forEach((item) => {
-    item.classList.remove("dragging", "drop-target");
+  elements.watchlist.querySelectorAll(".dragging, .drop-target, .drop-before, .drop-after").forEach((item) => {
+    item.classList.remove("dragging", "drop-target", "drop-before", "drop-after");
   });
 }
 
@@ -526,6 +553,16 @@ async function saveWatchOrder(itemIds) {
     renderWatchlist();
     setNotice(error.message, "error");
   }
+}
+
+async function moveWatchItem(itemId, direction) {
+  const itemIds = sortedWatchItems().map((item) => item.id);
+  const currentIndex = itemIds.indexOf(itemId);
+  const nextIndex = currentIndex + direction;
+  if (currentIndex === -1 || nextIndex < 0 || nextIndex >= itemIds.length) return;
+
+  [itemIds[currentIndex], itemIds[nextIndex]] = [itemIds[nextIndex], itemIds[currentIndex]];
+  await saveWatchOrder(itemIds);
 }
 
 async function handleWatchlistSubmit(event) {
