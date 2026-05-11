@@ -372,6 +372,23 @@ button:focus-visible,
   font-size: 12px;
 }
 
+.icon-button {
+  min-height: 28px;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #344054;
+  font-size: 11px;
+  font-weight: 720;
+}
+
+.icon-button:hover {
+  border-color: rgba(10, 132, 255, 0.22);
+  background: #ffffff;
+  color: var(--blue-dark);
+}
+
 .saved-source-tools {
   display: flex;
   align-items: center;
@@ -652,6 +669,7 @@ dd {
   cursor: grab;
   font-size: 11px;
   font-weight: 720;
+  touch-action: none;
   user-select: none;
 }
 

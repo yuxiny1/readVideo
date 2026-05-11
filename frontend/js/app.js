@@ -10,6 +10,7 @@ const state = {
   watchItems: [],
   watchSort: "manual",
   draggedWatchId: null,
+  pointerDrag: null,
 };
 
 const elements = {
@@ -42,6 +43,7 @@ const elements = {
   watchUrl: document.querySelector("#watch-url"),
   watchNotes: document.querySelector("#watch-notes"),
   watchSort: document.querySelector("#watch-sort"),
+  watchSortStatus: document.querySelector("#watch-sort-status"),
   watchlist: document.querySelector("#watchlist"),
   watchCount: document.querySelector("#watch-count"),
 };
@@ -276,6 +278,7 @@ function renderWatchlist() {
   const items = sortedWatchItems();
   elements.watchCount.textContent = `${state.watchItems.length} saved`;
   elements.watchSort.value = state.watchSort;
+  elements.watchSortStatus.textContent = sortStatusText();
 
   if (!items.length) {
     elements.watchlist.innerHTML = '<div class="empty-state">No saved sources yet.</div>';
@@ -286,7 +289,9 @@ function renderWatchlist() {
       <article class="watch-item" data-id="${item.id}" draggable="true">
         <div class="history-card-header">
           <div class="watch-title-wrap">
-            <span class="drag-handle" title="Drag this source to reorder">Move</span>
+            <span class="drag-handle" title="Drag this source to reorder">Drag</span>
+            <button class="icon-button" type="button" data-action="move-up" title="Move source up" aria-label="Move source up">Up</button>
+            <button class="icon-button" type="button" data-action="move-down" title="Move source down" aria-label="Move source down">Down</button>
             <p class="watch-title">${escapeHtml(item.name)}</p>
           </div>
           <div class="actions-wrap">
@@ -329,6 +334,18 @@ function sortedWatchItems() {
     "url-asc": (a, b) => a.url.localeCompare(b.url, undefined, {sensitivity: "base"}),
   };
   return items.sort(sorters[state.watchSort] || sorters.manual);
+}
+
+function sortStatusText() {
+  const labels = {
+    manual: "Manual order",
+    newest: "Newest first",
+    oldest: "Oldest first",
+    "name-asc": "Name A-Z",
+    "name-desc": "Name Z-A",
+    "url-asc": "URL A-Z",
+  };
+  return labels[state.watchSort] || labels.manual;
 }
 
 function formatSavedDate(value) {
@@ -458,6 +475,11 @@ function hideActionsMenu(container) {
 }
 
 function handleWatchlistDragStart(event) {
+  if (state.pointerDrag) {
+    event.preventDefault();
+    return;
+  }
+
   const item = event.target.closest(".watch-item");
   if (!item || event.target.closest("a, button, input, textarea, select")) {
     event.preventDefault();
@@ -525,6 +547,93 @@ function shouldDropAfter(event, item) {
 
 function handleWatchlistDragEnd() {
   clearWatchDragState();
+}
+
+function handleWatchPointerDown(event) {
+  const handle = event.target.closest(".drag-handle");
+  if (!handle || event.button !== 0) return;
+
+  const item = handle.closest(".watch-item");
+  if (!item) return;
+
+  event.preventDefault();
+  state.pointerDrag = {
+    id: Number(item.dataset.id),
+    startX: event.clientX,
+    startY: event.clientY,
+    targetId: null,
+    dropAfter: false,
+    active: false,
+  };
+  handle.setPointerCapture?.(event.pointerId);
+}
+
+function handleWatchPointerMove(event) {
+  const drag = state.pointerDrag;
+  if (!drag) return;
+
+  const distance = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
+  if (!drag.active && distance < 4) return;
+
+  event.preventDefault();
+  drag.active = true;
+
+  const draggedItem = elements.watchlist.querySelector(`.watch-item[data-id="${drag.id}"]`);
+  draggedItem?.classList.add("dragging");
+
+  const target = document.elementFromPoint(event.clientX, event.clientY)?.closest(".watch-item");
+  if (!target || Number(target.dataset.id) === drag.id) {
+    drag.targetId = null;
+    clearWatchDropTargets();
+    return;
+  }
+
+  drag.targetId = Number(target.dataset.id);
+  drag.dropAfter = shouldDropAfter(event, target);
+  markWatchDropTarget(target, drag.dropAfter);
+}
+
+async function handleWatchPointerUp(event) {
+  const drag = state.pointerDrag;
+  if (!drag) return;
+
+  event.preventDefault();
+  state.pointerDrag = null;
+  const shouldSave = drag.active && drag.targetId !== null && drag.targetId !== drag.id;
+  clearWatchDragState();
+  if (!shouldSave) return;
+
+  const itemIds = sortedWatchItems().map((item) => item.id);
+  const draggedIndex = itemIds.indexOf(drag.id);
+  if (draggedIndex === -1) return;
+
+  itemIds.splice(draggedIndex, 1);
+  const targetIndex = itemIds.indexOf(drag.targetId);
+  if (targetIndex === -1) return;
+
+  const insertIndex = targetIndex + (drag.dropAfter ? 1 : 0);
+  itemIds.splice(insertIndex, 0, drag.id);
+  await saveWatchOrder(itemIds);
+}
+
+function handleWatchPointerCancel() {
+  state.pointerDrag = null;
+  clearWatchDragState();
+}
+
+function markWatchDropTarget(item, dropAfter) {
+  clearWatchDropTargets(item);
+  item.classList.add("drop-target");
+  item.classList.toggle("drop-after", dropAfter);
+  item.classList.toggle("drop-before", !dropAfter);
+}
+
+function clearWatchDropTargets(exceptItem = null) {
+  elements.watchlist.querySelectorAll(".drop-target, .drop-before, .drop-after").forEach((target) => {
+    if (target !== exceptItem) {
+      target.classList.remove("drop-target", "drop-before", "drop-after");
+    }
+  });
 }
 
 function clearWatchDragState() {
@@ -696,6 +805,10 @@ elements.watchlist.addEventListener("dragover", handleWatchlistDragOver);
 elements.watchlist.addEventListener("dragleave", handleWatchlistDragLeave);
 elements.watchlist.addEventListener("drop", handleWatchlistDrop);
 elements.watchlist.addEventListener("dragend", handleWatchlistDragEnd);
+elements.watchlist.addEventListener("pointerdown", handleWatchPointerDown);
+window.addEventListener("pointermove", handleWatchPointerMove);
+window.addEventListener("pointerup", handleWatchPointerUp);
+window.addEventListener("pointercancel", handleWatchPointerCancel);
 elements.copySummary.addEventListener("click", copySummary);
 elements.favoriteSummary.addEventListener("click", favoriteLatestSummary);
 elements.pullOllamaModel.addEventListener("click", pullSelectedOllamaModel);
