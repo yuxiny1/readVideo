@@ -131,7 +131,18 @@
     <aside class="tool-panel watch-panel">
       <div class="panel-header">
         <h2>Saved Sources</h2>
-        <span id="watch-count" class="caption">0 saved</span>
+        <div class="saved-source-tools">
+          <span id="watch-count" class="caption">0 saved</span>
+          <label class="compact-label" for="watch-sort">Sort</label>
+          <select id="watch-sort" class="compact-select">
+            <option value="manual">Manual</option>
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="name-asc">Name A-Z</option>
+            <option value="name-desc">Name Z-A</option>
+            <option value="url-asc">URL</option>
+          </select>
+        </div>
       </div>
 
       <form id="watch-form" class="stack compact">

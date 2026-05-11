@@ -87,6 +87,7 @@ class MainAppTest(unittest.TestCase):
         self.assertIn("/reader", response.text)
         self.assertIn("favorite-summary", response.text)
         self.assertIn("read-summary", response.text)
+        self.assertIn("watch-sort", response.text)
 
     def test_history_page_serves_frontend(self):
         client = TestClient(app)
@@ -315,6 +316,28 @@ class MainAppTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["name"], "Updated")
         self.assertEqual(response.json()["notes"], "better")
+
+    def test_watchlist_reorder_endpoint_persists_order(self):
+        with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
+            "os.environ",
+            {"READVIDEO_DATABASE_PATH": str(Path(tmpdir) / "watchlist.sqlite3")},
+            clear=True,
+        ):
+            client = TestClient(app)
+            first = client.post(
+                "/watchlist",
+                json={"name": "First", "url": "https://www.youtube.com/@first", "notes": ""},
+            ).json()
+            second = client.post(
+                "/watchlist",
+                json={"name": "Second", "url": "https://www.youtube.com/@second", "notes": ""},
+            ).json()
+            response = client.patch("/watchlist/reorder", json={"item_ids": [second["id"], first["id"]]})
+            listed = client.get("/watchlist")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item["id"] for item in response.json()[:2]], [second["id"], first["id"]])
+        self.assertEqual([item["id"] for item in listed.json()[:2]], [second["id"], first["id"]])
 
     def test_ollama_models_endpoint_exposes_recommendations(self):
         with patch.object(routes, "list_installed_models", return_value=["qwen2.5:3b"]):

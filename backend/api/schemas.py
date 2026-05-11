@@ -23,6 +23,10 @@ class WatchItemUpdateRequest(BaseModel):
     notes: str = ""
 
 
+class WatchlistReorderRequest(BaseModel):
+    item_ids: list[int] = Field(min_length=1)
+
+
 class OllamaPullRequest(BaseModel):
     model: str = Field(min_length=1)
 

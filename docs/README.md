@@ -23,7 +23,7 @@ The default transcription backend is local `whisper.cpp`, so OpenAI API access i
 - Lets you open favorite Markdown notes in a dedicated reader page.
 - Lets you create virtual note folders for favorite Markdown notes without moving the original files on disk.
 - Lists Markdown files from a chosen notes folder and serves them for reading or download.
-- Saves a local watchlist of YouTube channels/playlists in SQLite and can check recent source updates with `yt-dlp`.
+- Saves a local watchlist of YouTube channels/playlists in SQLite, supports manual drag ordering and alternate sort views, and can check recent source updates with `yt-dlp`.
 
 ## Requirements
 
@@ -147,6 +147,9 @@ curl "http://localhost:8000/watchlist"
 curl -X PATCH "http://localhost:8000/watchlist/1" \
   -H "Content-Type: application/json" \
   -d '{"name": "Updated source", "url": "https://www.youtube.com/@example", "notes": "Weekly"}'
+curl -X PATCH "http://localhost:8000/watchlist/reorder" \
+  -H "Content-Type: application/json" \
+  -d '{"item_ids": [3, 1, 2]}'
 ```
 
 History:

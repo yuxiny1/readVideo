@@ -12,6 +12,7 @@ from backend.api.schemas import (
     ProcessVideoRequest,
     WatchItemRequest,
     WatchItemUpdateRequest,
+    WatchlistReorderRequest,
 )
 from backend.core.config import load_settings
 from backend.core.task_state import get_task, list_tasks, set_task_status
@@ -245,6 +246,15 @@ async def list_watchlist():
 async def add_watch_item(request: WatchItemRequest):
     item = get_store().add_item(request.name, str(request.url), request.notes)
     return item.__dict__
+
+
+@router.patch("/watchlist/reorder")
+async def reorder_watch_items(request: WatchlistReorderRequest):
+    try:
+        items = get_store().reorder_items(request.item_ids)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return [item.__dict__ for item in items]
 
 
 @router.delete("/watchlist/{item_id}")

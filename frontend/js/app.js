@@ -7,6 +7,9 @@ const state = {
   latestTask: null,
   ollamaModelOptions: [],
   ollamaInstalledModels: [],
+  watchItems: [],
+  watchSort: "manual",
+  draggedWatchId: null,
 };
 
 const elements = {
@@ -38,6 +41,7 @@ const elements = {
   watchName: document.querySelector("#watch-name"),
   watchUrl: document.querySelector("#watch-url"),
   watchNotes: document.querySelector("#watch-notes"),
+  watchSort: document.querySelector("#watch-sort"),
   watchlist: document.querySelector("#watchlist"),
   watchCount: document.querySelector("#watch-count"),
 };
@@ -261,17 +265,27 @@ async function startProcessingUrl(url) {
 async function loadWatchlist() {
   try {
     const items = await api("/watchlist");
-    elements.watchCount.textContent = `${items.length} saved`;
+    state.watchItems = items;
+    renderWatchlist();
+  } catch (error) {
+    elements.watchlist.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+  }
+}
 
-    if (!items.length) {
-      elements.watchlist.innerHTML = '<div class="empty-state">No saved sources yet.</div>';
-      return;
-    }
+function renderWatchlist() {
+  const items = sortedWatchItems();
+  elements.watchCount.textContent = `${state.watchItems.length} saved`;
 
-    elements.watchlist.innerHTML = items.map((item) => `
-      <article class="watch-item" data-id="${item.id}">
+  if (!items.length) {
+    elements.watchlist.innerHTML = '<div class="empty-state">No saved sources yet.</div>';
+    return;
+  }
+
+  elements.watchlist.innerHTML = items.map((item) => `
+      <article class="watch-item" data-id="${item.id}" draggable="true">
         <div class="history-card-header">
-          <div>
+          <div class="watch-title-wrap">
+            <button class="drag-handle" type="button" title="Drag to reorder source" aria-label="Drag to reorder source">Move</button>
             <p class="watch-title">${escapeHtml(item.name)}</p>
           </div>
           <div class="actions-wrap">
@@ -285,6 +299,7 @@ async function loadWatchlist() {
           </div>
         </div>
         <a class="watch-url" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">${escapeHtml(item.url)}</a>
+        <p class="watch-meta">Saved ${escapeHtml(formatSavedDate(item.created_at))}</p>
         ${item.notes ? `<p class="watch-notes">${escapeHtml(item.notes)}</p>` : ""}
         <form class="watch-edit-form hidden">
           <label>Name<input name="name" required value="${escapeHtml(item.name)}"></label>
@@ -298,9 +313,30 @@ async function loadWatchlist() {
         <div class="source-updates"></div>
       </article>
     `).join("");
-  } catch (error) {
-    elements.watchlist.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
-  }
+}
+
+function sortedWatchItems() {
+  const items = [...state.watchItems];
+  const sorters = {
+    manual: (a, b) => (a.sort_order || 0) - (b.sort_order || 0) || b.created_at.localeCompare(a.created_at),
+    newest: (a, b) => b.created_at.localeCompare(a.created_at),
+    oldest: (a, b) => a.created_at.localeCompare(b.created_at),
+    "name-asc": (a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: "base"}),
+    "name-desc": (a, b) => b.name.localeCompare(a.name, undefined, {sensitivity: "base"}),
+    "url-asc": (a, b) => a.url.localeCompare(b.url, undefined, {sensitivity: "base"}),
+  };
+  return items.sort(sorters[state.watchSort] || sorters.manual);
+}
+
+function formatSavedDate(value) {
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return value || "-";
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(timestamp));
 }
 
 async function loadRecentTasks() {
@@ -410,6 +446,86 @@ function toggleActionsMenu(container) {
 
 function hideActionsMenu(container) {
   container.querySelector(".actions-menu")?.classList.add("hidden");
+}
+
+function handleWatchlistDragStart(event) {
+  const handle = event.target.closest(".drag-handle");
+  const item = event.target.closest(".watch-item");
+  if (!handle || !item) {
+    event.preventDefault();
+    return;
+  }
+
+  state.draggedWatchId = Number(item.dataset.id);
+  item.classList.add("dragging");
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", String(state.draggedWatchId));
+}
+
+function handleWatchlistDragOver(event) {
+  const item = event.target.closest(".watch-item");
+  if (!item || state.draggedWatchId === null) return;
+  event.preventDefault();
+  item.classList.add("drop-target");
+  event.dataTransfer.dropEffect = "move";
+}
+
+function handleWatchlistDragLeave(event) {
+  const item = event.target.closest(".watch-item");
+  if (item) {
+    item.classList.remove("drop-target");
+  }
+}
+
+async function handleWatchlistDrop(event) {
+  const target = event.target.closest(".watch-item");
+  if (!target || state.draggedWatchId === null) return;
+  event.preventDefault();
+
+  const targetId = Number(target.dataset.id);
+  const currentIds = sortedWatchItems().map((item) => item.id);
+  const draggedIndex = currentIds.indexOf(state.draggedWatchId);
+  const targetIndex = currentIds.indexOf(targetId);
+  if (draggedIndex === -1 || targetIndex === -1 || draggedIndex === targetIndex) {
+    clearWatchDragState();
+    return;
+  }
+
+  currentIds.splice(draggedIndex, 1);
+  currentIds.splice(targetIndex, 0, state.draggedWatchId);
+  await saveWatchOrder(currentIds);
+}
+
+function handleWatchlistDragEnd() {
+  clearWatchDragState();
+}
+
+function clearWatchDragState() {
+  state.draggedWatchId = null;
+  elements.watchlist.querySelectorAll(".dragging, .drop-target").forEach((item) => {
+    item.classList.remove("dragging", "drop-target");
+  });
+}
+
+async function saveWatchOrder(itemIds) {
+  const previousItems = state.watchItems;
+  const byId = new Map(state.watchItems.map((item) => [item.id, item]));
+  state.watchItems = itemIds.map((id, index) => ({...byId.get(id), sort_order: index + 1}));
+  state.watchSort = "manual";
+  elements.watchSort.value = "manual";
+  renderWatchlist();
+
+  try {
+    state.watchItems = await api("/watchlist/reorder", {
+      method: "PATCH",
+      body: JSON.stringify({item_ids: itemIds}),
+    });
+    renderWatchlist();
+  } catch (error) {
+    state.watchItems = previousItems;
+    renderWatchlist();
+    setNotice(error.message, "error");
+  }
 }
 
 async function handleWatchlistSubmit(event) {
@@ -538,9 +654,18 @@ elements.processForm.addEventListener("submit", submitProcess);
 elements.watchForm.addEventListener("submit", submitWatchItem);
 elements.watchlist.addEventListener("click", handleWatchlistClick);
 elements.watchlist.addEventListener("submit", handleWatchlistSubmit);
+elements.watchlist.addEventListener("dragstart", handleWatchlistDragStart);
+elements.watchlist.addEventListener("dragover", handleWatchlistDragOver);
+elements.watchlist.addEventListener("dragleave", handleWatchlistDragLeave);
+elements.watchlist.addEventListener("drop", handleWatchlistDrop);
+elements.watchlist.addEventListener("dragend", handleWatchlistDragEnd);
 elements.copySummary.addEventListener("click", copySummary);
 elements.favoriteSummary.addEventListener("click", favoriteLatestSummary);
 elements.pullOllamaModel.addEventListener("click", pullSelectedOllamaModel);
+elements.watchSort.addEventListener("change", () => {
+  state.watchSort = elements.watchSort.value;
+  renderWatchlist();
+});
 elements.notesBackend.addEventListener("change", () => updateOllamaModelMessage(state.ollamaModelOptions));
 elements.ollamaModelSelect.addEventListener("change", () => updateOllamaModelMessage(state.ollamaModelOptions));
 elements.ollamaModelCustom.addEventListener("input", () => updateOllamaModelMessage(state.ollamaModelOptions));
