@@ -197,7 +197,7 @@ async function loadConfig() {
       api("/api/transcription/models"),
     ]);
     setPill(elements.healthPill, health.status === "ok" ? "Online" : "Check", health.status === "ok" ? "ok" : "muted");
-    setPill(elements.backendPill, `${config.transcription_backend} / ${config.notes_backend}`, "muted");
+    setPill(elements.backendPill, `${config.transcription_backend} / ${config.notes_backend} / ${config.download_media || "audio"}`, "muted");
     elements.notesDir.placeholder = config.notes_dir || "notes";
     elements.transcriptionBackend.value = config.transcription_backend || "local";
     elements.transcriptionPrompt.value = config.transcription_prompt || "";

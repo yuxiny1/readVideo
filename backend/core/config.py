@@ -17,6 +17,7 @@ class Settings:
     transcription_backend: str = "local"
     openai_api_key: Optional[str] = None
     download_dir: str = "downloads/youtube_videos"
+    download_media: str = "audio"
     transcription_model: str = "gpt-4o-mini-transcribe"
     chunk_seconds: int = 180
     local_whisper_cli: str = "whisper-cli"
@@ -103,6 +104,10 @@ def load_settings() -> Settings:
     if transcription_backend not in {"local", "openai"}:
         raise RuntimeError("READVIDEO_TRANSCRIPTION_BACKEND must be local or openai.")
 
+    download_media = os.getenv("READVIDEO_DOWNLOAD_MEDIA", "audio").lower()
+    if download_media not in {"audio", "video"}:
+        raise RuntimeError("READVIDEO_DOWNLOAD_MEDIA must be audio or video.")
+
     notes_backend = os.getenv("READVIDEO_NOTES_BACKEND", "extractive").lower()
     if notes_backend not in {"extractive", "ollama"}:
         raise RuntimeError("READVIDEO_NOTES_BACKEND must be extractive or ollama.")
@@ -111,6 +116,7 @@ def load_settings() -> Settings:
         transcription_backend=transcription_backend,
         openai_api_key=load_openai_api_key(required=transcription_backend == "openai"),
         download_dir=os.getenv("READVIDEO_DOWNLOAD_DIR", "downloads/youtube_videos"),
+        download_media=download_media,
         transcription_model=os.getenv("OPENAI_TRANSCRIPTION_MODEL", "gpt-4o-mini-transcribe"),
         chunk_seconds=_load_chunk_seconds(os.getenv("READVIDEO_CHUNK_SECONDS")),
         local_whisper_cli=os.getenv("READVIDEO_LOCAL_WHISPER_CLI", "whisper-cli"),

@@ -58,7 +58,7 @@ function renderRecord(record) {
 
       <dl class="path-list">
         ${pathRow("Source", record.url)}
-        ${pathRow("Video", record.video_path)}
+        ${pathRow("Media", record.video_path)}
         ${pathRow("Transcript", record.transcription_path)}
         ${pathRow("Markdown", record.markdown_path)}
       </dl>

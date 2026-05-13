@@ -50,6 +50,21 @@ class MainAppTest(unittest.TestCase):
 
         self.assertEqual(prompt, "Jim Keller, CUDA. Where AI Runs")
 
+    def test_load_settings_defaults_to_audio_downloads(self):
+        with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}, clear=True):
+            settings = load_settings()
+
+        self.assertEqual(settings.download_media, "audio")
+
+    def test_load_settings_validates_download_media(self):
+        with patch.dict(
+            "os.environ",
+            {"READVIDEO_TRANSCRIPTION_BACKEND": "local", "READVIDEO_DOWNLOAD_MEDIA": "images"},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "READVIDEO_DOWNLOAD_MEDIA"):
+                load_settings()
+
     def test_load_settings_prefers_best_installed_local_whisper_model(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             models_dir = Path(tmpdir) / "models"
@@ -233,6 +248,7 @@ class MainAppTest(unittest.TestCase):
         self.assertEqual(data["transcription_backend"], "local")
         self.assertNotIn("openai_api_key", data)
         self.assertIn("ollama_model_options", data)
+        self.assertEqual(data["download_media"], "audio")
         self.assertIn("local_whisper_model", data)
         self.assertEqual(data["local_whisper_language"], "auto")
         self.assertEqual(data["local_whisper_chunk_seconds"], 60)

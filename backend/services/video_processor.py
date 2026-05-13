@@ -6,7 +6,7 @@ from typing import Optional
 
 from backend.core.config import Settings, load_settings
 from backend.core.task_state import get_task, set_task_status
-from backend.services.downloader import download_video
+from backend.services.downloader import download_media
 from backend.services.local_transcription import LocalWhisperTranscription
 from backend.services.notes import write_markdown_note
 from backend.services.openai_transcription import AudioTranscription
@@ -67,7 +67,7 @@ async def process_video(
         set_task_status(task_id, "downloading", url=url)
         persist_task_history(settings.database_path, task_id)
 
-        downloaded_file_path = await asyncio.to_thread(download_video, url, settings.download_dir)
+        downloaded_file_path = await asyncio.to_thread(download_media, url, settings.download_dir, settings.download_media)
         video_title = Path(downloaded_file_path).stem
         set_task_status(task_id, "transcribing", url=url, title=video_title, video_path=downloaded_file_path)
         persist_task_history(settings.database_path, task_id)

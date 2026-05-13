@@ -24,22 +24,38 @@ def _downloaded_file_from_info(info_dict: dict) -> Optional[str]:
     return None
 
 
-def download_video(url: str, download_path: str = "downloads/youtube_videos") -> str:
-    """Download a video with yt-dlp and return the path to the downloaded file."""
+def _build_ydl_options(output_dir: Path, media_type: str = "audio") -> dict:
+    media_type = media_type.lower()
+    if media_type == "audio":
+        format_selector = "bestaudio[ext=m4a]/bestaudio/best"
+        merge_output_format = None
+    elif media_type == "video":
+        format_selector = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best"
+        merge_output_format = "mp4"
+    else:
+        raise ValueError("media_type must be audio or video")
+
+    options = {
+        "format": format_selector,
+        "outtmpl": str(output_dir / "%(title).200s.%(ext)s"),
+        "logger": logging.getLogger(),
+        "progress_hooks": [lambda d: logger.info("yt-dlp progress: %s", d.get("status"))],
+        "noplaylist": True,
+    }
+    if merge_output_format:
+        options["merge_output_format"] = merge_output_format
+    return options
+
+
+def download_media(url: str, download_path: str = "downloads/youtube_videos", media_type: str = "audio") -> str:
+    """Download audio or video with yt-dlp and return the path to the local media file."""
     logging.basicConfig(filename="yt_dlp_download.log", level=logging.INFO)
 
     output_dir = Path(download_path)
     output_dir.mkdir(parents=True, exist_ok=True)
     files_before_download = {path.resolve() for path in output_dir.iterdir() if path.is_file()}
 
-    ydl_opts = {
-        "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best",
-        "merge_output_format": "mp4",
-        "outtmpl": str(output_dir / "%(title).200s.%(ext)s"),
-        "logger": logging.getLogger(),
-        "progress_hooks": [lambda d: logger.info("yt-dlp progress: %s", d.get("status"))],
-        "noplaylist": True,
-    }
+    ydl_opts = _build_ydl_options(output_dir, media_type)
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         try:
@@ -53,6 +69,9 @@ def download_video(url: str, download_path: str = "downloads/youtube_videos") ->
             candidates = [
                 prepared,
                 str(Path(prepared).with_suffix(".mp4")),
+                str(Path(prepared).with_suffix(".m4a")),
+                str(Path(prepared).with_suffix(".webm")),
+                str(Path(prepared).with_suffix(".opus")),
             ]
             for candidate in candidates:
                 if os.path.isfile(candidate):
@@ -73,3 +92,8 @@ def download_video(url: str, download_path: str = "downloads/youtube_videos") ->
         except Exception:
             logger.exception("Error downloading %s", url)
             raise
+
+
+def download_video(url: str, download_path: str = "downloads/youtube_videos") -> str:
+    """Compatibility wrapper for older callers that expected video downloads."""
+    return download_media(url, download_path, media_type="video")

@@ -1,16 +1,16 @@
 # readVideo
 
-Download a YouTube video, transcribe its audio, turn the transcript into Markdown notes, and keep a small local watchlist of YouTube channels/playlists.
+Download YouTube audio, transcribe it, turn the transcript into Markdown notes, and keep a small local watchlist of YouTube channels/playlists.
 
 The default transcription backend is local `whisper.cpp`, so OpenAI API access is optional.
 
 ## What It Does
 
-- Downloads a single YouTube video with `yt-dlp`.
+- Downloads a single YouTube audio stream with `yt-dlp` by default, with an optional full-video mode.
 - Transcribes speech in the original language; it does not translate between languages.
 - Uses local `whisper.cpp` by default, with optional OpenAI transcription support.
 - Lets you choose transcription backend, spoken-language detection, prompt terms, and larger local Whisper models per run.
-- Saves the raw transcript next to the downloaded video.
+- Saves the raw transcript next to the downloaded media file.
 - Creates a Markdown note with summary, structured sections, and full transcript.
 - Can summarize notes with either a local extractive summarizer or an optional Ollama local LLM.
 - Uses a full-transcript chunk-and-combine workflow for Ollama summaries so long videos are not summarized from only an excerpt.
@@ -18,7 +18,7 @@ The default transcription backend is local `whisper.cpp`, so OpenAI API access i
 - Lets you choose the Markdown output folder per request.
 - Provides a simple FastAPI frontend and JSON API.
 - Shows recent task status, elapsed time, and generated output paths in the browser.
-- Persists processed video history in SQLite, including source URL, video, transcript, and Markdown paths.
+- Persists processed history in SQLite, including source URL, media, transcript, and Markdown paths.
 - Lets you search favorite summaries and keep their Markdown locations in one page.
 - Lets you open, favorite, or copy a summary from the current Latest Output panel after a download finishes, with optional folder assignment from History.
 - Lets you open favorite Markdown notes in a dedicated reader page.
@@ -31,11 +31,12 @@ The default transcription backend is local `whisper.cpp`, so OpenAI API access i
 - Python 3.11+
 - `ffmpeg`
 - `whisper.cpp` and a GGML Whisper model for local transcription
+- Optional but recommended: `deno`, so `yt-dlp` can handle newer YouTube extraction logic without warnings
 
 On macOS:
 
 ```bash
-brew install ffmpeg whisper-cpp
+brew install ffmpeg whisper-cpp deno
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -62,6 +63,7 @@ The app also still reads a root `.env` for backwards compatibility. The main set
 ```bash
 READVIDEO_TRANSCRIPTION_BACKEND=local
 READVIDEO_DOWNLOAD_DIR=downloads/youtube_videos
+READVIDEO_DOWNLOAD_MEDIA=audio
 READVIDEO_NOTES_DIR=notes
 READVIDEO_LOCAL_WHISPER_CLI=whisper-cli
 READVIDEO_LOCAL_WHISPER_MODEL=models/ggml-small.bin
@@ -73,6 +75,8 @@ READVIDEO_NOTES_BACKEND=extractive
 READVIDEO_OLLAMA_MODEL=qwen2.5:3b
 READVIDEO_OLLAMA_URL=http://127.0.0.1:11434/api/generate
 ```
+
+`READVIDEO_DOWNLOAD_MEDIA=audio` avoids downloading full video frames when you only need transcription and notes. Set it to `video` only when you also want to keep a local video file.
 
 `READVIDEO_LOCAL_WHISPER_MODEL` is the audio transcription model. If you do not set it, the app picks the strongest installed local model in this order: `ggml-large-v3-turbo.bin`, `ggml-medium.bin`, `ggml-small.bin`, then `ggml-base.bin`. `READVIDEO_LOCAL_WHISPER_LANGUAGE=auto` is recommended for YouTube because forcing `zh` on English or mixed-language videos can produce Chinese-looking nonsense text.
 

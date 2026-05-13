@@ -368,6 +368,7 @@ async def app_config():
     return {
         "transcription_backend": settings.transcription_backend,
         "download_dir": settings.download_dir,
+        "download_media": settings.download_media,
         "notes_dir": settings.notes_dir,
         "notes_backend": settings.notes_backend,
         "ollama_model": settings.ollama_model,
