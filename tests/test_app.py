@@ -12,6 +12,7 @@ from backend.core import config
 from backend.core.config import load_openai_api_key, load_settings
 from backend.core.task_state import TASKS, clear_tasks, set_task_status
 from backend.services.source_updates import SourceVideo
+from backend.services.video_processor import build_transcription_prompt
 
 
 class MainAppTest(unittest.TestCase):
@@ -34,6 +35,20 @@ class MainAppTest(unittest.TestCase):
         with patch.dict("os.environ", {"OPENAI_API_KEY": "test-key", "READVIDEO_CHUNK_SECONDS": "0"}):
             with self.assertRaisesRegex(RuntimeError, "greater than 0"):
                 load_settings()
+
+    def test_load_settings_validates_local_whisper_chunk_seconds(self):
+        with patch.dict(
+            "os.environ",
+            {"READVIDEO_TRANSCRIPTION_BACKEND": "local", "READVIDEO_LOCAL_WHISPER_CHUNK_SECONDS": "0"},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "READVIDEO_LOCAL_WHISPER_CHUNK_SECONDS"):
+                load_settings()
+
+    def test_build_transcription_prompt_combines_user_terms_and_title(self):
+        prompt = build_transcription_prompt("Jim Keller, CUDA", "Where AI Runs")
+
+        self.assertEqual(prompt, "Jim Keller, CUDA. Where AI Runs")
 
     def test_load_settings_prefers_best_installed_local_whisper_model(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -220,6 +235,7 @@ class MainAppTest(unittest.TestCase):
         self.assertIn("ollama_model_options", data)
         self.assertIn("local_whisper_model", data)
         self.assertEqual(data["local_whisper_language"], "auto")
+        self.assertEqual(data["local_whisper_chunk_seconds"], 60)
         self.assertIn("openai_transcription_model_options", data)
 
     def test_tasks_endpoint_lists_recent_task_metadata(self):

@@ -24,6 +24,7 @@ class Settings:
     local_whisper_language: str = "auto"
     local_whisper_prompt: str = ""
     local_whisper_audio_filter: str = "highpass=f=80,lowpass=f=8000,loudnorm=I=-16:TP=-1.5:LRA=11"
+    local_whisper_chunk_seconds: int = 60
     notes_dir: str = "notes"
     notes_backend: str = "extractive"
     ollama_model: str = "qwen2.5:3b"
@@ -66,6 +67,21 @@ def _load_chunk_seconds(raw_value: Optional[str]) -> int:
     return chunk_seconds
 
 
+def _load_positive_int(raw_value: Optional[str], default: int, env_name: str) -> int:
+    if raw_value is None:
+        return default
+
+    try:
+        value = int(raw_value)
+    except ValueError as exc:
+        raise RuntimeError(f"{env_name} must be an integer.") from exc
+
+    if value <= 0:
+        raise RuntimeError(f"{env_name} must be greater than 0.")
+
+    return value
+
+
 def _default_local_whisper_model() -> str:
     configured_model = os.getenv("READVIDEO_LOCAL_WHISPER_MODEL")
     if configured_model:
@@ -104,6 +120,11 @@ def load_settings() -> Settings:
         local_whisper_audio_filter=os.getenv(
             "READVIDEO_LOCAL_WHISPER_AUDIO_FILTER",
             "highpass=f=80,lowpass=f=8000,loudnorm=I=-16:TP=-1.5:LRA=11",
+        ),
+        local_whisper_chunk_seconds=_load_positive_int(
+            os.getenv("READVIDEO_LOCAL_WHISPER_CHUNK_SECONDS"),
+            60,
+            "READVIDEO_LOCAL_WHISPER_CHUNK_SECONDS",
         ),
         notes_dir=os.getenv("READVIDEO_NOTES_DIR", "notes"),
         notes_backend=notes_backend,

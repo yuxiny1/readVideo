@@ -68,6 +68,7 @@ READVIDEO_LOCAL_WHISPER_MODEL=models/ggml-small.bin
 READVIDEO_LOCAL_WHISPER_LANGUAGE=auto
 READVIDEO_LOCAL_WHISPER_PROMPT=
 READVIDEO_LOCAL_WHISPER_AUDIO_FILTER=highpass=f=80,lowpass=f=8000,loudnorm=I=-16:TP=-1.5:LRA=11
+READVIDEO_LOCAL_WHISPER_CHUNK_SECONDS=60
 READVIDEO_NOTES_BACKEND=extractive
 READVIDEO_OLLAMA_MODEL=qwen2.5:3b
 READVIDEO_OLLAMA_URL=http://127.0.0.1:11434/api/generate
@@ -84,7 +85,7 @@ curl -L -o models/ggml-large-v3-turbo.bin \
   https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin
 ```
 
-`READVIDEO_LOCAL_WHISPER_PROMPT` can contain names and technical terms that appear in the video, such as `Jim Keller, CUDA, OpenAI`. The app also applies a light speech audio filter before local transcription to normalize volume and reduce low/high frequency noise.
+`READVIDEO_LOCAL_WHISPER_PROMPT` can contain names and technical terms that appear in the video, such as `Jim Keller, CUDA, OpenAI`. The app automatically adds the video title to the transcription prompt, applies a light speech audio filter before local transcription, and transcribes local audio in chunks. This is much more reliable for long YouTube videos and reduces silence/outro hallucinations.
 
 `READVIDEO_OLLAMA_MODEL` is only used for Markdown summary and note organization when `READVIDEO_NOTES_BACKEND=ollama`. It does not transcribe audio.
 

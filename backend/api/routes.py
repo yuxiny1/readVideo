@@ -374,6 +374,7 @@ async def app_config():
         "ollama_model_options": recommended_models(),
         "local_whisper_model": settings.local_whisper_model,
         "local_whisper_language": settings.local_whisper_language,
+        "local_whisper_chunk_seconds": settings.local_whisper_chunk_seconds,
         "transcription_model": settings.transcription_model,
         "transcription_prompt": settings.local_whisper_prompt,
         "openai_transcription_model_options": OPENAI_TRANSCRIPTION_MODELS,

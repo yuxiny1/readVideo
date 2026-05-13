@@ -16,14 +16,17 @@ from backend.storage.history import HistoryStore
 logger = logging.getLogger(__name__)
 
 
-def transcribe_video(video_path: str, settings: Settings):
+def transcribe_video(video_path: str, settings: Settings, video_title: str = ""):
+    prompt = build_transcription_prompt(settings.local_whisper_prompt, video_title)
+
     if settings.transcription_backend == "local":
         service = LocalWhisperTranscription(
             whisper_cli=settings.local_whisper_cli,
             model_path=settings.local_whisper_model,
             language=settings.local_whisper_language,
-            prompt=settings.local_whisper_prompt,
+            prompt=prompt,
             audio_filter=settings.local_whisper_audio_filter,
+            chunk_seconds=settings.local_whisper_chunk_seconds,
         )
         return service.process_video(video_path)
 
@@ -31,7 +34,7 @@ def transcribe_video(video_path: str, settings: Settings):
         api_key=settings.openai_api_key,
         model=settings.transcription_model,
         language=settings.local_whisper_language,
-        prompt=settings.local_whisper_prompt,
+        prompt=prompt,
     )
     return service.process_video(video_path, settings.chunk_seconds)
 
@@ -69,7 +72,7 @@ async def process_video(
         set_task_status(task_id, "transcribing", url=url, title=video_title, video_path=downloaded_file_path)
         persist_task_history(settings.database_path, task_id)
 
-        result = await asyncio.to_thread(transcribe_video, downloaded_file_path, settings)
+        result = await asyncio.to_thread(transcribe_video, downloaded_file_path, settings, video_title)
         set_task_status(
             task_id,
             "organizing_notes",
@@ -144,6 +147,11 @@ def resolve_transcription_settings(
         local_whisper_language=local_whisper_language or settings.local_whisper_language,
         local_whisper_prompt=(transcription_prompt or settings.local_whisper_prompt or "").strip(),
     )
+
+
+def build_transcription_prompt(configured_prompt: str = "", video_title: str = "") -> str:
+    parts = [part.strip() for part in (configured_prompt, video_title) if part and part.strip()]
+    return ". ".join(parts)[:500]
 
 
 def persist_task_history(database_path: str, task_id: str):
