@@ -118,13 +118,13 @@ The Google OAuth helper in `backend/services/google_auth.py` is optional and onl
 ## Run
 
 ```bash
-uvicorn backend.app:app --reload
+python main.py
 ```
 
-Open:
+The app will start on the first available port beginning at `8000` and print the URL, for example:
 
 ```text
-http://localhost:8000
+Starting readVideo on http://127.0.0.1:8000
 ```
 
 The frontend is served from `frontend/` and calls the same FastAPI app for task status, Markdown output, and saved YouTube sources. Main navigation lives in the left sidebar.
