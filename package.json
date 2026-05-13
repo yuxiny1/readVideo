@@ -1,0 +1,9 @@
+{
+  "name": "readvideo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check:frontend": "for file in frontend/js/*.js; do node --check \"$file\" || exit 1; done",
+    "test:frontend": "node --test frontend/tests/*.test.js"
+  }
+}

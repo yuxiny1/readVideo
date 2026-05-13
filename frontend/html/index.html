@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>readVideo</title>
-  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/styles.css?v=20260511-transcription">
 </head>
 <body>
   <div class="app-layout">
@@ -50,6 +50,47 @@
 
         <div class="form-grid">
           <div>
+            <label for="transcription-backend">Transcription Backend</label>
+            <select id="transcription-backend" name="transcription_backend">
+              <option value="local">Local Whisper</option>
+              <option value="openai">OpenAI</option>
+            </select>
+          </div>
+          <div>
+            <label for="transcription-language">Spoken Language</label>
+            <select id="transcription-language" name="local_whisper_language"></select>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div>
+            <label for="local-whisper-model-select">Local Whisper Model</label>
+            <select id="local-whisper-model-select" name="local_whisper_model_select"></select>
+          </div>
+          <div>
+            <label for="download-whisper-model">Transcription Tools</label>
+            <button id="download-whisper-model" class="secondary-button full" type="button">Download Selected Model</button>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div>
+            <label for="local-whisper-model-custom">Custom Whisper Model Path</label>
+            <input id="local-whisper-model-custom" name="local_whisper_model_custom" placeholder="Optional, e.g. models/ggml-medium.bin">
+          </div>
+          <div>
+            <label for="openai-transcription-model">OpenAI Transcription Model</label>
+            <select id="openai-transcription-model" name="openai_transcription_model"></select>
+          </div>
+        </div>
+
+        <div>
+          <label for="transcription-prompt">Transcription Prompt</label>
+          <input id="transcription-prompt" name="transcription_prompt" placeholder="Optional names/terms, e.g. Jim Keller, OpenAI, CUDA">
+        </div>
+
+        <div class="form-grid">
+          <div>
             <label for="notes-backend">Summary Backend</label>
             <select id="notes-backend" name="notes_backend">
               <option value="extractive">Local Extractive</option>
@@ -75,6 +116,7 @@
 
         <div class="model-status">
           <span id="whisper-model-pill" class="pill muted">Transcription model</span>
+          <span id="whisper-model-message" class="caption">Auto language detection avoids forcing English into Chinese text.</span>
           <span id="ollama-model-message" class="caption">Ollama is used for summaries, not audio transcription.</span>
         </div>
 
@@ -131,7 +173,19 @@
     <aside class="tool-panel watch-panel">
       <div class="panel-header">
         <h2>Saved Sources</h2>
-        <span id="watch-count" class="caption">0 saved</span>
+        <div class="saved-source-tools">
+          <span id="watch-count" class="caption">0 saved</span>
+          <label class="compact-label" for="watch-sort">Sort</label>
+          <select id="watch-sort" class="compact-select">
+            <option value="manual">Manual</option>
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="name-asc">Name A-Z</option>
+            <option value="name-desc">Name Z-A</option>
+            <option value="url-asc">URL</option>
+          </select>
+          <span id="watch-sort-status" class="caption">Manual order</span>
+        </div>
       </div>
 
       <form id="watch-form" class="stack compact">
@@ -156,6 +210,6 @@
     </div>
   </div>
 
-  <script type="module" src="/static/js/app.js"></script>
+  <script type="module" src="/static/js/app.js?v=20260511-transcription"></script>
 </body>
 </html>

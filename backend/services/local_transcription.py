@@ -1,8 +1,12 @@
 import re
 import shutil
 import subprocess
+from functools import lru_cache
 from dataclasses import dataclass
 from pathlib import Path
+
+
+DEFAULT_AUDIO_FILTER = "highpass=f=80,lowpass=f=8000,loudnorm=I=-16:TP=-1.5:LRA=11"
 
 
 @dataclass(frozen=True)
@@ -17,11 +21,15 @@ class LocalWhisperTranscription:
         self,
         whisper_cli: str = "whisper-cli",
         model_path: str = "models/ggml-small.bin",
-        language: str = "zh",
+        language: str = "auto",
+        prompt: str = "",
+        audio_filter: str = DEFAULT_AUDIO_FILTER,
     ):
         self.whisper_cli = whisper_cli
         self.model_path = model_path
-        self.language = language
+        self.language = language or "auto"
+        self.prompt = prompt
+        self.audio_filter = audio_filter
 
     def _validate(self):
         if shutil.which("ffmpeg") is None:
@@ -50,38 +58,17 @@ class LocalWhisperTranscription:
         transcript_path = output_base.with_suffix(".txt")
 
         try:
+            _run_command(_build_ffmpeg_command(video_path, audio_path, self.audio_filter))
             _run_command(
-                [
-                    "ffmpeg",
-                    "-v",
-                    "error",
-                    "-y",
-                    "-i",
-                    str(video_path),
-                    "-vn",
-                    "-ac",
-                    "1",
-                    "-ar",
-                    "16000",
-                    "-c:a",
-                    "pcm_s16le",
-                    str(audio_path),
-                ]
-            )
-
-            _run_command(
-                [
+                _build_whisper_command(
                     self.whisper_cli,
-                    "-m",
                     self.model_path,
-                    "-f",
-                    str(audio_path),
-                    "-l",
+                    audio_path,
                     self.language,
-                    "-otxt",
-                    "-of",
-                    str(output_base),
-                ]
+                    output_base,
+                    self.prompt,
+                    _supported_whisper_flags(self.whisper_cli),
+                )
             )
 
             text = transcript_path.read_text(encoding="utf-8")
@@ -106,6 +93,67 @@ def _normalize_whisper_text(text: str) -> str:
         line = re.sub(r"\s+", " ", line)
         lines.append(line)
     return "\n".join(lines) + ("\n" if lines else "")
+
+
+def _build_ffmpeg_command(video_path: Path, audio_path: Path, audio_filter: str = DEFAULT_AUDIO_FILTER) -> list[str]:
+    command = [
+        "ffmpeg",
+        "-v",
+        "error",
+        "-y",
+        "-i",
+        str(video_path),
+        "-vn",
+        "-ac",
+        "1",
+        "-ar",
+        "16000",
+    ]
+    if audio_filter:
+        command.extend(["-af", audio_filter])
+    command.extend(["-c:a", "pcm_s16le", str(audio_path)])
+    return command
+
+
+def _build_whisper_command(
+    whisper_cli: str,
+    model_path: str,
+    audio_path: Path,
+    language: str,
+    output_base: Path,
+    prompt: str = "",
+    supported_flags: set[str] | None = None,
+) -> list[str]:
+    flags = supported_flags or set()
+    command = [
+        whisper_cli,
+        "-m",
+        model_path,
+        "-f",
+        str(audio_path),
+        "-l",
+        language or "auto",
+        "-otxt",
+        "-of",
+        str(output_base),
+    ]
+    if "-nt" in flags or "--no-timestamps" in flags:
+        command.append("-nt")
+    if prompt and "--prompt" in flags:
+        command.extend(["--prompt", prompt])
+    if "-sns" in flags or "--suppress-nst" in flags:
+        command.append("-sns")
+    return command
+
+
+@lru_cache(maxsize=4)
+def _supported_whisper_flags(whisper_cli: str) -> set[str]:
+    try:
+        result = subprocess.run([whisper_cli, "--help"], capture_output=True, text=True, check=False)
+    except OSError:
+        return set()
+    help_text = f"{result.stdout}\n{result.stderr}"
+    return set(re.findall(r"(?<!\w)(?:--?[A-Za-z][A-Za-z0-9-]*)", help_text))
 
 
 def _run_command(command: list[str]):

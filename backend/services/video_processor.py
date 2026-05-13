@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from dataclasses import replace
 from pathlib import Path
 from typing import Optional
 
@@ -21,12 +22,16 @@ def transcribe_video(video_path: str, settings: Settings):
             whisper_cli=settings.local_whisper_cli,
             model_path=settings.local_whisper_model,
             language=settings.local_whisper_language,
+            prompt=settings.local_whisper_prompt,
+            audio_filter=settings.local_whisper_audio_filter,
         )
         return service.process_video(video_path)
 
     service = AudioTranscription(
         api_key=settings.openai_api_key,
         model=settings.transcription_model,
+        language=settings.local_whisper_language,
+        prompt=settings.local_whisper_prompt,
     )
     return service.process_video(video_path, settings.chunk_seconds)
 
@@ -34,6 +39,11 @@ def transcribe_video(video_path: str, settings: Settings):
 async def process_video(
     task_id: str,
     url: str,
+    transcription_backend: Optional[str] = None,
+    transcription_model: Optional[str] = None,
+    transcription_prompt: Optional[str] = None,
+    local_whisper_model: Optional[str] = None,
+    local_whisper_language: Optional[str] = None,
     notes_dir: Optional[str] = None,
     notes_backend: Optional[str] = None,
     ollama_model: Optional[str] = None,
@@ -41,6 +51,14 @@ async def process_video(
     settings = None
     try:
         settings = load_settings()
+        settings = resolve_transcription_settings(
+            settings,
+            transcription_backend,
+            transcription_model,
+            transcription_prompt,
+            local_whisper_model,
+            local_whisper_language,
+        )
         resolved_notes_backend = resolve_notes_backend(notes_backend, settings.notes_backend)
         resolved_ollama_model = ollama_model or settings.ollama_model
         set_task_status(task_id, "downloading", url=url)
@@ -102,6 +120,30 @@ def resolve_notes_backend(request_backend: Optional[str], default_backend: str) 
     if backend not in {"extractive", "ollama"}:
         raise RuntimeError("notes_backend must be extractive or ollama.")
     return backend
+
+
+def resolve_transcription_settings(
+    settings: Settings,
+    transcription_backend: Optional[str] = None,
+    transcription_model: Optional[str] = None,
+    transcription_prompt: Optional[str] = None,
+    local_whisper_model: Optional[str] = None,
+    local_whisper_language: Optional[str] = None,
+) -> Settings:
+    backend = (transcription_backend or settings.transcription_backend).lower()
+    if backend not in {"local", "openai"}:
+        raise ValueError("transcription_backend must be local or openai")
+    if backend == "openai" and not settings.openai_api_key:
+        raise ValueError("Set OPENAI_API_KEY before using the OpenAI transcription backend")
+
+    return replace(
+        settings,
+        transcription_backend=backend,
+        transcription_model=transcription_model or settings.transcription_model,
+        local_whisper_model=local_whisper_model or settings.local_whisper_model,
+        local_whisper_language=local_whisper_language or settings.local_whisper_language,
+        local_whisper_prompt=(transcription_prompt or settings.local_whisper_prompt or "").strip(),
+    )
 
 
 def persist_task_history(database_path: str, task_id: str):

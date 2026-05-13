@@ -23,9 +23,18 @@ class TranscriptionResult:
 
 
 class AudioTranscription:
-    def __init__(self, api_key: Optional[str] = None, model: str = DEFAULT_TRANSCRIPTION_MODEL, client=None):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model: str = DEFAULT_TRANSCRIPTION_MODEL,
+        language: str = "auto",
+        prompt: str = "",
+        client=None,
+    ):
         self.api_key = api_key
         self.model = model
+        self.language = language
+        self.prompt = prompt
         self.client = client or OpenAI(api_key=api_key)
 
     def split_audio_by_duration(self, audio_path: str, chunk_duration_sec: int) -> list:
@@ -66,10 +75,12 @@ class AudioTranscription:
         Transcribe audio using the OpenAI audio transcription API.
         """
         with open(audio_file_path, "rb") as audio_file:
-            transcription = self.client.audio.transcriptions.create(
-                model=self.model,
-                file=audio_file,
-            )
+            payload = {"model": self.model, "file": audio_file}
+            if self.language and self.language != "auto":
+                payload["language"] = self.language
+            if self.prompt:
+                payload["prompt"] = self.prompt
+            transcription = self.client.audio.transcriptions.create(**payload)
 
         if isinstance(transcription, str):
             return transcription
