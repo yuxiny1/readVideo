@@ -66,6 +66,10 @@ export class ProcessPanelComponent {
     this.workflow.validateOllamaSelection();
   }
 
+  setDeleteVideoAfterCompletion(deleteVideoAfterCompletion: boolean): void {
+    this.form.patch({deleteVideoAfterCompletion});
+  }
+
   modelLabel(model: OllamaModel): string {
     return [model.size_label, model.parameter_size, model.quantization_level].filter(Boolean).join(" · ");
   }

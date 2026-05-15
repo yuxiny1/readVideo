@@ -69,6 +69,9 @@ export interface TaskRecord {
   download_total_bytes?: number;
   download_speed?: number;
   download_eta?: number;
+  delete_video_after_completion?: boolean;
+  video_deleted_after_completion?: boolean;
+  video_delete_error?: string;
 }
 
 export interface ProcessPayload {
@@ -82,6 +85,7 @@ export interface ProcessPayload {
   ollama_model: string | null;
   reuse_task_id?: string | null;
   force_download?: boolean;
+  delete_video_after_completion?: boolean;
 }
 
 export interface DuplicateLookup {

@@ -44,12 +44,14 @@ class MainAppTest(unittest.TestCase):
             ollama_model=None,
             reuse_task_id=None,
             force_download=False,
+            delete_video_after_completion=False,
             transcription_backend=None,
             transcription_model=None,
             transcription_prompt=None,
             local_whisper_model=None,
             local_whisper_language=None,
         ):
+            self.assertTrue(delete_video_after_completion)
             set_task_status(task_id, "completed", url=url)
 
         with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
@@ -62,7 +64,11 @@ class MainAppTest(unittest.TestCase):
             client = TestClient(app)
             response = client.post(
                 "/process_video/",
-                json={"task_id": "test-task", "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"},
+                json={
+                    "task_id": "test-task",
+                    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                    "delete_video_after_completion": True,
+                },
             )
 
         self.assertEqual(response.status_code, 200)

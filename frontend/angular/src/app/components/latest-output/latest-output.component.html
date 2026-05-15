@@ -12,7 +12,9 @@
     <div>
       <dt>Video</dt>
       <dd>
-        @if (task?.video_path && task?.task_id) {
+        @if (task?.video_deleted_after_completion && task?.video_path) {
+          <span class="muted-inline">Deleted after completion: {{ taskPath(task, 'video_path') }}</span>
+        } @else if (task?.video_path && task?.task_id) {
           <a class="path-anchor" [href]="workflow.fileHref('video', task)" target="_blank" rel="noreferrer">{{ taskPath(task, 'video_path') }}</a>
         } @else {
           {{ taskPath(task, 'video_path') }}

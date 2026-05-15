@@ -13,6 +13,7 @@ The default transcription backend is local `whisper.cpp`, so OpenAI API access i
 - Creates a Markdown note with summary, structured sections, and full transcript.
 - Can summarize notes with either a local extractive summarizer or an optional Ollama local LLM.
 - Lets you choose the Markdown output folder per request.
+- Can delete the downloaded local video after a successful run while keeping the transcript, Markdown note, and history.
 - Provides a simple FastAPI frontend and JSON API.
 - Shows recent task status, elapsed time, and generated output paths in the browser.
 - Persists processed video history in SQLite, including source URL, video, transcript, and Markdown paths.
@@ -125,7 +126,8 @@ curl -X POST "http://localhost:8000/process_video/" \
     "url": "https://www.youtube.com/watch?v=<VIDEO_ID>",
     "notes_dir": "/Users/you/Documents/Notes",
     "notes_backend": "extractive",
-    "ollama_model": "qwen2.5:3b"
+    "ollama_model": "qwen2.5:3b",
+    "delete_video_after_completion": true
   }'
 ```
 

@@ -87,7 +87,12 @@ async def create_task(request: ProcessVideoRequest, background_tasks: Background
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     task_id = request.task_id or str(uuid4())
-    set_task_status(task_id, "queued", url=str(request.url))
+    set_task_status(
+        task_id,
+        "queued",
+        url=str(request.url),
+        delete_video_after_completion=request.delete_video_after_completion,
+    )
     queued_task = get_task(task_id)
     if queued_task is not None:
         HistoryStore(settings.database_path).upsert_task(queued_task)
@@ -100,6 +105,7 @@ async def create_task(request: ProcessVideoRequest, background_tasks: Background
         request.ollama_model,
         request.reuse_task_id,
         request.force_download,
+        request.delete_video_after_completion,
         request.transcription_backend,
         request.transcription_model,
         request.transcription_prompt,
