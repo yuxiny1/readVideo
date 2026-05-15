@@ -273,6 +273,13 @@ textarea {
   letter-spacing: 0;
 }
 
+input[type="checkbox"] {
+  width: 18px;
+  min-height: 18px;
+  padding: 0;
+  accent-color: var(--blue);
+}
+
 textarea {
   min-height: 76px;
   resize: vertical;
@@ -413,6 +420,35 @@ button:disabled {
 
 .field-status.error {
   color: var(--red);
+}
+
+.checkbox-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfbfd;
+}
+
+.checkbox-option input[type="checkbox"] {
+  margin-top: 2px;
+}
+
+.checkbox-option label {
+  margin-bottom: 3px;
+  color: var(--text);
+  font-weight: 760;
+}
+
+.checkbox-option p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
 }
 
 .compact-header {
@@ -688,6 +724,12 @@ dd {
   font-weight: 700;
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
+}
+
+.muted-inline {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+  font-weight: 700;
 }
 
 .watch-notes {

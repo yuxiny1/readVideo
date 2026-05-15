@@ -264,7 +264,8 @@ export class TaskWorkflowService {
 
     const elapsed = formatElapsed(task);
     if (task.status === "completed") {
-      this.setNotice(`Completed in ${elapsed}\nMarkdown: ${task.markdown_path || "-"}`, "ok");
+      const cleanupLine = this.videoCleanupLine(task);
+      this.setNotice(`Completed in ${elapsed}\nMarkdown: ${task.markdown_path || "-"}${cleanupLine}`, task.video_delete_error ? "error" : "ok");
       void this.loadRecentTasks();
       return;
     }
@@ -297,6 +298,14 @@ export class TaskWorkflowService {
       return `Writing Markdown summary with ${backend}${model}.`;
     }
     if (task.status === "completed") {
+      if (task.video_deleted_after_completion) {
+        return task.markdown_path
+          ? `Markdown ready: ${task.markdown_path}. Local video deleted after completion.`
+          : "Task completed. Local video deleted after completion.";
+      }
+      if (task.video_delete_error) {
+        return `Video cleanup failed: ${task.video_delete_error}`;
+      }
       return task.markdown_path ? `Markdown ready: ${task.markdown_path}` : "Task completed.";
     }
     if (task.status === "failed") {
@@ -320,6 +329,16 @@ export class TaskWorkflowService {
 
   private setNotice(text: string, kind: NoticeKind): void {
     this.notice.set({text, kind});
+  }
+
+  private videoCleanupLine(task: TaskRecord): string {
+    if (task.video_deleted_after_completion) {
+      return "\nVideo: deleted after completion";
+    }
+    if (task.video_delete_error) {
+      return `\nVideo cleanup failed: ${task.video_delete_error}`;
+    }
+    return "";
   }
 
   private localLog(status: string, message: string, level: TaskLog["level"] = "info"): TaskLog {

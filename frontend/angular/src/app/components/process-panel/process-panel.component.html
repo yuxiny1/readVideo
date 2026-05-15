@@ -114,6 +114,20 @@
       </div>
     </div>
 
+    <div class="checkbox-option">
+      <input
+        id="delete-video-after-completion"
+        name="delete_video_after_completion"
+        type="checkbox"
+        [ngModel]="form.form().deleteVideoAfterCompletion"
+        (ngModelChange)="setDeleteVideoAfterCompletion($event)"
+      >
+      <div>
+        <label for="delete-video-after-completion">Delete local video after completion</label>
+        <p>Default for this browser. Keeps the transcript and Markdown note, then removes the downloaded video when the run succeeds.</p>
+      </div>
+    </div>
+
     <button class="primary-button" type="submit">Start Processing</button>
   </form>
 
