@@ -1,0 +1,19 @@
+<header class="topbar">
+  <div>
+    <h1>readVideo Reader</h1>
+    <div class="meta-row">
+      <span class="pill muted">{{ status() }}</span>
+    </div>
+  </div>
+</header>
+
+<main class="history-workspace">
+  <section class="tool-panel reader-panel">
+    <div class="panel-header">
+      <h2>Markdown Reader</h2>
+      <a class="quiet-link small-link" routerLink="/favorites">Favorites</a>
+    </div>
+    <p class="reader-path">{{ path() || "Open a Markdown note from Favorites." }}</p>
+    <article class="markdown-reader" [innerHTML]="html()"></article>
+  </section>
+</main>

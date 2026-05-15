@@ -1,0 +1,16 @@
+<div class="app-layout">
+  <aside class="sidebar">
+    <a class="brand-link" href="/">readVideo</a>
+    <nav class="side-nav">
+      <a class="side-link" routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">New Video</a>
+      <a class="side-link" routerLink="/history" routerLinkActive="active">History</a>
+      <a class="side-link" routerLink="/favorites" routerLinkActive="active">Favorites</a>
+      <a class="side-link" routerLink="/reader" routerLinkActive="active">Reader</a>
+      <a class="side-link" href="/docs" target="_blank" rel="noreferrer">API Docs</a>
+    </nav>
+  </aside>
+
+  <div class="page-content">
+    <router-outlet />
+  </div>
+</div>

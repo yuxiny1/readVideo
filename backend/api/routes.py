@@ -17,8 +17,15 @@ from backend.api.schemas import (
 )
 from backend.core.config import load_settings
 from backend.core.task_state import get_task, list_tasks, set_task_status
+from backend.services.history_reuse import find_history_reuse_candidate
 from backend.services.markdown_files import list_markdown_files, read_markdown_file, resolve_markdown_file
-from backend.services.ollama_models import list_installed_models, pull_model, recommended_models
+from backend.services.ollama_models import (
+    list_installed_models,
+    list_ollama_models,
+    pull_model,
+    pull_ollama_model,
+    recommended_models,
+)
 from backend.services.source_updates import list_source_updates
 from backend.services.video_processor import process_video, resolve_notes_backend, resolve_transcription_settings
 from backend.services.whisper_models import (
@@ -74,7 +81,9 @@ async def create_task(request: ProcessVideoRequest, background_tasks: Background
             request.local_whisper_model,
             request.local_whisper_language,
         )
-    except (RuntimeError, ValueError) as exc:
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     task_id = request.task_id or str(uuid4())
@@ -86,14 +95,16 @@ async def create_task(request: ProcessVideoRequest, background_tasks: Background
         process_video,
         task_id,
         str(request.url),
-        transcription_backend=request.transcription_backend,
-        transcription_model=request.transcription_model,
-        transcription_prompt=request.transcription_prompt,
-        local_whisper_model=request.local_whisper_model,
-        local_whisper_language=request.local_whisper_language,
-        notes_dir=request.notes_dir,
-        notes_backend=request.notes_backend,
-        ollama_model=request.ollama_model,
+        request.notes_dir,
+        request.notes_backend,
+        request.ollama_model,
+        request.reuse_task_id,
+        request.force_download,
+        request.transcription_backend,
+        request.transcription_model,
+        request.transcription_prompt,
+        request.local_whisper_model,
+        request.local_whisper_language,
     )
 
     return {
@@ -119,6 +130,29 @@ async def get_tasks():
 @router.get("/api/history")
 async def list_history():
     return [record.__dict__ for record in get_history_store().list_records()]
+
+
+@router.get("/api/history/lookup")
+async def lookup_history(url: str):
+    settings = load_settings()
+    candidate = find_history_reuse_candidate(settings.database_path, url, settings.download_dir)
+    if candidate is None:
+        return {"found": False, "can_reuse": False}
+
+    record = candidate.record
+    return {
+        "found": True,
+        "can_reuse": candidate.can_reuse,
+        "video_exists": candidate.video_exists,
+        "transcript_exists": candidate.transcript_exists,
+        "markdown_exists": candidate.markdown_exists,
+        "record": record.__dict__,
+        "resolved_paths": {
+            "video": str(candidate.video_path) if candidate.video_path else "",
+            "transcript": str(candidate.transcript_path) if candidate.transcript_path else "",
+            "markdown": str(candidate.markdown_path) if candidate.markdown_path else "",
+        },
+    }
 
 
 @router.get("/api/history/{task_id}")
@@ -190,10 +224,7 @@ async def add_favorite(request: FavoriteRequest):
     if not record.summary and not record.markdown_path:
         raise HTTPException(status_code=400, detail="This task has no summary or Markdown note yet.")
 
-    try:
-        item = get_favorite_store().add_from_history(record, request.folder_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    item = get_favorite_store().add_from_history(record, request.folder_id)
     return item.__dict__
 
 
@@ -317,21 +348,60 @@ async def health():
     return {"status": "ok"}
 
 
-@router.get("/api/ollama/models")
-def get_ollama_models():
+@router.get("/app_config")
+async def app_config():
+    settings = load_settings()
     return {
+        "transcription_backend": settings.transcription_backend,
+        "download_dir": settings.download_dir,
+        "notes_dir": settings.notes_dir,
+        "notes_backend": settings.notes_backend,
+        "ollama_model": settings.ollama_model,
+        "ollama_model_options": recommended_models(),
+        "local_whisper_model": settings.local_whisper_model,
+        "local_whisper_language": settings.local_whisper_language,
+        "transcription_model": settings.transcription_model,
+        "transcription_prompt": settings.local_whisper_prompt,
+        "openai_transcription_model_options": OPENAI_TRANSCRIPTION_MODELS,
+    }
+
+
+@router.get("/api/ollama/models")
+async def get_ollama_models():
+    settings = load_settings()
+    installed = list_installed_models()
+    try:
+        models = list_ollama_models(settings.ollama_url)
+    except RuntimeError as exc:
+        return {
+            "status": "error",
+            "error": str(exc),
+            "default_model": settings.ollama_model,
+            "recommended": recommended_models(),
+            "installed": installed,
+            "models": [],
+        }
+
+    return {
+        "status": "ok",
+        "default_model": settings.ollama_model,
         "recommended": recommended_models(),
-        "installed": list_installed_models(),
+        "installed": installed,
+        "models": [model.__dict__ for model in models],
     }
 
 
 @router.post("/api/ollama/pull")
-def pull_ollama_model(request: OllamaPullRequest):
+async def pull_ollama_model_endpoint(request: OllamaPullRequest):
+    settings = load_settings()
     try:
-        output = pull_model(request.model)
+        result = pull_ollama_model(request.model, settings.ollama_url)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {"model": request.model, "output": output}
+        try:
+            result = {"output": pull_model(request.model)}
+        except RuntimeError as fallback_exc:
+            raise HTTPException(status_code=400, detail=str(fallback_exc)) from exc
+    return {"status": "ok", "model": request.model, "result": result}
 
 
 @router.get("/api/transcription/models")
@@ -360,21 +430,3 @@ def download_transcription_model(request: WhisperModelDownloadRequest):
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except OSError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
-@router.get("/app_config")
-async def app_config():
-    settings = load_settings()
-    return {
-        "transcription_backend": settings.transcription_backend,
-        "download_dir": settings.download_dir,
-        "notes_dir": settings.notes_dir,
-        "notes_backend": settings.notes_backend,
-        "ollama_model": settings.ollama_model,
-        "ollama_model_options": recommended_models(),
-        "local_whisper_model": settings.local_whisper_model,
-        "local_whisper_language": settings.local_whisper_language,
-        "transcription_model": settings.transcription_model,
-        "transcription_prompt": settings.local_whisper_prompt,
-        "openai_transcription_model_options": OPENAI_TRANSCRIPTION_MODELS,
-    }

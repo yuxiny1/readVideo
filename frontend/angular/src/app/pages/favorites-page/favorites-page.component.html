@@ -1,0 +1,160 @@
+<header class="topbar">
+  <div>
+    <h1>readVideo Favorites</h1>
+    <div class="meta-row">
+      <span class="pill muted">{{ favoritesCount() }}</span>
+    </div>
+  </div>
+</header>
+
+<main class="favorites-workspace">
+  <section class="tool-panel favorites-panel">
+    <div class="panel-header">
+      <h2>Favorite Summaries</h2>
+      <button class="secondary-button small-button" type="button" (click)="loadFavorites()">Refresh</button>
+    </div>
+    <div class="favorite-list">
+      @if (error()) {
+        <div class="empty-state">{{ error() }}</div>
+      }
+      @if (!filteredFavorites().length) {
+        <div class="empty-state">No favorite summaries in this folder yet.</div>
+      } @else {
+        @for (item of filteredFavorites(); track item.id) {
+          <article class="favorite-card">
+            <div class="history-card-header">
+              <div>
+                <h2>{{ title(item) }}</h2>
+                <a class="watch-url" [href]="item.url || '#'" target="_blank" rel="noreferrer">{{ item.url || "No URL" }}</a>
+              </div>
+              <span class="pill ok">{{ item.folder_name || "Unfiled" }}</span>
+            </div>
+
+            <section class="favorite-detail">
+              <h3>Title</h3>
+              <p>{{ title(item) }}</p>
+            </section>
+
+            <section class="favorite-detail">
+              <h3>Content</h3>
+              <pre class="summary-preview">{{ item.summary || "No summary saved." }}</pre>
+            </section>
+
+            <dl class="path-list">
+              <div><dt>Source Link</dt><dd><code>{{ item.url || "-" }}</code></dd></div>
+              <div><dt>Markdown</dt><dd><code>{{ item.markdown_path || "-" }}</code></dd></div>
+              <div><dt>Folder</dt><dd><code>{{ item.notes_dir || "-" }}</code></dd></div>
+            </dl>
+
+            <div class="folder-picker">
+              <label [for]="'favorite-folder-' + item.id">Favorite Folder</label>
+              <select [id]="'favorite-folder-' + item.id" [ngModel]="item.folder_id || ''" (ngModelChange)="assignFolder(item, $event)">
+                <option value="">Unfiled</option>
+                @for (folder of folders(); track folder.id) {
+                  <option [value]="folder.id">{{ folder.name }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="card-actions">
+              @if (item.markdown_path) {
+                <button class="secondary-button small-button" type="button" (click)="readFavorite(item)">Open Reader</button>
+                <a class="quiet-link small-link" [href]="downloadHref(item.markdown_path)">Download MD</a>
+              }
+              @if (item.notes_dir) {
+                <button class="secondary-button small-button" type="button" (click)="showFolder(item)">Show Folder</button>
+              }
+              <button class="danger-button small-button" type="button" (click)="deleteFavorite(item)">Remove</button>
+            </div>
+          </article>
+        }
+      }
+    </div>
+  </section>
+
+  <aside class="favorites-side">
+    <section class="tool-panel folder-panel">
+      <div class="panel-header">
+        <h2>Note Folders</h2>
+        <span class="caption">{{ folders().length }} folders</span>
+      </div>
+
+      <form class="stack compact" (ngSubmit)="createFolder()">
+        <div>
+          <label for="favorite-folder-name">Folder Name</label>
+          <input id="favorite-folder-name" name="favorite-folder-name" required placeholder="Research, AI, Writing..." [(ngModel)]="folderName">
+        </div>
+        <div>
+          <label for="favorite-folder-notes">Notes</label>
+          <textarea id="favorite-folder-notes" name="favorite-folder-notes" placeholder="What belongs here" [(ngModel)]="folderNotes"></textarea>
+        </div>
+        <button class="secondary-button full" type="submit">Create Folder</button>
+      </form>
+
+      <div class="folder-list">
+        <div class="folder-item">
+          <button class="folder-chip" [ngClass]="activeFolderId() === 'all' ? 'active' : ''" type="button" (click)="activeFolderId.set('all')">
+            <span>All</span><span>{{ folderCount("all") }}</span>
+          </button>
+        </div>
+        <div class="folder-item">
+          <button class="folder-chip" [ngClass]="activeFolderId() === 'unfiled' ? 'active' : ''" type="button" (click)="activeFolderId.set('unfiled')">
+            <span>Unfiled</span><span>{{ folderCount("unfiled") }}</span>
+          </button>
+        </div>
+        @for (folder of folders(); track folder.id) {
+          <div class="folder-item">
+            <button class="folder-chip" [ngClass]="activeFolderId() === folderId(folder) ? 'active' : ''" type="button" (click)="activeFolderId.set(folderId(folder))">
+              <span>{{ folder.name }}</span><span>{{ folderCount(folder.id) }}</span>
+            </button>
+            @if (folder.notes) {
+              <p>{{ folder.notes }}</p>
+            }
+            <button class="danger-button small-button" type="button" (click)="deleteFolder(folder)">Delete</button>
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="tool-panel files-panel">
+      <div class="panel-header">
+        <h2>Markdown Files</h2>
+        <span class="caption">{{ fileCount() }}</span>
+      </div>
+
+      <form class="stack compact" (ngSubmit)="loadMarkdownFiles()">
+        <div>
+          <label for="md-folder">Markdown Folder Path</label>
+          <input id="md-folder" name="md-folder" placeholder="notes" [(ngModel)]="markdownFolder">
+        </div>
+        <div class="button-row">
+          <button class="secondary-button" type="submit">Load Folder</button>
+          <button class="secondary-button" type="button" (click)="loadMarkdownFiles(defaultNotesDir())">Use Default</button>
+        </div>
+      </form>
+
+      <div class="file-list">
+        @if (!files().length) {
+          <div class="empty-state">No Markdown files in this folder.</div>
+        } @else {
+          @for (file of files(); track file.path) {
+            <article class="file-row">
+              <div>
+                <p class="watch-title">{{ file.name }}</p>
+                <code>{{ file.path }}</code>
+                <div class="history-meta">
+                  <span>{{ formatBytes(file.size_bytes) }}</span>
+                  <span>{{ file.modified_at }}</span>
+                </div>
+              </div>
+              <div class="card-actions">
+                <button class="secondary-button small-button" type="button" (click)="readMarkdownFile(file)">Open</button>
+                <a class="quiet-link small-link" [href]="downloadHref(file.path)">Download</a>
+              </div>
+            </article>
+          }
+        }
+      </div>
+    </section>
+  </aside>
+</main>

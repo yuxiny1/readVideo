@@ -1,0 +1,46 @@
+{
+  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "newProjectRoot": "frontend/angular",
+  "projects": {
+    "readvideo": {
+      "projectType": "application",
+      "root": "frontend/angular",
+      "sourceRoot": "frontend/angular/src",
+      "prefix": "rv",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "outputPath": "frontend/dist/readvideo",
+            "index": "frontend/angular/src/index.html",
+            "browser": "frontend/angular/src/main.ts",
+            "baseHref": "/",
+            "deployUrl": "/app/",
+            "tsConfig": "tsconfig.app.json",
+            "assets": [],
+            "styles": [
+              "frontend/css/styles.css",
+              "frontend/angular/src/styles.css"
+            ]
+          },
+          "configurations": {
+            "production": {
+              "optimization": true,
+              "outputHashing": "all",
+              "sourceMap": false
+            },
+            "development": {
+              "optimization": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        }
+      }
+    }
+  },
+  "cli": {
+    "analytics": false
+  }
+}

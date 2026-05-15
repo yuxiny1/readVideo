@@ -15,6 +15,10 @@ apiKey.json
 __pycache__/
 %(upload_date)s-%(title)s_transcription.txt
 .venv/
+node_modules/
+frontend/dist/
+.angular/
+readvideo.sqlite3.backup-*
 *.pyc
 *.wav
 *_chunk_*.wav

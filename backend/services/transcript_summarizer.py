@@ -145,9 +145,16 @@ def _request_ollama_summary(prompt: str, model: str, url: str, timeout_seconds: 
     try:
         with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
             data = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = _read_ollama_error(exc)
+        if "not found" in detail.lower() or "pull" in detail.lower():
+            raise RuntimeError(
+                f'Ollama model "{model}" is not installed. Run: ollama pull {model}'
+            ) from exc
+        raise RuntimeError(f"Ollama summary failed: {detail}") from exc
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
         raise RuntimeError(
-            f"Ollama summary failed. Make sure Ollama is running and the model is installed: ollama pull {model}"
+            f"Ollama summary failed. Make sure Ollama is running at {url} and the model is installed: ollama pull {model}"
         ) from exc
 
     text = str(data.get("response", "")).strip()
@@ -178,6 +185,14 @@ def _tokens(sentence: str) -> list[str]:
     ascii_words = re.findall(r"[A-Za-z][A-Za-z0-9-]{2,}", sentence.lower())
     chinese_words = re.findall(r"[\u4e00-\u9fff]{2,4}", sentence)
     return ascii_words + chinese_words
+
+
+def _read_ollama_error(exc: urllib.error.HTTPError) -> str:
+    try:
+        data = json.loads(exc.read().decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return exc.reason or "Unknown Ollama HTTP error"
+    return str(data.get("error") or exc.reason or "Unknown Ollama HTTP error")
 
 
 def _trim_sentence(sentence: str, max_len: int = 190) -> str:
@@ -290,14 +305,22 @@ def _ranked_windows(windows: list[SummaryWindow], used_line_numbers: set[int]) -
     return [window for _, _, window in scored]
 
 
-def section_title(section: str) -> str:
-    best_label = "Transcript Segment"
+def section_title(section: str, index: Optional[int] = None) -> str:
+    best_label = ""
     best_score = 0
+    second_score = 0
     for label, keywords in TOPIC_GROUPS:
         score = _keyword_score(section, keywords)
         if score > best_score:
+            second_score = best_score
             best_score = score
             best_label = label
+        elif score > second_score:
+            second_score = score
+
+    fallback = f"Section {index}" if index is not None else "Section"
+    if best_score < 5 or best_score - second_score < 2:
+        return fallback
     return best_label
 
 

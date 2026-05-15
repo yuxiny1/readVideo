@@ -1,0 +1,67 @@
+<section class="tool-panel output-panel">
+  <div class="panel-header">
+    <h2>Latest Output</h2>
+    <div class="button-row">
+      <button class="secondary-button" type="button" [disabled]="!canFavorite(workflow.latestTask())" (click)="workflow.favoriteLatestSummary()">Favorite Summary</button>
+      <button class="secondary-button" type="button" [disabled]="!workflow.latestSummary()" (click)="workflow.copySummary()">Copy Summary</button>
+    </div>
+  </div>
+
+  @let task = workflow.latestTask();
+  <dl class="output-list">
+    <div>
+      <dt>Video</dt>
+      <dd>
+        @if (task?.video_path && task?.task_id) {
+          <a class="path-anchor" [href]="workflow.fileHref('video', task)" target="_blank" rel="noreferrer">{{ taskPath(task, 'video_path') }}</a>
+        } @else {
+          {{ taskPath(task, 'video_path') }}
+        }
+      </dd>
+    </div>
+    <div>
+      <dt>Transcript</dt>
+      <dd>
+        @if (task?.transcription_path && task?.task_id) {
+          <a class="path-anchor" [href]="workflow.fileHref('transcript', task)" target="_blank" rel="noreferrer">{{ taskPath(task, 'transcription_path') }}</a>
+        } @else {
+          {{ taskPath(task, 'transcription_path') }}
+        }
+      </dd>
+    </div>
+    <div>
+      <dt>Markdown</dt>
+      <dd>
+        @if (task?.markdown_path && task?.task_id) {
+          <a class="path-anchor" [href]="workflow.fileHref('markdown', task)" target="_blank" rel="noreferrer">{{ taskPath(task, 'markdown_path') }}</a>
+        } @else {
+          {{ taskPath(task, 'markdown_path') }}
+        }
+      </dd>
+    </div>
+  </dl>
+
+  <pre class="summary-box">{{ workflow.latestSummary() || (task?.status === 'failed' ? task?.error || 'Task failed.' : 'No completed task yet.') }}</pre>
+
+  <div class="recent-block">
+    <div class="panel-header compact-header">
+      <h2>Recent Tasks</h2>
+      <button class="secondary-button small-button" type="button" (click)="workflow.loadRecentTasks()">Refresh</button>
+    </div>
+    <div class="recent-tasks">
+      @if (workflow.recentTasks().length) {
+        @for (recent of workflow.recentTasks(); track recent.task_id) {
+          <button class="task-row" type="button" (click)="openTask(recent.task_id)">
+            <span>
+              <strong>{{ workflow.statusLabel(recent.status) }}</strong>
+              <span>{{ recent.url || 'No URL' }}</span>
+            </span>
+            <span>{{ workflow.formatElapsed(recent) }}</span>
+          </button>
+        }
+      } @else {
+        <div class="empty-state">No tasks yet.</div>
+      }
+    </div>
+  </div>
+</section>
