@@ -62,7 +62,7 @@
                 <a class="quiet-link small-link" [href]="downloadHref(item.markdown_path)">Download MD</a>
               }
               @if (item.notes_dir) {
-                <button class="secondary-button small-button" type="button" (click)="showFolder(item)">Show Folder</button>
+                <button class="secondary-button small-button" type="button" (click)="browseFolder(item)">Browse Folder</button>
               }
               <button class="danger-button small-button" type="button" (click)="deleteFavorite(item)">Remove</button>
             </div>
@@ -112,47 +112,6 @@
             }
             <button class="danger-button small-button" type="button" (click)="deleteFolder(folder)">Delete</button>
           </div>
-        }
-      </div>
-    </section>
-
-    <section class="tool-panel files-panel">
-      <div class="panel-header">
-        <h2>Markdown Files</h2>
-        <span class="caption">{{ fileCount() }}</span>
-      </div>
-
-      <form class="stack compact" (ngSubmit)="loadMarkdownFiles()">
-        <div>
-          <label for="md-folder">Markdown Folder Path</label>
-          <input id="md-folder" name="md-folder" placeholder="notes" [(ngModel)]="markdownFolder">
-        </div>
-        <div class="button-row">
-          <button class="secondary-button" type="submit">Load Folder</button>
-          <button class="secondary-button" type="button" (click)="loadMarkdownFiles(defaultNotesDir())">Use Default</button>
-        </div>
-      </form>
-
-      <div class="file-list">
-        @if (!files().length) {
-          <div class="empty-state">No Markdown files in this folder.</div>
-        } @else {
-          @for (file of files(); track file.path) {
-            <article class="file-row">
-              <div>
-                <p class="watch-title">{{ file.name }}</p>
-                <code>{{ file.path }}</code>
-                <div class="history-meta">
-                  <span>{{ formatBytes(file.size_bytes) }}</span>
-                  <span>{{ file.modified_at }}</span>
-                </div>
-              </div>
-              <div class="card-actions">
-                <button class="secondary-button small-button" type="button" (click)="readMarkdownFile(file)">Open</button>
-                <a class="quiet-link small-link" [href]="downloadHref(file.path)">Download</a>
-              </div>
-            </article>
-          }
         }
       </div>
     </section>
