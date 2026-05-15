@@ -39,6 +39,26 @@ class NotesTest(unittest.TestCase):
         self.assertIn("## Structured Notes", markdown)
         self.assertTrue(result.summary)
 
+    def test_structured_note_uses_numbered_section_when_title_is_unclear(self):
+        transcript = "\n".join(
+            [
+                "今天先讲第一个部分然后再讲第二个部分",
+                "这里是一段普通转录内容没有明确主题标签",
+                "后面继续补充一些背景和例子",
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = write_markdown_note(
+                transcript,
+                "普通影片",
+                "https://www.youtube.com/watch?v=test",
+                tmpdir,
+            )
+            markdown = Path(result.markdown_path).read_text(encoding="utf-8")
+
+        self.assertIn("### Section 1", markdown)
+        self.assertNotIn("Transcript Segment", markdown)
+
     def test_summarize_transcript_returns_limited_items(self):
         transcript = "\n".join(f"這是一段關於市場和美元體系的內容 {i}" for i in range(20))
         summary = summarize_transcript(transcript, max_items=3)

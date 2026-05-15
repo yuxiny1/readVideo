@@ -1,0 +1,17 @@
+<header class="topbar">
+  <div>
+    <h1>readVideo</h1>
+    <div class="meta-row">
+      <span class="pill" [ngClass]="workflow.health() === 'Online' ? 'ok' : workflow.health() === 'Offline' ? 'error' : 'muted'">
+        {{ workflow.health() }}
+      </span>
+      <span class="pill muted">{{ workflow.backendLabel() }}</span>
+    </div>
+  </div>
+</header>
+
+<main class="workspace">
+  <rv-process-panel />
+  <rv-latest-output />
+  <rv-saved-sources />
+</main>

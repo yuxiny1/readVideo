@@ -38,6 +38,25 @@ class HistoryStoreTest(unittest.TestCase):
         self.assertEqual(records[0].status, "completed")
         self.assertEqual(records[0].markdown_path, "notes/video.md")
 
+    def test_find_latest_by_url_matches_youtube_video_id(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store = HistoryStore(str(Path(tmpdir) / "history.sqlite3"))
+            store.upsert_task(
+                {
+                    "task_id": "task-1",
+                    "status": "completed",
+                    "url": "https://www.youtube.com/watch?v=abc123&utm_source=demo",
+                    "video_path": "downloads/video.mp4",
+                    "created_at": "2026-05-09T10:00:00",
+                    "updated_at": "2026-05-09T10:00:00",
+                }
+            )
+
+            record = store.find_latest_by_url("https://youtu.be/abc123")
+
+        self.assertIsNotNone(record)
+        self.assertEqual(record.task_id, "task-1")
+
 
 if __name__ == "__main__":
     unittest.main()

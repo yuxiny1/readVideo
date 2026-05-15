@@ -1,0 +1,69 @@
+<aside class="tool-panel watch-panel">
+  <div class="panel-header">
+    <h2>Saved Sources</h2>
+    <span class="caption">{{ items().length }} saved</span>
+  </div>
+
+  <form class="stack compact" (ngSubmit)="addWatchItem()">
+    <div>
+      <label for="watch-name">Name</label>
+      <input id="watch-name" name="watch-name" required placeholder="Channel or playlist name" [(ngModel)]="newItem.name">
+    </div>
+    <div>
+      <label for="watch-url">URL</label>
+      <input id="watch-url" name="watch-url" required placeholder="https://www.youtube.com/@..." [(ngModel)]="newItem.url">
+    </div>
+    <div>
+      <label for="watch-notes">Notes</label>
+      <textarea id="watch-notes" name="watch-notes" placeholder="Topic, cadence, or priority" [(ngModel)]="newItem.notes"></textarea>
+    </div>
+    <button class="secondary-button full" type="submit">Save Source</button>
+  </form>
+
+  <div class="watchlist">
+    @if (errors().list) {
+      <div class="empty-state">{{ errors().list }}</div>
+    } @else if (!items().length) {
+      <div class="empty-state">No saved sources yet.</div>
+    } @else {
+      @for (item of items(); track item.id) {
+        <article class="watch-item">
+          <p class="watch-title">{{ item.name }}</p>
+          <a class="watch-url" [href]="item.url" target="_blank" rel="noreferrer">{{ item.url }}</a>
+          @if (item.notes) {
+            <p class="watch-notes">{{ item.notes }}</p>
+          }
+          <div class="watch-actions">
+            <button class="secondary-button" type="button" (click)="useUrl(item.url)">Use</button>
+            <button class="secondary-button" type="button" (click)="loadUpdates(item)">Updates</button>
+            <button class="danger-button" type="button" (click)="deleteItem(item)">Delete</button>
+          </div>
+          <div class="source-updates">
+            @if (errors()[item.id]) {
+              <div class="empty-state">{{ errors()[item.id] }}</div>
+            }
+            @if (updates()[item.id]?.length) {
+              <div class="source-update-list">
+                @for (update of updates()[item.id]; track update.url) {
+                  <div class="source-update">
+                    <div>
+                      <p class="watch-title">{{ update.title }}</p>
+                      <a class="watch-url" [href]="update.url" target="_blank" rel="noreferrer">{{ update.url }}</a>
+                      @if (updateMeta(update)) {
+                        <p class="watch-notes">{{ updateMeta(update) }}</p>
+                      }
+                    </div>
+                    <div class="watch-actions">
+                      <button class="secondary-button small-button" type="button" (click)="useUrl(update.url)">Use</button>
+                      <button class="secondary-button small-button" type="button" (click)="downloadUrl(update.url)">Download</button>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </article>
+      }
+    }
+  </div>
+</aside>

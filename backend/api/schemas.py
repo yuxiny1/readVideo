@@ -14,6 +14,16 @@ class ProcessVideoRequest(BaseModel):
     notes_dir: Optional[str] = Field(default=None, min_length=1)
     notes_backend: Optional[str] = Field(default=None, min_length=1)
     ollama_model: Optional[str] = Field(default=None, min_length=1)
+    reuse_task_id: Optional[str] = Field(default=None, min_length=1)
+    force_download: bool = False
+
+
+class OllamaPullRequest(BaseModel):
+    model: str = Field(min_length=1)
+
+
+class WhisperModelDownloadRequest(BaseModel):
+    model: str = Field(min_length=1)
 
 
 class WatchItemRequest(BaseModel):
@@ -30,14 +40,6 @@ class WatchItemUpdateRequest(BaseModel):
 
 class WatchlistReorderRequest(BaseModel):
     item_ids: list[int] = Field(min_length=1)
-
-
-class OllamaPullRequest(BaseModel):
-    model: str = Field(min_length=1)
-
-
-class WhisperModelDownloadRequest(BaseModel):
-    model: str = Field(min_length=1)
 
 
 class FavoriteRequest(BaseModel):

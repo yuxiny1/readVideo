@@ -1,0 +1,62 @@
+<header class="topbar">
+  <div>
+    <h1>readVideo History</h1>
+    <div class="meta-row">
+      <span class="pill muted">{{ countLabel() }}</span>
+    </div>
+  </div>
+</header>
+
+<main class="history-workspace">
+  <section class="tool-panel">
+    <div class="panel-header">
+      <h2>Downloaded And Transcribed Videos</h2>
+      <button class="secondary-button small-button" type="button" (click)="loadHistory()">Refresh</button>
+    </div>
+
+    <div class="history-list">
+      @if (error()) {
+        <div class="empty-state">{{ error() }}</div>
+      } @else if (!records().length) {
+        <div class="empty-state">No processed videos yet.</div>
+      } @else {
+        @for (record of records(); track record.task_id) {
+          <article class="history-card">
+            <div class="history-card-header">
+              <div>
+                <h2>{{ title(record) }}</h2>
+                <a class="watch-url" [href]="record.url || '#'" target="_blank" rel="noreferrer">{{ record.url || "No URL" }}</a>
+              </div>
+              <span class="pill" [ngClass]="statusClass(record)">{{ record.status }}</span>
+            </div>
+
+            <dl class="path-list">
+              <div><dt>Source</dt><dd><code>{{ record.url || "-" }}</code></dd></div>
+              <div><dt>Video</dt><dd><code>{{ record.video_path || "-" }}</code></dd></div>
+              <div><dt>Transcript</dt><dd><code>{{ record.transcription_path || "-" }}</code></dd></div>
+              <div><dt>Markdown</dt><dd><code>{{ record.markdown_path || "-" }}</code></dd></div>
+            </dl>
+
+            <div class="history-meta">
+              <span>Updated: {{ record.updated_at || "-" }}</span>
+              <span>Elapsed: {{ elapsed(record) }}</span>
+              <span>Transcription: {{ record.transcription_backend || "-" }}</span>
+              <span>Summary: {{ record.summary_backend || "-" }}</span>
+            </div>
+
+            <div class="card-actions">
+              <button class="secondary-button small-button" type="button" [disabled]="!canFavorite(record)" (click)="favorite(record)">Favorite</button>
+              @if (record.markdown_path) {
+                <a class="quiet-link small-link" [href]="'/api/markdown_files/download?path=' + encodeURIComponent(record.markdown_path)">Download MD</a>
+              }
+            </div>
+
+            @if (record.error) {
+              <pre class="history-error">{{ record.error }}</pre>
+            }
+          </article>
+        }
+      }
+    </div>
+  </section>
+</main>

@@ -101,7 +101,9 @@ def render_markdown_note(
 
     lines.extend(["", "## Structured Notes", ""])
     for index, section in enumerate(sections, start=1):
-        lines.extend([f"### {index}. {section_title(section)}", "", section, ""])
+        title = section_title(section, index=index)
+        heading = title if title.startswith("Section ") else f"{index}. {title}"
+        lines.extend([f"### {heading}", "", section, ""])
 
     lines.extend(["## Full Transcript", "", transcript_text.strip(), ""])
     return "\n".join(lines)

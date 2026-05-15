@@ -1,0 +1,187 @@
+<section class="tool-panel process-panel">
+  <div class="panel-header">
+    <h2>New Video</h2>
+    <span class="caption">{{ workflow.taskIdLabel() }}</span>
+  </div>
+
+  <form class="stack" (ngSubmit)="submit()">
+    <div>
+      <label for="video-url">YouTube URL</label>
+      <input
+        id="video-url"
+        name="url"
+        required
+        placeholder="https://www.youtube.com/watch?v=..."
+        [ngModel]="form.form().url"
+        (ngModelChange)="setUrl($event)"
+      >
+    </div>
+
+    <div>
+      <label for="notes-dir">Markdown Output Folder</label>
+      <input
+        id="notes-dir"
+        name="notes_dir"
+        [placeholder]="workflow.config()?.notes_dir || 'notes'"
+        [ngModel]="form.form().notesDir"
+        (ngModelChange)="setNotesDir($event)"
+      >
+    </div>
+
+    <div class="form-grid">
+      <div>
+        <label for="transcription-backend">Transcript Engine</label>
+        <select
+          id="transcription-backend"
+          name="transcription_backend"
+          [ngModel]="form.form().transcriptionBackend"
+          (ngModelChange)="setTranscriptionBackend($event)"
+        >
+          <option value="local">Local Whisper</option>
+          <option value="openai">OpenAI Transcription</option>
+        </select>
+        <p class="field-status muted">Turns video audio into text. Local Whisper runs on this Mac.</p>
+      </div>
+      <div>
+        <label for="local-whisper-model">Whisper Model Path</label>
+        <input
+          id="local-whisper-model"
+          name="local_whisper_model"
+          [placeholder]="workflow.config()?.local_whisper_model || 'models/ggml-small.bin'"
+          [ngModel]="form.form().localWhisperModel"
+          (ngModelChange)="setLocalWhisperModel($event)"
+        >
+        <p class="field-status muted">Use a local whisper.cpp GGML model file.</p>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div>
+        <label for="local-whisper-language">Whisper Language</label>
+        <input
+          id="local-whisper-language"
+          name="local_whisper_language"
+          [placeholder]="workflow.config()?.local_whisper_language || 'auto'"
+          [ngModel]="form.form().localWhisperLanguage"
+          (ngModelChange)="setLocalWhisperLanguage($event)"
+        >
+      </div>
+      <div>
+        <label for="transcription-model">OpenAI Transcription Model</label>
+        <input
+          id="transcription-model"
+          name="transcription_model"
+          [placeholder]="workflow.config()?.transcription_model || 'gpt-4o-mini-transcribe'"
+          [ngModel]="form.form().transcriptionModel"
+          (ngModelChange)="setTranscriptionModel($event)"
+        >
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div>
+        <label for="notes-backend">Summary Method</label>
+        <select
+          id="notes-backend"
+          name="notes_backend"
+          [ngModel]="form.form().notesBackend"
+          (ngModelChange)="setNotesBackend($event)"
+        >
+          <option value="extractive">Fast Local Extractive</option>
+          <option value="ollama">Ollama Local LLM</option>
+        </select>
+        <p class="field-status muted">Extractive is fast rule-based notes. Ollama asks a local LLM for a richer summary.</p>
+      </div>
+      <div>
+        <label for="ollama-model">Ollama Model</label>
+        <div class="input-action-row">
+          <input
+            id="ollama-model"
+            name="ollama_model"
+            list="ollama-models"
+            [placeholder]="workflow.config()?.ollama_model || 'qwen2.5:3b'"
+            [ngModel]="form.form().ollamaModel"
+            (ngModelChange)="setOllamaModel($event)"
+          >
+          <button class="secondary-button small-button" type="button" (click)="workflow.loadOllamaModels()">Refresh</button>
+        </div>
+        <datalist id="ollama-models">
+          @for (model of workflow.ollamaModels(); track model.name) {
+            <option [value]="model.name" [label]="modelLabel(model)"></option>
+          }
+        </datalist>
+        <p class="field-status" [ngClass]="workflow.ollamaStatus().kind">{{ workflow.ollamaStatus().text }}</p>
+      </div>
+    </div>
+
+    <button class="primary-button" type="submit">Start Processing</button>
+  </form>
+
+  <div class="progress-strip" aria-label="Task progress">
+    @for (step of steps; track step) {
+      <span class="step" [ngClass]="stepClass(step)">{{ workflow.statusLabel(step) }}</span>
+    }
+  </div>
+
+  <div class="notice" [ngClass]="workflow.notice().kind">{{ workflow.notice().text }}</div>
+
+  @if (workflow.duplicate(); as duplicate) {
+    <div class="duplicate-panel">
+      <div>
+        <h2>Already Downloaded</h2>
+        <p class="duplicate-message">
+          {{ duplicate.record?.title || duplicate.record?.url || 'This video' }} is already in history and the local video file is still present.
+        </p>
+      </div>
+      <dl class="output-list compact-output">
+        <div>
+          <dt>Video</dt>
+          <dd>{{ duplicate.resolved_paths?.video || duplicate.record?.video_path || '-' }}</dd>
+        </div>
+        <div>
+          <dt>Transcript</dt>
+          <dd>{{ duplicate.resolved_paths?.transcript || duplicate.record?.transcription_path || '-' }}</dd>
+        </div>
+        <div>
+          <dt>Markdown</dt>
+          <dd>{{ duplicate.resolved_paths?.markdown || duplicate.record?.markdown_path || '-' }}</dd>
+        </div>
+      </dl>
+      <div class="button-row duplicate-actions">
+        <button class="secondary-button" type="button" [disabled]="!(duplicate.record?.summary || duplicate.markdown_exists)" (click)="workflow.useExistingDuplicateOutput()">
+          {{ duplicate.record?.summary || duplicate.markdown_exists ? 'Use Existing Output' : 'No Existing Summary' }}
+        </button>
+        <button class="primary-button" type="button" (click)="workflow.regenerateDuplicateSummary()">Regenerate Summary</button>
+        <button class="danger-button" type="button" (click)="workflow.forceDuplicateRedownload()">Re-download</button>
+      </div>
+    </div>
+  }
+
+  <div class="task-meter" aria-label="Download progress">
+    <div class="task-phase-title">{{ workflow.phaseTitle() }}</div>
+    <div class="task-phase-detail">{{ workflow.phaseDetail() }}</div>
+    <div class="meter-track">
+      <div class="meter-fill" [style.width.%]="workflow.progressPercent()"></div>
+    </div>
+  </div>
+
+  <div class="run-log-block">
+    <div class="panel-header compact-header">
+      <h2>Run Log</h2>
+      <span class="caption">{{ workflow.logs().length }} events</span>
+    </div>
+    <ol class="task-log">
+      @if (workflow.logs().length) {
+        @for (entry of workflow.logs(); track entry.time + entry.message) {
+          <li [ngClass]="entry.level">
+            <time>{{ entry.time }}</time>
+            <span>{{ workflow.statusLabel(entry.status) }}</span>
+            <p>{{ entry.message }}</p>
+          </li>
+        }
+      } @else {
+        <li class="muted">Idle.</li>
+      }
+    </ol>
+  </div>
+</section>
