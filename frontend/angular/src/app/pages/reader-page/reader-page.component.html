@@ -1,19 +1,111 @@
-<header class="topbar">
+<header class="topbar reader-topbar">
   <div>
     <h1>readVideo Reader</h1>
     <div class="meta-row">
-      <span class="pill muted">{{ status() }}</span>
+      <span class="pill" [ngClass]="status() === 'Open' ? 'ok' : status() === 'Error' ? 'error' : 'muted'">{{ status() }}</span>
+      <span class="pill muted">{{ libraryCount() }}</span>
     </div>
   </div>
+  <a class="quiet-link small-link" routerLink="/favorites">Favorites</a>
 </header>
 
-<main class="history-workspace">
-  <section class="tool-panel reader-panel">
-    <div class="panel-header">
-      <h2>Markdown Reader</h2>
-      <a class="quiet-link small-link" routerLink="/favorites">Favorites</a>
+<main class="reader-workspace">
+  <aside class="reader-library">
+    <section class="tool-panel reader-library-panel">
+      <div class="panel-header">
+        <h2>Library</h2>
+        <button class="secondary-button small-button" type="button" (click)="initialize()">Refresh</button>
+      </div>
+
+      @if (error()) {
+        <div class="empty-state">{{ error() }}</div>
+      }
+
+      <section class="reader-section">
+        <h3>Favorite Folders</h3>
+        <div class="reader-folder-grid">
+          <button class="folder-chip" [ngClass]="activeFolderId() === 'all' ? 'active' : ''" type="button" (click)="activeFolderId.set('all')">
+            <span>All</span><span>{{ folderCount("all") }}</span>
+          </button>
+          <button class="folder-chip" [ngClass]="activeFolderId() === 'unfiled' ? 'active' : ''" type="button" (click)="activeFolderId.set('unfiled')">
+            <span>Unfiled</span><span>{{ folderCount("unfiled") }}</span>
+          </button>
+          @for (folder of folders(); track folder.id) {
+            <button class="folder-chip" [ngClass]="activeFolderId() === folderId(folder) ? 'active' : ''" type="button" (click)="activeFolderId.set(folderId(folder))">
+              <span>{{ folder.name }}</span><span>{{ folderCount(folder.id) }}</span>
+            </button>
+          }
+        </div>
+      </section>
+
+      <section class="reader-section">
+        <div class="section-heading-row">
+          <h3>Favorite Notes</h3>
+          <span class="caption">{{ filteredFavorites().length }}</span>
+        </div>
+        <input
+          name="reader-search"
+          placeholder="Search titles, summaries, paths..."
+          [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)"
+        >
+        <div class="reader-note-list">
+          @if (!filteredFavorites().length) {
+            <div class="empty-state">No favorites match this folder or search.</div>
+          } @else {
+            @for (item of filteredFavorites(); track item.id) {
+              <button class="reader-note-item" [ngClass]="isActivePath(item.markdown_path) ? 'active' : ''" type="button" (click)="openFavorite(item)">
+                <strong>{{ titleFor(item) }}</strong>
+                <span>{{ item.folder_name || "Unfiled" }}</span>
+                <code>{{ item.markdown_path || "No Markdown path" }}</code>
+              </button>
+            }
+          }
+        </div>
+      </section>
+
+      <section class="reader-section">
+        <div class="section-heading-row">
+          <h3>Markdown Files</h3>
+          <span class="caption">{{ fileCount() }}</span>
+        </div>
+        <form class="stack compact" (ngSubmit)="loadMarkdownFiles(markdownFolder, true)">
+          <div>
+            <label for="reader-md-folder">Folder Path</label>
+            <input id="reader-md-folder" name="reader-md-folder" placeholder="notes" [(ngModel)]="markdownFolder">
+          </div>
+          <div class="button-row">
+            <button class="secondary-button" type="submit">Load</button>
+            <button class="secondary-button" type="button" (click)="loadMarkdownFiles(defaultNotesDir(), true)">Default</button>
+          </div>
+        </form>
+
+        <div class="reader-file-list">
+          @if (!files().length) {
+            <div class="empty-state">No Markdown files in this folder.</div>
+          } @else {
+            @for (file of files(); track file.path) {
+              <button class="reader-file-item" [ngClass]="isActivePath(file.path) ? 'active' : ''" type="button" (click)="openFile(file)">
+                <strong>{{ file.name }}</strong>
+                <span>{{ formatBytes(file.size_bytes) }} · {{ file.modified_at }}</span>
+              </button>
+            }
+          }
+        </div>
+      </section>
+    </section>
+  </aside>
+
+  <section class="reader-stage">
+    <div class="reader-document-bar">
+      <div>
+        <h2>{{ title() }}</h2>
+        <p class="reader-path">{{ path() || documentMeta() }}</p>
+      </div>
+      @if (path()) {
+        <a class="quiet-link small-link" [href]="downloadHref()">Download MD</a>
+      }
     </div>
-    <p class="reader-path">{{ path() || "Open a Markdown note from Favorites." }}</p>
-    <article class="markdown-reader" [innerHTML]="html()"></article>
+    <article class="markdown-reader modern-reader" [innerHTML]="html()"></article>
   </section>
 </main>

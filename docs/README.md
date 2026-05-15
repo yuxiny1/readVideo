@@ -102,7 +102,8 @@ If port `8000` is already in use, it automatically falls back to the next availa
 
 The frontend is an Angular TypeScript app under `frontend/angular/`. FastAPI serves the built app and the frontend calls the same FastAPI process for task status, history, favorites, Markdown output, and saved YouTube sources. Main navigation lives in the left sidebar.
 Open `/history` to review previously downloaded/transcribed videos and their saved file paths.
-Open `/favorites` to review favorite summaries, organize them into note folders, jump to their Markdown folders, list `.md` files, download notes, or open them in the dedicated `/reader` page.
+Open `/favorites` to review favorite summaries and organize them into note folders.
+Open `/reader` to switch between favorite folders, browse local Markdown folders, read `.md` files, and download notes.
 
 Build the Angular app before starting FastAPI. If the build output is missing, FastAPI returns a clear `503` instead of serving stale legacy pages.
 

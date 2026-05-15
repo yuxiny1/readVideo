@@ -4,8 +4,7 @@ import {FormsModule} from "@angular/forms";
 import {Router} from "@angular/router";
 
 import {ReadvideoApiService} from "../../services/readvideo-api.service";
-import {formatBytes} from "../../shared/format";
-import {FavoriteFolder, FavoriteSummary, MarkdownFile} from "../../types/readvideo.types";
+import {FavoriteFolder, FavoriteSummary} from "../../types/readvideo.types";
 
 @Component({
   selector: "rv-favorites-page",
@@ -20,13 +19,9 @@ export class FavoritesPageComponent implements OnInit {
   readonly favorites = signal<FavoriteSummary[]>([]);
   readonly folders = signal<FavoriteFolder[]>([]);
   readonly activeFolderId = signal("all");
-  readonly files = signal<MarkdownFile[]>([]);
-  readonly defaultNotesDir = signal("notes");
   readonly error = signal("");
-  readonly fileCount = signal("0 files");
   folderName = "";
   folderNotes = "";
-  markdownFolder = "notes";
 
   readonly filteredFavorites = computed(() => {
     const active = this.activeFolderId();
@@ -42,19 +37,7 @@ export class FavoritesPageComponent implements OnInit {
   }
 
   async initialize(): Promise<void> {
-    await this.loadConfig();
     await Promise.all([this.loadFolders(), this.loadFavorites()]);
-    await this.loadMarkdownFiles(this.markdownFolder);
-  }
-
-  async loadConfig(): Promise<void> {
-    try {
-      const config = await this.api.appConfig();
-      this.defaultNotesDir.set(config.notes_dir || "notes");
-      this.markdownFolder ||= this.defaultNotesDir();
-    } catch {
-      this.markdownFolder = this.defaultNotesDir();
-    }
   }
 
   async loadFavorites(): Promise<void> {
@@ -116,39 +99,17 @@ export class FavoritesPageComponent implements OnInit {
     }
   }
 
-  async loadMarkdownFiles(directory = this.markdownFolder.trim() || this.defaultNotesDir()): Promise<void> {
-    this.fileCount.set("Loading");
-    try {
-      const files = await this.api.markdownFiles(directory);
-      this.markdownFolder = directory;
-      this.files.set(files);
-      this.fileCount.set(`${files.length} files`);
-    } catch (error) {
-      this.files.set([]);
-      this.fileCount.set("Error");
-      this.error.set(this.message(error));
-    }
-  }
-
-  async readMarkdownFile(file: MarkdownFile): Promise<void> {
-    await this.openMarkdownPath(file.path);
-  }
-
   async openMarkdownPath(path: string): Promise<void> {
     await this.router.navigate(["/reader"], {queryParams: {path}});
   }
 
-  showFolder(item: FavoriteSummary): void {
-    this.markdownFolder = item.notes_dir;
-    void this.loadMarkdownFiles(item.notes_dir);
+  async browseFolder(item: FavoriteSummary): Promise<void> {
+    if (!item.notes_dir) return;
+    await this.router.navigate(["/reader"], {queryParams: {folder: item.notes_dir}});
   }
 
   title(item: FavoriteSummary): string {
     return item.title || item.url || item.task_id;
-  }
-
-  formatBytes(value: number): string {
-    return formatBytes(value);
   }
 
   downloadHref(path: string): string {
