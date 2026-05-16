@@ -390,7 +390,8 @@ export class TaskWorkflowService {
     if (task.status === "organizing_notes") {
       const backend = task.summary_backend || task.notes_backend || "extractive";
       const model = task.ollama_model ? ` · ${task.ollama_model}` : "";
-      return `Writing Markdown summary with ${backend}${model}.`;
+      const label = backend === "ollama" ? `Better Local AI Notes${model}` : "Quick Notes";
+      return `Writing Markdown with ${label}.`;
     }
     if (task.status === "completed") {
       if (task.video_deleted_after_completion) {

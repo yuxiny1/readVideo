@@ -5,6 +5,7 @@ from backend.services.local_transcription import (
     _build_ffmpeg_command,
     _build_whisper_command,
     _normalize_whisper_text,
+    _resolve_transcript_path,
 )
 
 
@@ -30,6 +31,24 @@ class LocalTranscriptionTest(unittest.TestCase):
         self.assertIn("highpass=f=80,lowpass=f=8000", command)
         self.assertIn("16000", command)
         self.assertEqual(command[-1], "audio.wav")
+
+    def test_resolve_transcript_path_accepts_whisper_default_output_name(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            directory = Path(tmpdir)
+            video_path = directory / " 计算机科学与技术——入门课40讲全   p01   1.mp4"
+            audio_path = directory / " 计算机科学与技术——入门课40讲全   p01   1.local-whisper.wav"
+            output_base = directory / "计算机科学与技术——入门课40讲全 p01 1_transcription"
+            expected_path = output_base.with_suffix(".txt")
+            whisper_path = video_path.with_suffix(".txt")
+            whisper_path.write_text("hello", encoding="utf-8")
+
+            resolved = _resolve_transcript_path(expected_path, output_base, audio_path, video_path)
+
+            self.assertEqual(resolved, expected_path)
+            self.assertTrue(expected_path.exists())
+            self.assertFalse(whisper_path.exists())
 
     def test_build_whisper_command_defaults_to_auto_and_quality_flags(self):
         command = _build_whisper_command(
