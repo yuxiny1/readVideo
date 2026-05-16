@@ -17,6 +17,7 @@ class WhisperModelOption:
     path: str
     url: str
     notes: str
+    recommended: bool = False
 
 
 RECOMMENDED_WHISPER_MODELS = [
@@ -34,7 +35,7 @@ RECOMMENDED_WHISPER_MODELS = [
         size="465MB",
         path="models/ggml-small.bin",
         url=f"{BASE_URL}/ggml-small.bin",
-        notes="Good default speed, but can hallucinate on English or mixed-language speech.",
+        notes="Fast, but more likely to repeat or hallucinate on noisy, English, or mixed-language speech.",
     ),
     WhisperModelOption(
         name="ggml-medium.bin",
@@ -51,6 +52,7 @@ RECOMMENDED_WHISPER_MODELS = [
         path="models/ggml-large-v3-turbo.bin",
         url=f"{BASE_URL}/ggml-large-v3-turbo.bin",
         notes="Best local quality/speed tradeoff here; recommended for final notes.",
+        recommended=True,
     ),
 ]
 

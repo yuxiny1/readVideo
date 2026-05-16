@@ -20,7 +20,7 @@ class LocalWhisperTranscription:
     def __init__(
         self,
         whisper_cli: str = "whisper-cli",
-        model_path: str = "models/ggml-small.bin",
+        model_path: str = "models/ggml-large-v3-turbo.bin",
         language: str = "auto",
         prompt: str = "",
         audio_filter: str = DEFAULT_AUDIO_FILTER,
@@ -86,12 +86,16 @@ class LocalWhisperTranscription:
 
 def _normalize_whisper_text(text: str) -> str:
     lines = []
+    previous_line = ""
     for line in text.splitlines():
         line = line.strip()
         if not line:
             continue
         line = re.sub(r"\s+", " ", line)
+        if line == previous_line:
+            continue
         lines.append(line)
+        previous_line = line
     return "\n".join(lines) + ("\n" if lines else "")
 
 
@@ -143,6 +147,14 @@ def _build_whisper_command(
         command.extend(["--prompt", prompt])
     if "-sns" in flags or "--suppress-nst" in flags:
         command.append("-sns")
+    if "-nf" in flags or "--no-fallback" in flags:
+        command.append("-nf")
+    if "-mc" in flags or "--max-context" in flags:
+        command.extend(["-mc", "0"])
+    if "-sow" in flags or "--split-on-word" in flags:
+        command.append("-sow")
+    if "-ml" in flags or "--max-len" in flags:
+        command.extend(["-ml", "96"])
     return command
 
 

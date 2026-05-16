@@ -12,7 +12,9 @@ import {
   ProcessPayload,
   SourceUpdatesResponse,
   TaskRecord,
+  TranscriptionModelsResponse,
   WatchItem,
+  WhisperModelDownloadResponse,
 } from "../types/readvideo.types";
 
 @Injectable({providedIn: "root"})
@@ -27,6 +29,17 @@ export class ReadvideoApiService {
 
   async ollamaModels(): Promise<OllamaModelsResponse> {
     return this.request<OllamaModelsResponse>("/api/ollama/models");
+  }
+
+  async transcriptionModels(): Promise<TranscriptionModelsResponse> {
+    return this.request<TranscriptionModelsResponse>("/api/transcription/models");
+  }
+
+  async downloadTranscriptionModel(model: string): Promise<WhisperModelDownloadResponse> {
+    return this.request<WhisperModelDownloadResponse>("/api/transcription/models/download", {
+      method: "POST",
+      body: JSON.stringify({model}),
+    });
   }
 
   async lookupHistory(url: string): Promise<DuplicateLookup> {

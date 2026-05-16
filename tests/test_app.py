@@ -155,6 +155,17 @@ class MainAppTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "error")
 
+    def test_transcription_models_endpoint_lists_recommended_whisper(self):
+        with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}, clear=True):
+            client = TestClient(app)
+            response = client.get("/api/transcription/models")
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        recommended = [model for model in data["whisper"] if model["recommended"]]
+        self.assertEqual(recommended[0]["name"], "ggml-large-v3-turbo.bin")
+        self.assertIn("auto", [language["code"] for language in data["languages"]])
+
     def test_tasks_endpoint_lists_recent_task_metadata(self):
         set_task_status("task-1", "queued", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")
         set_task_status("task-1", "completed", markdown_path="notes/demo.md")

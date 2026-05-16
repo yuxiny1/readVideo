@@ -40,18 +40,27 @@
           <option value="local">Local Whisper</option>
           <option value="openai">OpenAI Transcription</option>
         </select>
-        <p class="field-status muted">Turns video audio into text. Local Whisper runs on this Mac.</p>
+        <p class="field-status muted">Local Whisper runs on this Mac. Use Large v3 Turbo when smaller models repeat phrases.</p>
       </div>
       <div>
-        <label for="local-whisper-model">Whisper Model Path</label>
-        <input
-          id="local-whisper-model"
-          name="local_whisper_model"
-          [placeholder]="workflow.config()?.local_whisper_model || 'models/ggml-small.bin'"
-          [ngModel]="form.form().localWhisperModel"
-          (ngModelChange)="setLocalWhisperModel($event)"
-        >
-        <p class="field-status muted">Use a local whisper.cpp GGML model file.</p>
+        <label for="local-whisper-model">Local Whisper Model</label>
+        <div class="input-action-row">
+          <select
+            id="local-whisper-model"
+            name="local_whisper_model"
+            [ngModel]="form.form().localWhisperModel"
+            (ngModelChange)="setLocalWhisperModel($event)"
+          >
+            @if (form.form().localWhisperModel && !workflow.resolveWhisperModel(form.form().localWhisperModel)) {
+              <option [value]="form.form().localWhisperModel">Custom: {{ form.form().localWhisperModel }}</option>
+            }
+            @for (model of workflow.whisperModels(); track model.name) {
+              <option [value]="model.path">{{ model.label }} · {{ whisperModelLabel(model) }}</option>
+            }
+          </select>
+          <button class="secondary-button small-button" type="button" (click)="downloadWhisperModel()">Download</button>
+        </div>
+        <p class="field-status" [ngClass]="workflow.whisperStatus().kind">{{ workflow.whisperStatus().text }}</p>
       </div>
     </div>
 
@@ -61,10 +70,17 @@
         <input
           id="local-whisper-language"
           name="local_whisper_language"
+          list="whisper-languages"
           [placeholder]="workflow.config()?.local_whisper_language || 'auto'"
           [ngModel]="form.form().localWhisperLanguage"
           (ngModelChange)="setLocalWhisperLanguage($event)"
         >
+        <datalist id="whisper-languages">
+          @for (language of workflow.transcriptionLanguages(); track language.code) {
+            <option [value]="language.code" [label]="language.label"></option>
+          }
+        </datalist>
+        <p class="field-status muted">Use auto for mixed Chinese/English videos.</p>
       </div>
       <div>
         <label for="transcription-model">OpenAI Transcription Model</label>
