@@ -11,7 +11,7 @@ For local transcription quality, `ggml-large-v3-turbo.bin` is the recommended de
 - Transcribes speech in the original language; it does not translate between languages.
 - Uses local `whisper.cpp` by default, with optional OpenAI transcription support.
 - Saves the raw transcript next to the downloaded video.
-- Creates a Markdown note with summary and segmented notes; the raw transcript stays in its own `.txt` file instead of being embedded in the note.
+- Creates a Markdown note with key points, a narrative summary paragraph, and segmented notes; the raw transcript stays in its own `.txt` file instead of being embedded in the note.
 - Can create Quick Notes with simple local rules, or Better Local AI Notes with an optional Ollama model.
 - Lets you choose the Markdown output folder per request.
 - Can delete the downloaded local video after a successful run while keeping the transcript, Markdown note, and history.
@@ -81,7 +81,7 @@ ollama pull qwen2.5:3b
 READVIDEO_NOTES_BACKEND=ollama
 ```
 
-`READVIDEO_NOTES_BACKEND=extractive` means Quick Notes: fastest, no AI model needed. `READVIDEO_NOTES_BACKEND=ollama` means Better Local AI Notes: slower, but asks a local Ollama model to turn the full transcript into a readable summary plus article-style sections. The Markdown note no longer embeds the full transcript; the transcript remains available as its separate `.txt` output.
+`READVIDEO_NOTES_BACKEND=extractive` means Quick Notes: fastest, no AI model needed. `READVIDEO_NOTES_BACKEND=ollama` means Better Local AI Notes: slower, but asks a local Ollama model to turn the full transcript into key points, a narrative summary paragraph, and article-style sections. The Markdown note no longer embeds the full transcript; the transcript remains available as its separate `.txt` output.
 
 Optional OpenAI backend:
 

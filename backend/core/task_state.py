@@ -99,7 +99,7 @@ def _default_status_message(status: str) -> str:
         "queued": "Task queued.",
         "downloading": "Downloading video with yt-dlp.",
         "transcribing": "Transcribing audio.",
-        "organizing_notes": "Writing Markdown summary and segmented notes.",
+        "organizing_notes": "Writing paragraph summary and segmented notes.",
         "completed": "Task completed.",
         "failed": "Task failed.",
     }.get(status, status.replace("_", " ").capitalize())
