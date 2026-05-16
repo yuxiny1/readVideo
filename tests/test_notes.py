@@ -146,6 +146,7 @@ class NotesTest(unittest.TestCase):
                 return "\n".join(
                     [
                         "## Summary",
+                        "这节内容先从现代社会对计算技术的依赖讲起，再回到早期计算工具和机械计算的发展。",
                         "- 产品定位: 先定义用户问题，再说明产品要解决的核心场景。",
                         "- 执行路径: 后半段整理执行步骤和后续行动。",
                         "",
@@ -165,6 +166,7 @@ class NotesTest(unittest.TestCase):
         self.assertGreater(len(prompts), 2)
         self.assertIn("片段 1/", prompts[0])
         self.assertIn("文章式笔记", prompts[-1])
+        self.assertEqual(article.summary_paragraphs[0], "这节内容先从现代社会对计算技术的依赖讲起，再回到早期计算工具和机械计算的发展。")
         self.assertEqual(article.summary_items[0], "产品定位: 先定义用户问题，再说明产品要解决的核心场景。")
         self.assertEqual([section.title for section in article.sections], ["产品定位", "执行路径"])
         self.assertIn("下一步行动", article.sections[1].body)
@@ -172,6 +174,7 @@ class NotesTest(unittest.TestCase):
     def test_write_markdown_note_uses_ollama_article_sections_without_full_transcript(self):
         article = ArticleNote(
             summary_items=["核心结论: 这节课把计算机科学入门拆成清晰路径。"],
+            summary_paragraphs=["这节课把原始转录重新压缩成正文摘要，先交代课程目标，再说明学习路线。"],
             sections=[
                 ArticleSection(
                     title="学习路线",
@@ -194,6 +197,8 @@ class NotesTest(unittest.TestCase):
             markdown = Path(result.markdown_path).read_text(encoding="utf-8")
 
         self.assertIn("## Summary", markdown)
+        self.assertIn("### Narrative Summary", markdown)
+        self.assertIn("这节课把原始转录重新压缩成正文摘要", markdown)
         self.assertIn("## Segmented Notes", markdown)
         self.assertIn("### 1. 学习路线", markdown)
         self.assertIn("先建立课程地图", markdown)

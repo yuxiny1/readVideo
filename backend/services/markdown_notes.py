@@ -45,6 +45,7 @@ def write_markdown_note(
         sections=article_note.sections,
         summary_items=article_note.summary_items,
         transcript_path=transcript_path,
+        summary_paragraphs=article_note.summary_paragraphs,
     )
 
     notes_dir = Path(output_dir).expanduser()
@@ -54,7 +55,7 @@ def write_markdown_note(
 
     return NoteResult(
         markdown_path=str(note_path),
-        summary="\n".join(f"- {item}" for item in article_note.summary_items),
+        summary=render_summary_text(article_note),
         section_count=len(article_note.sections),
         summary_backend=summary_backend,
     )
@@ -75,6 +76,7 @@ def build_article_note(
         return ArticleNote(
             summary_items=article_note.summary_items or summarize_transcript(transcript_text),
             sections=article_note.sections or _extractive_sections(transcript_text),
+            summary_paragraphs=article_note.summary_paragraphs,
         )
 
     summary_items = summarize_transcript_with_backend(
@@ -83,7 +85,11 @@ def build_article_note(
         ollama_model=ollama_model,
         ollama_url=ollama_url,
     )
-    return ArticleNote(summary_items=summary_items, sections=_extractive_sections(transcript_text))
+    return ArticleNote(
+        summary_items=summary_items,
+        sections=_extractive_sections(transcript_text),
+        summary_paragraphs=_paragraphs_from_summary_items(summary_items),
+    )
 
 
 def _extractive_sections(transcript_text: str) -> list[ArticleSection]:
@@ -120,6 +126,7 @@ def render_markdown_note(
     sections: Iterable[ArticleSection | str],
     summary_items: Iterable[str],
     transcript_path: Optional[str] = None,
+    summary_paragraphs: Optional[Iterable[str]] = None,
 ) -> str:
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
     lines = [
@@ -131,10 +138,15 @@ def render_markdown_note(
 
     lines.extend(["", "## Summary", ""])
     summary_items = list(summary_items)
+    summary_paragraphs = list(summary_paragraphs or [])
     if summary_items:
         lines.extend(f"- {item}" for item in summary_items)
     else:
         lines.append("- No summary could be generated.")
+    if summary_paragraphs:
+        lines.extend(["", "### Narrative Summary", ""])
+        for paragraph in summary_paragraphs:
+            lines.extend([paragraph, ""])
 
     lines.extend(["", "## Segmented Notes", ""])
     for index, section in enumerate(sections, start=1):
@@ -144,6 +156,27 @@ def render_markdown_note(
         lines.extend([f"### {heading}", "", article_section.body, ""])
 
     return "\n".join(lines)
+
+
+def render_summary_text(article_note: ArticleNote) -> str:
+    parts: list[str] = []
+    if article_note.summary_paragraphs:
+        parts.extend(article_note.summary_paragraphs)
+    if article_note.summary_items:
+        if parts:
+            parts.append("")
+        parts.extend(f"- {item}" for item in article_note.summary_items)
+    return "\n".join(parts)
+
+
+def _paragraphs_from_summary_items(summary_items: list[str], max_items: int = 5) -> list[str]:
+    if not summary_items:
+        return []
+    fragments = [re.sub(r"^[^:：]{2,18}[:：]\s*", "", item).strip() for item in summary_items[:max_items]]
+    fragments = [fragment for fragment in fragments if fragment]
+    if not fragments:
+        return []
+    return ["；".join(fragments).rstrip("；。") + "。"]
 
 
 def _coerce_section(section: ArticleSection | str, index: int) -> ArticleSection:

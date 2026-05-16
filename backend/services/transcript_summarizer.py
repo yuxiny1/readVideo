@@ -2,7 +2,7 @@ import json
 import re
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 
@@ -23,6 +23,7 @@ class ArticleSection:
 class ArticleNote:
     summary_items: list[str]
     sections: list[ArticleSection]
+    summary_paragraphs: list[str] = field(default_factory=list)
 
 
 PROMOTIONAL_PATTERNS = (
@@ -149,7 +150,7 @@ def build_article_note_with_ollama(
 ) -> ArticleNote:
     chunks = _prompt_chunks(transcript_text, max_chars=chunk_chars)
     if not chunks:
-        return ArticleNote(summary_items=[], sections=[])
+        return ArticleNote(summary_items=[], sections=[], summary_paragraphs=[])
 
     if len(chunks) == 1:
         prompt = _article_note_prompt(chunks[0], max_summary_items, max_sections)
@@ -179,7 +180,11 @@ def build_article_note_with_ollama(
         return article
 
     fallback_summary = _parse_markdown_bullets("\n".join(chunk_notes))[:max_summary_items]
-    return ArticleNote(summary_items=fallback_summary, sections=[])
+    return ArticleNote(
+        summary_items=fallback_summary,
+        sections=[],
+        summary_paragraphs=_paragraphs_from_summary_items(fallback_summary),
+    )
 
 
 def _request_ollama_summary(prompt: str, model: str, url: str, timeout_seconds: int) -> list[str]:
@@ -258,7 +263,9 @@ def _article_note_prompt(material: str, max_summary_items: int, max_sections: in
         "请用完整内容做全局组织，不要只看开头，不要重复同一句话，不要把逐字稿粘贴进笔记。\n\n"
         "输出必须严格使用下面的 Markdown 结构：\n"
         "## Summary\n"
-        f"- 5 到 {max_summary_items} 条全局摘要，每条都是「主题: 具体结论/事实/行动点」\n\n"
+        "先写 1 到 2 段正文式总述，每段 2 到 4 句，像文章摘要一样概括原文整体内容、主线和结论。\n"
+        "然后写 5 到 "
+        f"{max_summary_items} 条 Markdown bullet，每条都是「主题: 具体结论/事实/行动点」。\n\n"
         "## Sections\n"
         f"### 1. 清楚的章节标题\n"
         "用 2 到 5 句自然段总结这一段的核心内容；必要时可加 1 到 3 条 bullet。"
@@ -272,6 +279,8 @@ def _article_note_prompt(material: str, max_summary_items: int, max_sections: in
 
 def _parse_article_note(text: str, max_summary_items: int = 7, max_sections: int = 8) -> ArticleNote:
     summary_items: list[str] = []
+    summary_paragraphs: list[str] = []
+    summary_paragraph_lines: list[str] = []
     sections: list[ArticleSection] = []
     mode = ""
     current_title = ""
@@ -286,10 +295,20 @@ def _parse_article_note(text: str, max_summary_items: int = 7, max_sections: int
         current_title = ""
         current_body = []
 
+    def flush_summary_paragraph():
+        nonlocal summary_paragraph_lines
+        paragraph = _clean_summary_paragraph(" ".join(summary_paragraph_lines))
+        if paragraph:
+            summary_paragraphs.append(paragraph)
+        summary_paragraph_lines = []
+
     for raw_line in text.splitlines():
         line = raw_line.rstrip()
         stripped = line.strip()
         if not stripped:
+            if mode == "summary":
+                flush_summary_paragraph()
+                continue
             if current_body:
                 current_body.append("")
             continue
@@ -299,14 +318,20 @@ def _parse_article_note(text: str, max_summary_items: int = 7, max_sections: int
             heading_text = heading_match.group(2).strip()
             heading_lower = heading_text.lower()
             if any(word in heading_lower for word in ("summary", "摘要", "总结", "總結", "要点", "要點")):
+                flush_summary_paragraph()
                 flush_section()
                 mode = "summary"
                 continue
+            if mode == "summary" and any(word in heading_lower for word in ("key points", "要点", "要點", "重点", "重點")):
+                flush_summary_paragraph()
+                continue
             if any(word in heading_lower for word in ("section", "sections", "章节", "章節", "分段", "正文", "笔记", "筆記")) and heading_match.group(1) in {"#", "##"}:
+                flush_summary_paragraph()
                 flush_section()
                 mode = "sections"
                 continue
             if mode == "sections" or heading_match.group(1) in {"###", "####"}:
+                flush_summary_paragraph()
                 flush_section()
                 mode = "sections"
                 current_title = heading_text
@@ -315,7 +340,10 @@ def _parse_article_note(text: str, max_summary_items: int = 7, max_sections: int
         if mode == "summary":
             item = _parse_summary_line(stripped)
             if item:
+                flush_summary_paragraph()
                 summary_items.append(item)
+            elif not _is_summary_label(stripped):
+                summary_paragraph_lines.append(stripped)
             continue
 
         if mode == "sections":
@@ -326,13 +354,17 @@ def _parse_article_note(text: str, max_summary_items: int = 7, max_sections: int
         if item and len(summary_items) < max_summary_items:
             summary_items.append(item)
 
+    flush_summary_paragraph()
     flush_section()
     if not sections:
         sections = _parse_numbered_sections(text, max_sections)
 
+    summary_items = _dedupe_items(summary_items)[:max_summary_items]
+    summary_paragraphs = _dedupe_paragraphs(summary_paragraphs) or _paragraphs_from_summary_items(summary_items)
     return ArticleNote(
-        summary_items=_dedupe_items(summary_items)[:max_summary_items],
+        summary_items=summary_items,
         sections=sections[:max_sections],
+        summary_paragraphs=summary_paragraphs[:2],
     )
 
 
@@ -345,6 +377,33 @@ def _parse_summary_line(line: str) -> str:
     if not has_marker and ":" not in item and "：" not in item:
         return ""
     return _trim_sentence(item, max_len=240)
+
+
+def _is_summary_label(line: str) -> bool:
+    normalized = line.strip().strip(":：").lower()
+    return normalized in {
+        "key points",
+        "summary",
+        "overview",
+        "narrative summary",
+        "摘要",
+        "总结",
+        "總結",
+        "要点",
+        "要點",
+        "关键要点",
+        "關鍵要點",
+        "正文摘要",
+        "段落摘要",
+    }
+
+
+def _clean_summary_paragraph(paragraph: str) -> str:
+    paragraph = re.sub(r"^\s*(?:[-*]|\d+[.)])\s*", "", paragraph).strip()
+    paragraph = re.sub(r"\s+", " ", paragraph)
+    if not paragraph or _is_promotional(paragraph) or _is_summary_label(paragraph):
+        return ""
+    return _trim_sentence(paragraph, max_len=520)
 
 
 def _parse_numbered_sections(text: str, max_sections: int) -> list[ArticleSection]:
@@ -395,6 +454,26 @@ def _dedupe_items(items: list[str]) -> list[str]:
         if item and not _is_duplicate_summary(item, selected):
             selected.append(item)
     return selected
+
+
+def _dedupe_paragraphs(paragraphs: list[str]) -> list[str]:
+    selected: list[str] = []
+    for paragraph in paragraphs:
+        if paragraph and not _is_duplicate_summary(paragraph, selected):
+            selected.append(paragraph)
+    return selected
+
+
+def _paragraphs_from_summary_items(items: list[str], max_items: int = 5) -> list[str]:
+    selected = [_strip_summary_label(item) for item in items[:max_items] if item]
+    if not selected:
+        return []
+    paragraph = "；".join(selected).rstrip("。；") + "。"
+    return [_trim_sentence(paragraph, max_len=520)]
+
+
+def _strip_summary_label(item: str) -> str:
+    return re.sub(r"^[^:：]{2,18}[:：]\s*", "", item).strip()
 
 
 def _tokens(sentence: str) -> list[str]:

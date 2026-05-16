@@ -107,7 +107,7 @@
           <option value="ollama">Better Local AI Notes</option>
         </select>
         <p class="field-status muted">
-          {{ form.form().notesBackend === 'ollama' ? 'Slower, but uses a local Ollama model to create article-style sections.' : 'Fastest option. No AI model needed; uses simple local rules.' }}
+          {{ form.form().notesBackend === 'ollama' ? 'Slower, but uses a local Ollama model to write a paragraph summary and article-style sections.' : 'Fastest option. No AI model needed; uses simple local rules.' }}
         </p>
       </div>
       @if (form.form().notesBackend === 'ollama') {
