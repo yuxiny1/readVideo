@@ -4,6 +4,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 from backend.services.notes import (
+    ArticleNote,
+    ArticleSection,
+    build_article_note_with_ollama,
     chunk_transcript,
     summarize_transcript,
     summarize_transcript_with_backend,
@@ -36,7 +39,9 @@ class NotesTest(unittest.TestCase):
 
         self.assertIn("# 測試影片", markdown)
         self.assertIn("## Summary", markdown)
-        self.assertIn("## Structured Notes", markdown)
+        self.assertIn("## Segmented Notes", markdown)
+        self.assertNotIn("## Full Transcript", markdown)
+        self.assertNotIn("Transcript:", markdown)
         self.assertTrue(result.summary)
 
     def test_structured_note_uses_numbered_section_when_title_is_unclear(self):
@@ -127,6 +132,74 @@ class NotesTest(unittest.TestCase):
         self.assertIn("片段", prompts[0])
         self.assertIn("高质量中文总结", prompts[-1])
         self.assertEqual(summary, ["全局总结: 覆盖产品定位、用户问题、执行步骤和后续行动"])
+
+    def test_ollama_article_note_builds_sections_from_full_chunks(self):
+        transcript = "\n".join(
+            [f"第一部分讲产品定位和用户问题 {index}" for index in range(10)]
+            + [f"第二部分讲执行步骤和后续行动 {index}" for index in range(10)]
+        )
+        prompts = []
+
+        def fake_request(prompt, model, url, timeout_seconds):
+            prompts.append(prompt)
+            if "中文长文编辑" in prompt:
+                return "\n".join(
+                    [
+                        "## Summary",
+                        "- 产品定位: 先定义用户问题，再说明产品要解决的核心场景。",
+                        "- 执行路径: 后半段整理执行步骤和后续行动。",
+                        "",
+                        "## Sections",
+                        "### 1. 产品定位",
+                        "内容先解释用户问题，再把产品定位放在具体场景里。",
+                        "",
+                        "### 2. 执行路径",
+                        "后半段说明执行步骤，并收束到下一步行动。",
+                    ]
+                )
+            return "- 片段要点: 保留当前片段的关键事实\n- 章节主题: 产品定位"
+
+        with patch("backend.services.transcript_summarizer._request_ollama_text", side_effect=fake_request):
+            article = build_article_note_with_ollama(transcript, chunk_chars=90)
+
+        self.assertGreater(len(prompts), 2)
+        self.assertIn("片段 1/", prompts[0])
+        self.assertIn("文章式笔记", prompts[-1])
+        self.assertEqual(article.summary_items[0], "产品定位: 先定义用户问题，再说明产品要解决的核心场景。")
+        self.assertEqual([section.title for section in article.sections], ["产品定位", "执行路径"])
+        self.assertIn("下一步行动", article.sections[1].body)
+
+    def test_write_markdown_note_uses_ollama_article_sections_without_full_transcript(self):
+        article = ArticleNote(
+            summary_items=["核心结论: 这节课把计算机科学入门拆成清晰路径。"],
+            sections=[
+                ArticleSection(
+                    title="学习路线",
+                    body="先建立课程地图，再理解每一讲之间的依赖关系。",
+                )
+            ],
+        )
+        with tempfile.TemporaryDirectory() as tmpdir, patch(
+            "backend.services.markdown_notes.build_article_note_with_ollama",
+            return_value=article,
+        ):
+            result = write_markdown_note(
+                "完整逐字稿第一行\n完整逐字稿第二行",
+                "计算机科学入门",
+                "https://www.bilibili.com/video/BV18s411A7Rj/",
+                tmpdir,
+                transcript_path="/tmp/transcript.txt",
+                summary_backend="ollama",
+            )
+            markdown = Path(result.markdown_path).read_text(encoding="utf-8")
+
+        self.assertIn("## Summary", markdown)
+        self.assertIn("## Segmented Notes", markdown)
+        self.assertIn("### 1. 学习路线", markdown)
+        self.assertIn("先建立课程地图", markdown)
+        self.assertNotIn("## Full Transcript", markdown)
+        self.assertNotIn("/tmp/transcript.txt", markdown)
+        self.assertNotIn("完整逐字稿第二行", markdown)
 
 
 if __name__ == "__main__":
