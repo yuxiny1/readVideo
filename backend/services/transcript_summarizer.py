@@ -145,8 +145,8 @@ def build_article_note_with_ollama(
     url: str = "http://127.0.0.1:11434/api/generate",
     timeout_seconds: int = 240,
     max_summary_items: int = 7,
-    max_sections: int = 8,
-    chunk_chars: int = 7000,
+    max_sections: int = 10,
+    chunk_chars: int = 5200,
 ) -> ArticleNote:
     chunks = _prompt_chunks(transcript_text, max_chars=chunk_chars)
     if not chunks:
@@ -249,18 +249,26 @@ def _final_summary_prompt(notes_text: str, max_items: int) -> str:
 def _chunk_article_prompt(chunk: str, index: int, total: int) -> str:
     return (
         "你是一个严谨的视频笔记编辑。下面是完整转录文本中的一个连续片段。"
+        "目标不是压缩成短摘要，而是做高保真覆盖笔记，供后续整理成文章式分段。"
         "请先去掉口头禅、重复识别、寒暄、订阅提醒，只保留真正的信息。"
-        "输出中文 Markdown，包含 3 到 5 条片段要点和 2 到 4 个可能的章节主题。"
-        "要求保留具体事实、定义、例子、数字、因果关系和行动建议；不要逐字复制长段转录；不要编造。\n\n"
+        "输出中文 Markdown：\n"
+        "## Coverage Notes\n"
+        "- 按原文顺序列出这一片段里的所有独立信息点，不要因为相似就合并到丢失细节。\n"
+        "- 每条写 1 到 2 句，尽量保留原文里的对象、动作、时间、数字、例子、对比、因果和转折。\n"
+        "- 如果片段里有很多信息，可以写 8 到 16 条，甚至更多；完整性优先于简短。\n\n"
+        "## Section Candidates\n"
+        "- 写 2 到 5 个可能的章节主题，用于后续分段。\n\n"
+        "不要逐字复制大段转录，不要编造，不要只写空泛概括。\n\n"
         f"片段 {index}/{total}:\n{chunk}"
     )
 
 
 def _article_note_prompt(material: str, max_summary_items: int, max_sections: int) -> str:
     return (
-        "你是一个中文长文编辑，要把视频转录整理成一篇清晰、可阅读的文章式笔记。"
+        "你是一个中文长文编辑，要把视频转录整理成一篇清晰、可阅读、信息覆盖充分的文章式笔记。"
         "输入可能是完整转录，也可能是按顺序整理过的片段笔记。"
-        "请用完整内容做全局组织，不要只看开头，不要重复同一句话，不要把逐字稿粘贴进笔记。\n\n"
+        "请用完整内容做全局组织，不要只看开头，不要重复同一句话，不要把逐字稿粘贴进笔记。"
+        "尤其重要：分段正文要尽可能复原原文真正讲了什么，不能只写抽象概括，不能遗漏独立信息点。\n\n"
         "输出必须严格使用下面的 Markdown 结构：\n"
         "## Summary\n"
         "先写 1 到 2 段正文式总述，每段 2 到 4 句，像文章摘要一样概括原文整体内容、主线和结论。\n"
@@ -268,7 +276,10 @@ def _article_note_prompt(material: str, max_summary_items: int, max_sections: in
         f"{max_summary_items} 条 Markdown bullet，每条都是「主题: 具体结论/事实/行动点」。\n\n"
         "## Sections\n"
         f"### 1. 清楚的章节标题\n"
-        "用 2 到 5 句自然段总结这一段的核心内容；必要时可加 1 到 3 条 bullet。"
+        "每个章节写成详细正文，而不是短摘要：先用 2 到 4 个自然段按原文顺序复原这一段的主要内容，"
+        "再视需要加 3 到 8 条 bullet 补充细节。"
+        "章节正文必须保留原文里的关键名词、人名、设备名、时间、数字、例子、因果关系、比较和转折。"
+        "如果原文在一个章节里连续讲了多个点，都要写进去，不要只留下一个总括句。"
         f"总共输出 3 到 {max_sections} 个章节，按视频逻辑顺序排列。\n\n"
         "章节标题要具体，不要写“Transcript Segment”“片段总结”这种过程词。"
         "如果主题真的不明确，才使用 Section 1、Section 2。"
