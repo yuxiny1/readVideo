@@ -179,7 +179,7 @@ async def process_video(
         if resolved_notes_backend == "ollama":
             append_task_log(
                 task_id,
-                f"Writing paragraph summary and article-style notes with Ollama model {resolved_ollama_model}.",
+                f"Writing high-detail paragraph summary and article-style notes with Ollama model {resolved_ollama_model}.",
                 status="organizing_notes",
             )
         else:

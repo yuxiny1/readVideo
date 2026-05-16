@@ -152,7 +152,8 @@ class NotesTest(unittest.TestCase):
                         "",
                         "## Sections",
                         "### 1. 产品定位",
-                        "内容先解释用户问题，再把产品定位放在具体场景里。",
+                        "内容先解释用户问题，再把产品定位放在具体场景里。原文连续提到产品定位不是一句口号，而是要说明用户具体遇到什么阻碍、为什么现有方案不够用，以及这个产品准备如何降低使用门槛。",
+                        "- 这一段还保留了用户问题 1、用户问题 2 和场景细节，而不是只写一个抽象结论。",
                         "",
                         "### 2. 执行路径",
                         "后半段说明执行步骤，并收束到下一步行动。",
@@ -165,10 +166,16 @@ class NotesTest(unittest.TestCase):
 
         self.assertGreater(len(prompts), 2)
         self.assertIn("片段 1/", prompts[0])
+        self.assertIn("所有独立信息点", prompts[0])
+        self.assertIn("完整性优先于简短", prompts[0])
         self.assertIn("文章式笔记", prompts[-1])
+        self.assertIn("尽可能复原原文真正讲了什么", prompts[-1])
+        self.assertIn("不能遗漏独立信息点", prompts[-1])
         self.assertEqual(article.summary_paragraphs[0], "这节内容先从现代社会对计算技术的依赖讲起，再回到早期计算工具和机械计算的发展。")
         self.assertEqual(article.summary_items[0], "产品定位: 先定义用户问题，再说明产品要解决的核心场景。")
         self.assertEqual([section.title for section in article.sections], ["产品定位", "执行路径"])
+        self.assertIn("现有方案不够用", article.sections[0].body)
+        self.assertIn("用户问题 2", article.sections[0].body)
         self.assertIn("下一步行动", article.sections[1].body)
 
     def test_write_markdown_note_uses_ollama_article_sections_without_full_transcript(self):

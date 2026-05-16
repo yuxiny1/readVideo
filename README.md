@@ -62,7 +62,7 @@ ollama pull qwen2.5:3b
 READVIDEO_NOTES_BACKEND=ollama
 ```
 
-`READVIDEO_NOTES_BACKEND=extractive` means Quick Notes: fastest, no AI model needed. `READVIDEO_NOTES_BACKEND=ollama` means Better Local AI Notes: slower, but asks a local Ollama model to turn the full transcript into key points, a narrative summary paragraph, and article-style sections.
+`READVIDEO_NOTES_BACKEND=extractive` means Quick Notes: fastest, no AI model needed. `READVIDEO_NOTES_BACKEND=ollama` means Better Local AI Notes: slower, but asks a local Ollama model to turn the full transcript into key points, a narrative summary paragraph, and high-detail article-style sections that preserve names, dates, examples, numbers, and the original flow.
 
 Optional OpenAI backend:
 
