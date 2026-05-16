@@ -1,0 +1,110 @@
+.recent-tasks {
+  display: grid;
+  gap: 8px;
+}
+
+.task-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfbfd;
+  text-align: left;
+}
+
+.task-row strong,
+.task-row span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.task-row strong {
+  font-size: 13px;
+}
+
+.task-row span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.watchlist {
+  margin-top: 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.watch-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fbfbfd;
+}
+
+.watch-title {
+  margin: 0 0 4px;
+  font-weight: 800;
+}
+
+.watch-url {
+  display: block;
+  color: var(--blue);
+  word-break: break-all;
+  font-size: 13px;
+}
+
+.path-anchor {
+  color: var(--blue);
+  overflow-wrap: anywhere;
+  font-weight: 700;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.muted-inline {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+  font-weight: 700;
+}
+
+.watch-notes {
+  margin: 8px 0 0;
+  color: #3a3a3c;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.watch-actions {
+  margin-top: 10px;
+}
+
+.card-actions {
+  margin-top: 12px;
+}
+
+.source-updates {
+  margin-top: 12px;
+}
+
+.source-update-list {
+  display: grid;
+  gap: 8px;
+}
+
+.source-update {
+  padding: 10px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.empty-state {
+  padding: 14px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 8px;
+  color: var(--muted);
+  background: #fbfbfd;
+}

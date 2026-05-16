@@ -1,0 +1,100 @@
+@media (max-width: 1120px) {
+  .app-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+    height: auto;
+    padding: 14px 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .brand-link {
+    margin-bottom: 10px;
+  }
+
+  .side-nav {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .side-link {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .watch-panel {
+    position: static;
+  }
+
+  rv-saved-sources {
+    position: static;
+  }
+}
+
+@media (max-width: 880px) {
+  .workspace,
+  .favorites-workspace {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "process"
+      "output"
+      "watch";
+    padding: 16px;
+  }
+
+  .reader-workspace {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+
+  .reader-library {
+    position: static;
+  }
+
+  .reader-library-panel {
+    max-height: none;
+  }
+
+  .form-grid,
+  .input-action-row,
+  .output-list div,
+  .path-list div {
+    grid-template-columns: 1fr;
+  }
+
+  .task-log li {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .side-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 18px 16px;
+  }
+
+  .primary-button,
+  .secondary-button,
+  .danger-button,
+  .quiet-link {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .file-row,
+  .history-card-header,
+  .reader-document-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .modern-reader {
+    padding: 22px 18px;
+  }
+}
