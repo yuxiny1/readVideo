@@ -29,7 +29,7 @@ def write_markdown_note(
     output_dir: str,
     transcript_path: Optional[str] = None,
     summary_backend: str = "extractive",
-    ollama_model: str = "qwen2.5:3b",
+    ollama_model: str = "qwen2.5:32b",
     ollama_url: str = "http://127.0.0.1:11434/api/generate",
 ) -> NoteResult:
     article_note = build_article_note(
@@ -64,7 +64,7 @@ def write_markdown_note(
 def build_article_note(
     transcript_text: str,
     summary_backend: str = "extractive",
-    ollama_model: str = "qwen2.5:3b",
+    ollama_model: str = "qwen2.5:32b",
     ollama_url: str = "http://127.0.0.1:11434/api/generate",
 ) -> ArticleNote:
     if summary_backend == "ollama":

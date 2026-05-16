@@ -96,47 +96,32 @@
 
     <div class="form-grid">
       <div>
-        <label for="notes-backend">Notes Style</label>
-        <select
-          id="notes-backend"
-          name="notes_backend"
-          [ngModel]="form.form().notesBackend"
-          (ngModelChange)="setNotesBackend($event)"
-        >
-          <option value="extractive">Quick Notes</option>
-          <option value="ollama">Better Local AI Notes</option>
-        </select>
-        <p class="field-status muted">
-          {{ form.form().notesBackend === 'ollama' ? 'Slower, but uses a local Ollama model to write detailed, article-style notes with fuller section coverage.' : 'Fastest option. No AI model needed; uses simple local rules.' }}
-        </p>
-      </div>
-      @if (form.form().notesBackend === 'ollama') {
-        <div>
-          <label for="ollama-model">Local AI Model</label>
-          <div class="input-action-row">
-            <input
-              id="ollama-model"
-              name="ollama_model"
-              list="ollama-models"
-              [placeholder]="workflow.config()?.ollama_model || 'qwen2.5:3b'"
-              [ngModel]="form.form().ollamaModel"
-              (ngModelChange)="setOllamaModel($event)"
-            >
-            <button class="secondary-button small-button" type="button" (click)="workflow.loadOllamaModels()">Refresh</button>
-          </div>
-          <datalist id="ollama-models">
-            @for (model of workflow.ollamaModels(); track model.name) {
-              <option [value]="model.name" [label]="modelLabel(model)"></option>
-            }
-          </datalist>
-          <p class="field-status" [ngClass]="workflow.ollamaStatus().kind">{{ workflow.ollamaStatus().text }}</p>
-        </div>
-      } @else {
+        <label>Notes Style</label>
         <div class="inline-help-panel">
-          <label>Local AI Model</label>
-          <p>Only needed for Better Local AI Notes. Quick Notes skips Ollama completely.</p>
+          <strong>Better Local AI Notes</strong>
+          <p>Uses the strongest installed Ollama model to write detailed, article-style notes with fuller section coverage.</p>
         </div>
-      }
+      </div>
+      <div>
+        <label for="ollama-model">Local AI Model</label>
+        <div class="input-action-row">
+          <select
+            id="ollama-model"
+            name="ollama_model"
+            [ngModel]="form.form().ollamaModel"
+            (ngModelChange)="setOllamaModel($event)"
+          >
+            @if (form.form().ollamaModel && !workflow.resolveOllamaModel(form.form().ollamaModel)) {
+              <option [value]="form.form().ollamaModel">Configured: {{ form.form().ollamaModel }}</option>
+            }
+            @for (model of workflow.ollamaModelOptions(); track model.name) {
+              <option [value]="model.name">{{ model.name }} · {{ modelLabel(model) }}</option>
+            }
+          </select>
+          <button class="secondary-button small-button" type="button" (click)="workflow.loadOllamaModels(true)">Use Strongest</button>
+        </div>
+        <p class="field-status" [ngClass]="workflow.ollamaStatus().kind">{{ workflow.ollamaStatus().text }}</p>
+      </div>
     </div>
 
     <div class="checkbox-option">

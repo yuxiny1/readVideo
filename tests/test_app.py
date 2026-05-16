@@ -118,6 +118,9 @@ class MainAppTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertEqual(data["transcription_backend"], "local")
+        self.assertEqual(data["notes_backend"], "ollama")
+        self.assertEqual(data["ollama_model"], "qwen2.5:32b")
+        self.assertEqual(data["local_whisper_model"], "models/ggml-large-v3-turbo.bin")
         self.assertNotIn("openai_api_key", data)
 
     def test_ollama_models_endpoint_lists_installed_models(self):

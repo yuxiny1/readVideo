@@ -24,6 +24,10 @@ export class TaskWorkflowService {
   readonly config = signal<AppConfig | null>(null);
   readonly health = signal<"Checking" | "Online" | "Offline">("Checking");
   readonly ollamaModels = signal<OllamaModel[]>([]);
+  readonly ollamaModelOptions = computed(() => [...this.ollamaModels()].sort((first, second) => {
+    const sizeDelta = Number(second.size || 0) - Number(first.size || 0);
+    return sizeDelta || first.name.localeCompare(second.name);
+  }));
   readonly ollamaAvailable = signal(false);
   readonly ollamaStatus = signal<NoticeState>({text: "Checking Ollama models...", kind: "muted"});
   readonly whisperModels = signal<WhisperModelOption[]>([]);
@@ -38,7 +42,7 @@ export class TaskWorkflowService {
 
   readonly backendLabel = computed(() => {
     const config = this.config();
-    return config ? `${config.transcription_backend} / ${config.notes_backend}` : "Backend";
+    return config ? `${config.transcription_backend} / Better Local AI Notes` : "Backend";
   });
 
   readonly taskIdLabel = computed(() => {
@@ -67,16 +71,17 @@ export class TaskWorkflowService {
         transcriptionBackend: config.transcription_backend || "local",
         localWhisperModel: config.local_whisper_model || "models/ggml-large-v3-turbo.bin",
         localWhisperLanguage: config.local_whisper_language || "auto",
-        notesBackend: config.notes_backend || "extractive",
+        notesBackend: "ollama",
+        ollamaModel: config.ollama_model || "qwen2.5:32b",
       });
-      await Promise.all([this.loadOllamaModels(), this.loadTranscriptionModels(), this.loadRecentTasks()]);
+      await Promise.all([this.loadOllamaModels(true), this.loadTranscriptionModels(true), this.loadRecentTasks()]);
     } catch (error) {
       this.health.set("Offline");
       this.setNotice(this.errorMessage(error), "error");
     }
   }
 
-  async loadOllamaModels(): Promise<void> {
+  async loadOllamaModels(preferStrongest = false): Promise<void> {
     try {
       const result = await this.api.ollamaModels();
       this.ollamaAvailable.set(result.status === "ok");
@@ -85,6 +90,7 @@ export class TaskWorkflowService {
         this.ollamaStatus.set({text: result.error || "Ollama is not reachable.", kind: "error"});
         return;
       }
+      this.selectDefaultOllamaModel(preferStrongest);
       this.validateOllamaSelection();
     } catch (error) {
       this.ollamaAvailable.set(false);
@@ -93,11 +99,15 @@ export class TaskWorkflowService {
     }
   }
 
-  async loadTranscriptionModels(): Promise<void> {
+  async loadTranscriptionModels(preferStrongest = false): Promise<void> {
     try {
       const result = await this.api.transcriptionModels();
       this.whisperModels.set(result.whisper || []);
       this.transcriptionLanguages.set(result.languages || []);
+      const recommended = this.recommendedWhisperModel();
+      if (recommended && (preferStrongest || !this.processForm.form().localWhisperModel.trim())) {
+        this.processForm.patch({localWhisperModel: recommended.path});
+      }
       this.validateWhisperSelection();
     } catch (error) {
       this.whisperModels.set([]);
@@ -165,12 +175,7 @@ export class TaskWorkflowService {
 
   validateOllamaSelection(): boolean {
     const form = this.processForm.form();
-    const model = form.ollamaModel.trim() || this.config()?.ollama_model || "qwen2.5:3b";
-    if (form.notesBackend !== "ollama") {
-      const installed = this.installedModels().join(", ") || "none";
-      this.ollamaStatus.set({text: `Installed: ${installed}`, kind: this.ollamaAvailable() ? "muted" : "error"});
-      return true;
-    }
+    const model = form.ollamaModel.trim() || this.config()?.ollama_model || "qwen2.5:32b";
     if (!this.ollamaAvailable()) {
       this.ollamaStatus.set({text: "Ollama is not reachable.", kind: "error"});
       return false;
@@ -179,7 +184,9 @@ export class TaskWorkflowService {
       this.ollamaStatus.set({text: `Missing: ${model}. Run: ollama pull ${model}`, kind: "error"});
       return false;
     }
-    this.ollamaStatus.set({text: `Ready: ${model} is installed locally.`, kind: "ok"});
+    const selected = this.resolveOllamaModel(model);
+    const size = selected?.size_label ? ` (${selected.size_label})` : "";
+    this.ollamaStatus.set({text: `Ready: ${model}${size} is installed locally.`, kind: "ok"});
     return true;
   }
 
@@ -196,7 +203,7 @@ export class TaskWorkflowService {
     }
 
     const payload = this.processForm.payload(url, options);
-    const selectedModel = payload.ollama_model || this.config()?.ollama_model || "qwen2.5:3b";
+    const selectedModel = payload.ollama_model || this.config()?.ollama_model || "qwen2.5:32b";
     if (payload.transcription_backend === "local" && !this.validateWhisperSelection()) {
       this.setNotice(this.whisperStatus().text, "error");
       this.latestTask.set({
@@ -388,9 +395,9 @@ export class TaskWorkflowService {
       return task.video_path ? `Video saved: ${task.video_path}` : "Preparing transcript.";
     }
     if (task.status === "organizing_notes") {
-      const backend = task.summary_backend || task.notes_backend || "extractive";
+      const backend = task.summary_backend || task.notes_backend || "ollama";
       const model = task.ollama_model ? ` · ${task.ollama_model}` : "";
-      const label = backend === "ollama" ? `Better Local AI Notes${model}` : "Quick Notes";
+      const label = backend === "ollama" ? `Better Local AI Notes${model}` : "Better Local AI Notes";
       return `Writing detailed paragraph summary and segmented notes with ${label}.`;
     }
     if (task.status === "completed") {
@@ -414,8 +421,23 @@ export class TaskWorkflowService {
     return this.ollamaModels().map((model) => model.name).filter(Boolean);
   }
 
+  resolveOllamaModel(name: string): OllamaModel | null {
+    const value = name.trim();
+    if (!value) return null;
+    return this.ollamaModels().find((model) => model.name === value) || null;
+  }
+
   private isInstalledOllamaModel(model: string): boolean {
     return !model || this.installedModels().includes(model);
+  }
+
+  private selectDefaultOllamaModel(preferStrongest: boolean): void {
+    const strongest = this.ollamaModelOptions()[0];
+    if (!strongest) return;
+    const current = this.processForm.form().ollamaModel.trim();
+    if (preferStrongest || !current || !this.isInstalledOllamaModel(current)) {
+      this.processForm.patch({ollamaModel: strongest.name});
+    }
   }
 
   private hideDuplicatePanel(): void {

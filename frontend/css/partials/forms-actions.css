@@ -210,6 +210,12 @@ button:disabled {
   line-height: 1.45;
 }
 
+.inline-help-panel strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
 .compact-header {
   margin-bottom: 10px;
 }
