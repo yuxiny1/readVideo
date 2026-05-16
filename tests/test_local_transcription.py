@@ -14,6 +14,11 @@ class LocalTranscriptionTest(unittest.TestCase):
 
         self.assertEqual(text, "first line\nsecond line\n")
 
+    def test_normalize_whisper_text_deduplicates_adjacent_repeats(self):
+        text = _normalize_whisper_text("repeat\n repeat \nnext\nrepeat\n")
+
+        self.assertEqual(text, "repeat\nnext\nrepeat\n")
+
     def test_build_ffmpeg_command_applies_speech_filter(self):
         command = _build_ffmpeg_command(
             Path("video.mp4"),
@@ -34,12 +39,18 @@ class LocalTranscriptionTest(unittest.TestCase):
             "auto",
             Path("out"),
             "Jim Keller, CUDA",
-            {"-nt", "--prompt", "-sns"},
+            {"-nt", "--prompt", "-sns", "-nf", "-mc", "-sow", "-ml"},
         )
 
         self.assertIn("auto", command)
         self.assertIn("-nt", command)
         self.assertIn("-sns", command)
+        self.assertIn("-nf", command)
+        self.assertIn("-sow", command)
+        self.assertIn("-mc", command)
+        self.assertIn("0", command)
+        self.assertIn("-ml", command)
+        self.assertIn("96", command)
         self.assertIn("--prompt", command)
         self.assertIn("Jim Keller, CUDA", command)
 

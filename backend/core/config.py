@@ -20,7 +20,7 @@ class Settings:
     transcription_model: str = "gpt-4o-mini-transcribe"
     chunk_seconds: int = 180
     local_whisper_cli: str = "whisper-cli"
-    local_whisper_model: str = "models/ggml-small.bin"
+    local_whisper_model: str = "models/ggml-large-v3-turbo.bin"
     local_whisper_language: str = "auto"
     local_whisper_prompt: str = ""
     local_whisper_audio_filter: str = "highpass=f=80,lowpass=f=8000,loudnorm=I=-16:TP=-1.5:LRA=11"
@@ -79,7 +79,7 @@ def _default_local_whisper_model() -> str:
     ):
         if (PROJECT_ROOT / model_path).is_file():
             return model_path
-    return "models/ggml-small.bin"
+    return "models/ggml-large-v3-turbo.bin"
 
 
 def load_settings() -> Settings:

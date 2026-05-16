@@ -37,6 +37,35 @@ export interface OllamaModelsResponse {
   models: OllamaModel[];
 }
 
+export interface WhisperModelOption {
+  name: string;
+  label: string;
+  size: string;
+  path: string;
+  url: string;
+  notes: string;
+  installed: boolean;
+  recommended: boolean;
+}
+
+export interface TranscriptionLanguageOption {
+  code: string;
+  label: string;
+}
+
+export interface TranscriptionModelsResponse {
+  whisper: WhisperModelOption[];
+  installed_whisper: string[];
+  openai: Array<{name: string; label: string; notes: string}>;
+  languages: TranscriptionLanguageOption[];
+}
+
+export interface WhisperModelDownloadResponse {
+  model: string;
+  path: string;
+  downloaded: boolean;
+}
+
 export interface TaskLog {
   time: string;
   level: NoticeKind | "info";

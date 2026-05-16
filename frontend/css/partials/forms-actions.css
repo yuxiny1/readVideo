@@ -157,6 +157,10 @@ button:disabled {
   color: var(--green);
 }
 
+.field-status.pending {
+  color: var(--amber);
+}
+
 .field-status.error {
   color: var(--red);
 }

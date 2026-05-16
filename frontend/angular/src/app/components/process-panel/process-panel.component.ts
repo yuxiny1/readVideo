@@ -4,7 +4,7 @@ import {FormsModule} from "@angular/forms";
 
 import {ProcessFormService} from "../../services/process-form.service";
 import {TaskWorkflowService} from "../../services/task-workflow.service";
-import {OllamaModel} from "../../types/readvideo.types";
+import {OllamaModel, WhisperModelOption} from "../../types/readvideo.types";
 
 @Component({
   selector: "rv-process-panel",
@@ -55,6 +55,7 @@ export class ProcessPanelComponent {
 
   setLocalWhisperModel(localWhisperModel: string): void {
     this.form.patch({localWhisperModel});
+    this.workflow.validateWhisperSelection();
   }
 
   setLocalWhisperLanguage(localWhisperLanguage: string): void {
@@ -72,5 +73,17 @@ export class ProcessPanelComponent {
 
   modelLabel(model: OllamaModel): string {
     return [model.size_label, model.parameter_size, model.quantization_level].filter(Boolean).join(" · ");
+  }
+
+  whisperModelLabel(model: WhisperModelOption): string {
+    return [
+      model.recommended ? "Recommended" : "",
+      model.size,
+      model.installed ? "installed" : "download",
+    ].filter(Boolean).join(" · ");
+  }
+
+  downloadWhisperModel(): void {
+    void this.workflow.downloadSelectedWhisperModel(this.form.form().localWhisperModel);
   }
 }

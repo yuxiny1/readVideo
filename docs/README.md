@@ -3,6 +3,7 @@
 Download a YouTube video, transcribe its audio, turn the transcript into Markdown notes, and keep a small local watchlist of YouTube channels/playlists.
 
 The default transcription backend is local `whisper.cpp`, so OpenAI API access is optional.
+For local transcription quality, `ggml-large-v3-turbo.bin` is the recommended default; smaller models are faster but more likely to repeat or hallucinate text on noisy YouTube audio.
 
 ## What It Does
 
@@ -47,8 +48,8 @@ Download a local model:
 
 ```bash
 mkdir -p models
-curl -L -o models/ggml-small.bin \
-  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin
+curl -L -o models/ggml-large-v3-turbo.bin \
+  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin
 ```
 
 ## Configuration
@@ -66,8 +67,8 @@ READVIDEO_TRANSCRIPTION_BACKEND=local
 READVIDEO_DOWNLOAD_DIR=downloads/youtube_videos
 READVIDEO_NOTES_DIR=notes
 READVIDEO_LOCAL_WHISPER_CLI=whisper-cli
-READVIDEO_LOCAL_WHISPER_MODEL=models/ggml-small.bin
-READVIDEO_LOCAL_WHISPER_LANGUAGE=zh
+READVIDEO_LOCAL_WHISPER_MODEL=models/ggml-large-v3-turbo.bin
+READVIDEO_LOCAL_WHISPER_LANGUAGE=auto
 READVIDEO_NOTES_BACKEND=extractive
 READVIDEO_OLLAMA_MODEL=qwen2.5:3b
 READVIDEO_OLLAMA_URL=http://127.0.0.1:11434/api/generate

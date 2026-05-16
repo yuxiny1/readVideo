@@ -1,7 +1,17 @@
 import {Injectable, computed, inject, signal} from "@angular/core";
 
 import {formatBytes, formatElapsed, formatEta, formatSpeed, statusLabel} from "../shared/format";
-import {AppConfig, DuplicateLookup, NoticeKind, NoticeState, OllamaModel, TaskLog, TaskRecord} from "../types/readvideo.types";
+import {
+  AppConfig,
+  DuplicateLookup,
+  NoticeKind,
+  NoticeState,
+  OllamaModel,
+  TaskLog,
+  TaskRecord,
+  TranscriptionLanguageOption,
+  WhisperModelOption,
+} from "../types/readvideo.types";
 import {ProcessFormService} from "./process-form.service";
 import {ReadvideoApiService} from "./readvideo-api.service";
 
@@ -16,6 +26,9 @@ export class TaskWorkflowService {
   readonly ollamaModels = signal<OllamaModel[]>([]);
   readonly ollamaAvailable = signal(false);
   readonly ollamaStatus = signal<NoticeState>({text: "Checking Ollama models...", kind: "muted"});
+  readonly whisperModels = signal<WhisperModelOption[]>([]);
+  readonly transcriptionLanguages = signal<TranscriptionLanguageOption[]>([]);
+  readonly whisperStatus = signal<NoticeState>({text: "Checking local Whisper models...", kind: "muted"});
   readonly latestTask = signal<TaskRecord | null>(null);
   readonly latestSummary = signal("");
   readonly notice = signal<NoticeState>({text: "Idle", kind: "muted"});
@@ -52,9 +65,11 @@ export class TaskWorkflowService {
       this.config.set(config);
       this.processForm.patch({
         transcriptionBackend: config.transcription_backend || "local",
+        localWhisperModel: config.local_whisper_model || "models/ggml-large-v3-turbo.bin",
+        localWhisperLanguage: config.local_whisper_language || "auto",
         notesBackend: config.notes_backend || "extractive",
       });
-      await Promise.all([this.loadOllamaModels(), this.loadRecentTasks()]);
+      await Promise.all([this.loadOllamaModels(), this.loadTranscriptionModels(), this.loadRecentTasks()]);
     } catch (error) {
       this.health.set("Offline");
       this.setNotice(this.errorMessage(error), "error");
@@ -76,6 +91,76 @@ export class TaskWorkflowService {
       this.ollamaModels.set([]);
       this.ollamaStatus.set({text: this.errorMessage(error), kind: "error"});
     }
+  }
+
+  async loadTranscriptionModels(): Promise<void> {
+    try {
+      const result = await this.api.transcriptionModels();
+      this.whisperModels.set(result.whisper || []);
+      this.transcriptionLanguages.set(result.languages || []);
+      this.validateWhisperSelection();
+    } catch (error) {
+      this.whisperModels.set([]);
+      this.transcriptionLanguages.set([]);
+      this.whisperStatus.set({text: this.errorMessage(error), kind: "error"});
+    }
+  }
+
+  async downloadSelectedWhisperModel(modelPath = this.processForm.form().localWhisperModel): Promise<void> {
+    const model = this.resolveWhisperModel(modelPath) || this.recommendedWhisperModel();
+    if (!model) {
+      this.whisperStatus.set({text: "Choose a recommended Whisper model before downloading.", kind: "error"});
+      return;
+    }
+
+    this.whisperStatus.set({text: `Downloading ${model.label} (${model.size})...`, kind: "pending"});
+    try {
+      const result = await this.api.downloadTranscriptionModel(model.name);
+      this.processForm.patch({localWhisperModel: result.path});
+      await this.loadTranscriptionModels();
+      this.whisperStatus.set({
+        text: result.downloaded ? `Ready: downloaded ${model.label}.` : `Ready: ${model.label} was already installed.`,
+        kind: "ok",
+      });
+    } catch (error) {
+      this.whisperStatus.set({text: this.errorMessage(error), kind: "error"});
+    }
+  }
+
+  validateWhisperSelection(): boolean {
+    const selection = this.processForm.form().localWhisperModel.trim() || this.config()?.local_whisper_model || "";
+    const model = this.resolveWhisperModel(selection);
+    if (model?.installed) {
+      this.whisperStatus.set({
+        text: model.recommended
+          ? `Ready: ${model.label} is installed. Recommended for reducing repeated transcript text.`
+          : `Ready: ${model.label} is installed. Large v3 Turbo is stronger if repeats continue.`,
+        kind: model.recommended ? "ok" : "pending",
+      });
+      return true;
+    }
+    if (model) {
+      this.whisperStatus.set({
+        text: `Not installed: ${model.label} (${model.size}). Use Download, or run: curl -L -o ${model.path} ${model.url}`,
+        kind: "error",
+      });
+      return false;
+    }
+    this.whisperStatus.set({
+      text: selection ? `Custom model path: ${selection}` : "Choose a local Whisper model.",
+      kind: selection ? "muted" : "error",
+    });
+    return Boolean(selection);
+  }
+
+  recommendedWhisperModel(): WhisperModelOption | null {
+    return this.whisperModels().find((model) => model.recommended) || this.whisperModels()[0] || null;
+  }
+
+  resolveWhisperModel(pathOrName: string): WhisperModelOption | null {
+    const value = pathOrName.trim();
+    if (!value) return null;
+    return this.whisperModels().find((model) => model.path === value || model.name === value) || null;
   }
 
   validateOllamaSelection(): boolean {
@@ -112,6 +197,16 @@ export class TaskWorkflowService {
 
     const payload = this.processForm.payload(url, options);
     const selectedModel = payload.ollama_model || this.config()?.ollama_model || "qwen2.5:3b";
+    if (payload.transcription_backend === "local" && !this.validateWhisperSelection()) {
+      this.setNotice(this.whisperStatus().text, "error");
+      this.latestTask.set({
+        task_id: "local-check",
+        status: "failed",
+        error: this.whisperStatus().text,
+        logs: [this.localLog("failed", this.whisperStatus().text, "error")],
+      });
+      return;
+    }
     if (payload.notes_backend === "ollama" && !this.isInstalledOllamaModel(selectedModel)) {
       this.setNotice(`Ollama model "${selectedModel}" is not installed.\nRun: ollama pull ${selectedModel}`, "error");
       this.latestTask.set({
