@@ -137,6 +137,7 @@ export interface WatchItem {
   url: string;
   notes: string;
   created_at?: string;
+  sort_order: number;
 }
 
 export interface SourceUpdate {

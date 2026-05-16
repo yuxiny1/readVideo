@@ -7,6 +7,8 @@ import {ReadvideoApiService} from "../../services/readvideo-api.service";
 import {TaskWorkflowService} from "../../services/task-workflow.service";
 import {SourceUpdate, WatchItem} from "../../types/readvideo.types";
 
+type DropPosition = "before" | "after";
+
 @Component({
   selector: "rv-saved-sources",
   standalone: true,
@@ -21,7 +23,11 @@ export class SavedSourcesComponent implements OnInit {
   readonly items = signal<WatchItem[]>([]);
   readonly updates = signal<Record<string, SourceUpdate[]>>({});
   readonly errors = signal<Record<string, string>>({});
+  readonly draggedItemId = signal<number | null>(null);
+  readonly dropTarget = signal<{id: number; position: DropPosition} | null>(null);
+  readonly orderSaving = signal(false);
   newItem = {name: "", url: "", notes: ""};
+  private orderBeforeDrag: WatchItem[] = [];
 
   ngOnInit(): void {
     void this.loadWatchlist();
@@ -75,8 +81,108 @@ export class SavedSourcesComponent implements OnInit {
     await this.loadWatchlist();
   }
 
+  startDrag(event: DragEvent, item: WatchItem): void {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest("a, input, textarea, select, button:not(.drag-handle)")) {
+      event.preventDefault();
+      return;
+    }
+    if (this.orderSaving()) {
+      event.preventDefault();
+      return;
+    }
+    this.orderBeforeDrag = [...this.items()];
+    this.draggedItemId.set(item.id);
+    this.dropTarget.set(null);
+    event.dataTransfer?.setData("text/plain", String(item.id));
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "move";
+    }
+  }
+
+  dragOver(event: DragEvent, item: WatchItem): void {
+    const draggedId = this.draggedItemId();
+    if (!draggedId || draggedId === item.id) {
+      return;
+    }
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = "move";
+    }
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const position: DropPosition = event.clientY > rect.top + rect.height / 2 ? "after" : "before";
+    this.dropTarget.set({id: item.id, position});
+  }
+
+  async dropOn(event: DragEvent, item: WatchItem): Promise<void> {
+    event.preventDefault();
+    const draggedId = this.draggedItemId();
+    const target = this.dropTarget() ?? {id: item.id, position: "before" as DropPosition};
+    if (!draggedId || draggedId === target.id) {
+      this.clearDragState();
+      return;
+    }
+
+    const reordered = this.reorderedItems(draggedId, target.id, target.position);
+    if (this.sameOrder(reordered, this.items())) {
+      this.clearDragState();
+      return;
+    }
+
+    this.items.set(reordered);
+    await this.persistOrder(reordered);
+    this.clearDragState();
+  }
+
+  clearDragState(): void {
+    this.draggedItemId.set(null);
+    this.dropTarget.set(null);
+  }
+
+  isDropTarget(item: WatchItem, position: DropPosition): boolean {
+    const target = this.dropTarget();
+    return target?.id === item.id && target.position === position;
+  }
+
   updateMeta(update: SourceUpdate): string {
     return [update.uploader, update.upload_date].filter(Boolean).join(" / ");
+  }
+
+  private async persistOrder(items: WatchItem[]): Promise<void> {
+    this.orderSaving.set(true);
+    try {
+      const savedItems = await this.api.reorderWatchItems(items.map((item) => item.id));
+      this.items.set(savedItems);
+    } catch (error) {
+      this.items.set(this.orderBeforeDrag);
+      this.workflow.notice.set({text: this.message(error), kind: "error"});
+    } finally {
+      this.orderSaving.set(false);
+      this.orderBeforeDrag = [];
+    }
+  }
+
+  private reorderedItems(draggedId: number, targetId: number, position: DropPosition): WatchItem[] {
+    const items = [...this.items()];
+    const draggedItem = items.find((item) => item.id === draggedId);
+    if (!draggedItem) {
+      return items;
+    }
+
+    const withoutDragged = items.filter((item) => item.id !== draggedId);
+    const targetIndex = withoutDragged.findIndex((item) => item.id === targetId);
+    if (targetIndex === -1) {
+      return items;
+    }
+
+    const insertIndex = position === "after" ? targetIndex + 1 : targetIndex;
+    withoutDragged.splice(insertIndex, 0, draggedItem);
+    return withoutDragged;
+  }
+
+  private sameOrder(first: WatchItem[], second: WatchItem[]): boolean {
+    return first.length === second.length && first.every((item, index) => item.id === second[index]?.id);
   }
 
   private message(error: unknown): string {

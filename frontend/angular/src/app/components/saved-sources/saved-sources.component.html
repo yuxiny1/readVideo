@@ -27,40 +27,66 @@
       <div class="empty-state">No saved sources yet.</div>
     } @else {
       @for (item of items(); track item.id) {
-        <article class="watch-item">
-          <p class="watch-title">{{ item.name }}</p>
-          <a class="watch-url" [href]="item.url" target="_blank" rel="noreferrer">{{ item.url }}</a>
-          @if (item.notes) {
-            <p class="watch-notes">{{ item.notes }}</p>
-          }
-          <div class="watch-actions">
-            <button class="secondary-button" type="button" (click)="useUrl(item.url)">Use</button>
-            <button class="secondary-button" type="button" (click)="loadUpdates(item)">Updates</button>
-            <button class="danger-button" type="button" (click)="deleteItem(item)">Delete</button>
-          </div>
-          <div class="source-updates">
-            @if (errors()[item.id]) {
-              <div class="empty-state">{{ errors()[item.id] }}</div>
+        <article
+          class="watch-item"
+          draggable="true"
+          [class.dragging]="draggedItemId() === item.id"
+          [class.drop-before]="isDropTarget(item, 'before')"
+          [class.drop-after]="isDropTarget(item, 'after')"
+          (dragstart)="startDrag($event, item)"
+          (dragover)="dragOver($event, item)"
+          (drop)="dropOn($event, item)"
+          (dragend)="clearDragState()"
+        >
+          <button
+            class="drag-handle"
+            type="button"
+            draggable="true"
+            [disabled]="orderSaving()"
+            title="Drag to reorder"
+            [attr.aria-label]="'Drag ' + item.name + ' to reorder'"
+          >
+            <span class="drag-grip" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </span>
+          </button>
+          <div class="watch-item-content">
+            <p class="watch-title">{{ item.name }}</p>
+            <a class="watch-url" [href]="item.url" target="_blank" rel="noreferrer">{{ item.url }}</a>
+            @if (item.notes) {
+              <p class="watch-notes">{{ item.notes }}</p>
             }
-            @if (updates()[item.id]?.length) {
-              <div class="source-update-list">
-                @for (update of updates()[item.id]; track update.url) {
-                  <div class="source-update">
-                    <div>
-                      <p class="watch-title">{{ update.title }}</p>
-                      <a class="watch-url" [href]="update.url" target="_blank" rel="noreferrer">{{ update.url }}</a>
-                      @if (updateMeta(update)) {
-                        <p class="watch-notes">{{ updateMeta(update) }}</p>
-                      }
+            <div class="watch-actions">
+              <button class="secondary-button" type="button" (click)="useUrl(item.url)">Use</button>
+              <button class="secondary-button" type="button" (click)="loadUpdates(item)">Updates</button>
+              <button class="danger-button" type="button" (click)="deleteItem(item)">Delete</button>
+            </div>
+            <div class="source-updates">
+              @if (errors()[item.id]) {
+                <div class="empty-state">{{ errors()[item.id] }}</div>
+              }
+              @if (updates()[item.id]?.length) {
+                <div class="source-update-list">
+                  @for (update of updates()[item.id]; track update.url) {
+                    <div class="source-update">
+                      <div>
+                        <p class="watch-title">{{ update.title }}</p>
+                        <a class="watch-url" [href]="update.url" target="_blank" rel="noreferrer">{{ update.url }}</a>
+                        @if (updateMeta(update)) {
+                          <p class="watch-notes">{{ updateMeta(update) }}</p>
+                        }
+                      </div>
+                      <div class="watch-actions">
+                        <button class="secondary-button small-button" type="button" (click)="useUrl(update.url)">Use</button>
+                        <button class="secondary-button small-button" type="button" (click)="downloadUrl(update.url)">Download</button>
+                      </div>
                     </div>
-                    <div class="watch-actions">
-                      <button class="secondary-button small-button" type="button" (click)="useUrl(update.url)">Use</button>
-                      <button class="secondary-button small-button" type="button" (click)="downloadUrl(update.url)">Download</button>
-                    </div>
-                  </div>
-                }
-              </div>
-            }
+                  }
+                </div>
+              }
+            </div>
           </div>
         </article>
       }
