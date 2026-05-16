@@ -1,5 +1,7 @@
 from backend.services.markdown_notes import (
     NoteResult,
+    TranscriptSection,
+    build_transcript_sections,
     chunk_transcript,
     render_markdown_note,
     safe_filename,
@@ -15,6 +17,8 @@ from backend.services.transcript_summarizer import (
 
 __all__ = [
     "NoteResult",
+    "TranscriptSection",
+    "build_transcript_sections",
     "chunk_transcript",
     "render_markdown_note",
     "safe_filename",

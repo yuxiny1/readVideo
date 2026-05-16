@@ -4,7 +4,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterable, Optional
 
-from backend.services.transcript_summarizer import section_title, summarize_transcript_with_backend
+from backend.services.transcript_summarizer import (
+    section_title,
+    summarize_transcript,
+    summarize_transcript_with_backend,
+)
 
 
 @dataclass(frozen=True)
@@ -13,6 +17,13 @@ class NoteResult:
     summary: str
     section_count: int
     summary_backend: str = "extractive"
+
+
+@dataclass(frozen=True)
+class TranscriptSection:
+    title: str
+    text: str
+    summary_items: tuple[str, ...]
 
 
 def write_markdown_note(
@@ -25,7 +36,7 @@ def write_markdown_note(
     ollama_model: str = "qwen2.5:3b",
     ollama_url: str = "http://127.0.0.1:11434/api/generate",
 ) -> NoteResult:
-    sections = chunk_transcript(transcript_text)
+    sections = build_transcript_sections(transcript_text)
     summary_items = summarize_transcript_with_backend(
         transcript_text,
         backend=summary_backend,
@@ -62,16 +73,29 @@ def chunk_transcript(transcript_text: str, max_chars: int = 900) -> list[str]:
 
     for line in lines:
         if current and current_len + len(line) > max_chars:
-            chunks.append(" ".join(current))
+            chunks.append("\n".join(current))
             current = []
             current_len = 0
         current.append(line)
         current_len += len(line)
 
     if current:
-        chunks.append(" ".join(current))
+        chunks.append("\n".join(current))
 
     return chunks
+
+
+def build_transcript_sections(transcript_text: str, max_chars: int = 900) -> list[TranscriptSection]:
+    sections = []
+    for chunk in chunk_transcript(transcript_text, max_chars=max_chars):
+        sections.append(
+            TranscriptSection(
+                title=section_title(chunk),
+                text=chunk,
+                summary_items=tuple(summarize_transcript(chunk, max_items=4)),
+            )
+        )
+    return sections
 
 
 def render_markdown_note(
@@ -101,10 +125,29 @@ def render_markdown_note(
 
     lines.extend(["", "## Structured Notes", ""])
     for index, section in enumerate(sections, start=1):
-        lines.extend([f"### {index}. {section_title(section)}", "", section, ""])
+        section_data = _coerce_section(section)
+        lines.extend([f"### {index}. {section_data.title}", ""])
+
+        lines.extend(["#### Section Notes", ""])
+        if section_data.summary_items:
+            lines.extend(f"- {item}" for item in section_data.summary_items)
+        else:
+            lines.append("- No section notes could be generated.")
+
+        lines.extend(["", "#### Original Transcript", "", "```text", section_data.text.strip(), "```", ""])
 
     lines.extend(["## Full Transcript", "", transcript_text.strip(), ""])
     return "\n".join(lines)
+
+
+def _coerce_section(section: TranscriptSection | str) -> TranscriptSection:
+    if isinstance(section, TranscriptSection):
+        return section
+    return TranscriptSection(
+        title=section_title(section),
+        text=section,
+        summary_items=tuple(summarize_transcript(section, max_items=4)),
+    )
 
 
 def safe_filename(name: str) -> str:

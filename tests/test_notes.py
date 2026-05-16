@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from backend.services.notes import (
+    build_transcript_sections,
     chunk_transcript,
     summarize_transcript,
     summarize_transcript_with_backend,
@@ -16,6 +17,7 @@ class NotesTest(unittest.TestCase):
     def test_chunk_transcript_groups_lines(self):
         chunks = chunk_transcript("第一行內容\n第二行內容\n第三行內容", max_chars=10)
         self.assertGreaterEqual(len(chunks), 2)
+        self.assertIn("\n", chunks[0])
 
     def test_write_markdown_note_creates_summary_and_file(self):
         transcript = "\n".join(
@@ -37,7 +39,20 @@ class NotesTest(unittest.TestCase):
         self.assertIn("# 測試影片", markdown)
         self.assertIn("## Summary", markdown)
         self.assertIn("## Structured Notes", markdown)
+        self.assertIn("Original Transcript", markdown)
+        self.assertIn("```text", markdown)
+        self.assertIn("市場正在創新高但是宏觀情況仍然不確定", markdown)
         self.assertTrue(result.summary)
+
+    def test_build_transcript_sections_keeps_original_segment_text(self):
+        transcript = "第一段討論市場和債務\n第二段討論中國和亞洲秩序\n第三段討論投資者如何分散風險"
+
+        sections = build_transcript_sections(transcript, max_chars=18)
+
+        self.assertGreaterEqual(len(sections), 2)
+        self.assertTrue(all(section.text for section in sections))
+        self.assertIn("第一段討論市場和債務", sections[0].text)
+        self.assertTrue(all(section.summary_items for section in sections))
 
     def test_summarize_transcript_returns_limited_items(self):
         transcript = "\n".join(f"這是一段關於市場和美元體系的內容 {i}" for i in range(20))
@@ -80,6 +95,20 @@ class NotesTest(unittest.TestCase):
 
         self.assertTrue(any(item.startswith("白领工作的本质:") for item in summary))
         self.assertTrue(any(item.startswith("个人应对:") for item in summary))
+
+    def test_summarize_transcript_handles_geopolitics_and_china_topics(self):
+        transcript = "\n".join(
+            [
+                "特朗普希望伊朗战争结束但冲突远未结束",
+                "如果伊朗控制霍尔木兹海峡或者保留核能力局势会变化",
+                "战争长期会有赢家输家和中立国并影响世界秩序",
+                "中国在亚洲影响力增强并参与新的世界秩序塑造",
+            ]
+        )
+        summary = summarize_transcript(transcript)
+
+        self.assertTrue(any(item.startswith("美伊冲突:") for item in summary))
+        self.assertTrue(any(item.startswith("中国影响力:") for item in summary))
 
     def test_ollama_summary_summarizes_all_chunks_then_combines(self):
         transcript = "\n".join(

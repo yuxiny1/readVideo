@@ -11,7 +11,7 @@ The default transcription backend is local `whisper.cpp`, so OpenAI API access i
 - Uses local `whisper.cpp` by default, with optional OpenAI transcription support.
 - Lets you choose transcription backend, spoken-language detection, prompt terms, and larger local Whisper models per run.
 - Saves the raw transcript next to the downloaded media file.
-- Creates a Markdown note with summary, structured sections, and full transcript.
+- Creates a Markdown note with summary, structured sections, each section's original transcript, and the full transcript.
 - Can summarize notes with either a local extractive summarizer or an optional Ollama local LLM.
 - Uses a full-transcript chunk-and-combine workflow for Ollama summaries so long videos are not summarized from only an excerpt.
 - Lets you choose or pull larger Ollama models from the browser when you want stronger local summaries.

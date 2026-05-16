@@ -1015,7 +1015,8 @@ dd {
 
 .markdown-reader h1,
 .markdown-reader h2,
-.markdown-reader h3 {
+.markdown-reader h3,
+.markdown-reader h4 {
   margin: 16px 0 8px;
   color: var(--text);
   text-transform: none;
@@ -1023,8 +1024,13 @@ dd {
 
 .markdown-reader h1:first-child,
 .markdown-reader h2:first-child,
-.markdown-reader h3:first-child {
+.markdown-reader h3:first-child,
+.markdown-reader h4:first-child {
   margin-top: 0;
+}
+
+.markdown-reader h4 {
+  font-size: 13px;
 }
 
 .markdown-reader p,

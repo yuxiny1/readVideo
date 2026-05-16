@@ -42,7 +42,7 @@ export function renderMarkdown(markdown) {
       return;
     }
 
-    const heading = line.match(/^(#{1,3})\s+(.+)$/);
+    const heading = line.match(/^(#{1,4})\s+(.+)$/);
     if (heading) {
       closeList();
       const level = heading[1].length;
