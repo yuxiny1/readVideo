@@ -27,6 +27,7 @@ The default transcription backend is local `whisper.cpp`, so OpenAI API access i
 ## Requirements
 
 - Python 3.11+
+- Node.js 24 LTS with npm 11 for the Angular TypeScript frontend and shared project scripts
 - `ffmpeg`
 - `whisper.cpp` and a GGML Whisper model for local transcription
 
@@ -34,9 +35,12 @@ On macOS:
 
 ```bash
 brew install ffmpeg whisper-cpp
+nvm install
+nvm use
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+npm install
 ```
 
 Download a local model:
@@ -101,7 +105,7 @@ Starting readVideo on http://127.0.0.1:8000
 
 If port `8000` is already in use, it automatically falls back to the next available port.
 
-The frontend is an Angular TypeScript app under `frontend/angular/`. FastAPI serves the built app and the frontend calls the same FastAPI process for task status, history, favorites, Markdown output, and saved YouTube sources. Main navigation lives in the left sidebar.
+The frontend is an Angular TypeScript app under `frontend/angular/`. This repo pins Node 24 through `.nvmrc`, `.node-version`, and `package.json` engines; use that version for local servers, web app builds, command-line tools, and npm scripts. FastAPI serves the built app and the frontend calls the same FastAPI process for task status, history, favorites, Markdown output, and saved YouTube sources. Main navigation lives in the left sidebar.
 Open `/history` to review previously downloaded/transcribed videos and their saved file paths.
 Open `/favorites` to review favorite summaries and organize them into note folders.
 Open `/reader` to switch between favorite folders, browse local Markdown folders, read `.md` files, and download notes.
@@ -113,6 +117,17 @@ npm install
 npm run build:frontend
 python main.py
 ```
+
+Useful Node-managed scripts:
+
+```bash
+npm run dev             # start the FastAPI app through package.json
+npm run build           # build the Angular frontend
+npm run check:frontend  # development Angular build/type check
+npm test                # run the Python unit test suite from the active venv
+```
+
+The npm scripts expect the project virtualenv at `.venv/`, created in the setup steps above.
 
 ## API Usage
 
@@ -200,7 +215,7 @@ python -m unittest discover -s tests
 - `backend/services/`: Download, transcription, video processing, note generation, Markdown file listing, and saved source update discovery.
 - `backend/storage/`: SQLite-backed watchlist, processing history, and favorite summary storage.
 - `frontend/angular/`: Angular TypeScript application source.
-- `frontend/css/`: Shared app styles imported by Angular.
+- `frontend/css/`: Shared Angular styles. `styles.css` is only the import manifest; page and component styles live in `frontend/css/partials/`.
 - `config/`: Environment examples and local env files.
 - `docs/`: Project documentation.
 - `tests/`: Unit tests.

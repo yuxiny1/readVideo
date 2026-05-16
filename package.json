@@ -2,9 +2,19 @@
   "name": "readvideo",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@11.9.0",
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=11 <12"
+  },
   "scripts": {
+    "dev": ".venv/bin/python main.py",
+    "start": ".venv/bin/python main.py",
+    "build": "npm run build:frontend",
     "build:frontend": "ng build",
-    "check:frontend": "ng build --configuration development"
+    "check": "npm run check:frontend && .venv/bin/python -m unittest -v",
+    "check:frontend": "ng build --configuration development",
+    "test": ".venv/bin/python -m unittest -v"
   },
   "dependencies": {
     "@angular/common": "21.2.13",

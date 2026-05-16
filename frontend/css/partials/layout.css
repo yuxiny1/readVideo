@@ -1,0 +1,112 @@
+.workspace {
+  width: min(1240px, 100%);
+  margin: 0 auto;
+  padding: 24px 28px 32px;
+  display: grid;
+  grid-template-columns: minmax(480px, 1fr) clamp(320px, 29vw, 380px);
+  grid-template-areas:
+    "process watch"
+    "output watch";
+  gap: 20px;
+}
+
+.history-workspace {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding: 24px 28px 32px;
+}
+
+.favorites-workspace {
+  width: min(1320px, 100%);
+  margin: 0 auto;
+  padding: 24px 28px 32px;
+  display: grid;
+  grid-template-columns: minmax(500px, 1fr) clamp(320px, 30vw, 390px);
+  gap: 20px;
+}
+
+.favorites-side {
+  display: grid;
+  gap: 20px;
+  align-self: start;
+}
+
+.tool-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+
+rv-process-panel,
+rv-latest-output,
+rv-saved-sources {
+  display: block;
+  min-width: 0;
+}
+
+rv-process-panel {
+  grid-area: process;
+}
+
+rv-latest-output {
+  grid-area: output;
+}
+
+rv-saved-sources {
+  grid-area: watch;
+  align-self: start;
+  position: sticky;
+  top: 20px;
+}
+
+.process-panel {
+  grid-area: process;
+}
+
+.output-panel {
+  grid-area: output;
+}
+
+.watch-panel {
+  grid-area: watch;
+  align-self: start;
+  position: sticky;
+  top: 20px;
+}
+
+.panel-header {
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.stack {
+  display: grid;
+  gap: 14px;
+}
+
+.compact {
+  gap: 10px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.input-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+}
+
+label {
+  display: block;
+  margin-bottom: 6px;
+  color: #3a3a3c;
+  font-size: 13px;
+  font-weight: 700;
+}
