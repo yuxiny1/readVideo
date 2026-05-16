@@ -1,4 +1,5 @@
 from backend.services.markdown_notes import (
+    build_article_note,
     NoteResult,
     chunk_transcript,
     render_markdown_note,
@@ -6,6 +7,9 @@ from backend.services.markdown_notes import (
     write_markdown_note,
 )
 from backend.services.transcript_summarizer import (
+    ArticleNote,
+    ArticleSection,
+    build_article_note_with_ollama,
     section_title,
     summarize_transcript,
     summarize_transcript_with_backend,
@@ -14,6 +18,10 @@ from backend.services.transcript_summarizer import (
 
 
 __all__ = [
+    "ArticleNote",
+    "ArticleSection",
+    "build_article_note",
+    "build_article_note_with_ollama",
     "NoteResult",
     "chunk_transcript",
     "render_markdown_note",

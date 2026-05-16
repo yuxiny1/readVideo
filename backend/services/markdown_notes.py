@@ -4,7 +4,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterable, Optional
 
-from backend.services.transcript_summarizer import section_title, summarize_transcript_with_backend
+from backend.services.transcript_summarizer import (
+    ArticleNote,
+    ArticleSection,
+    build_article_note_with_ollama,
+    section_title,
+    summarize_transcript,
+    summarize_transcript_with_backend,
+)
 
 
 @dataclass(frozen=True)
@@ -25,10 +32,9 @@ def write_markdown_note(
     ollama_model: str = "qwen2.5:3b",
     ollama_url: str = "http://127.0.0.1:11434/api/generate",
 ) -> NoteResult:
-    sections = chunk_transcript(transcript_text)
-    summary_items = summarize_transcript_with_backend(
+    article_note = build_article_note(
         transcript_text,
-        backend=summary_backend,
+        summary_backend=summary_backend,
         ollama_model=ollama_model,
         ollama_url=ollama_url,
     )
@@ -36,8 +42,8 @@ def write_markdown_note(
         video_title=video_title,
         source_url=source_url,
         transcript_text=transcript_text,
-        sections=sections,
-        summary_items=summary_items,
+        sections=article_note.sections,
+        summary_items=article_note.summary_items,
         transcript_path=transcript_path,
     )
 
@@ -48,10 +54,43 @@ def write_markdown_note(
 
     return NoteResult(
         markdown_path=str(note_path),
-        summary="\n".join(f"- {item}" for item in summary_items),
-        section_count=len(sections),
+        summary="\n".join(f"- {item}" for item in article_note.summary_items),
+        section_count=len(article_note.sections),
         summary_backend=summary_backend,
     )
+
+
+def build_article_note(
+    transcript_text: str,
+    summary_backend: str = "extractive",
+    ollama_model: str = "qwen2.5:3b",
+    ollama_url: str = "http://127.0.0.1:11434/api/generate",
+) -> ArticleNote:
+    if summary_backend == "ollama":
+        article_note = build_article_note_with_ollama(
+            transcript_text,
+            model=ollama_model,
+            url=ollama_url,
+        )
+        return ArticleNote(
+            summary_items=article_note.summary_items or summarize_transcript(transcript_text),
+            sections=article_note.sections or _extractive_sections(transcript_text),
+        )
+
+    summary_items = summarize_transcript_with_backend(
+        transcript_text,
+        backend=summary_backend,
+        ollama_model=ollama_model,
+        ollama_url=ollama_url,
+    )
+    return ArticleNote(summary_items=summary_items, sections=_extractive_sections(transcript_text))
+
+
+def _extractive_sections(transcript_text: str) -> list[ArticleSection]:
+    return [
+        ArticleSection(title=section_title(section, index=index), body=section)
+        for index, section in enumerate(chunk_transcript(transcript_text), start=1)
+    ]
 
 
 def chunk_transcript(transcript_text: str, max_chars: int = 900) -> list[str]:
@@ -78,7 +117,7 @@ def render_markdown_note(
     video_title: str,
     source_url: str,
     transcript_text: str,
-    sections: Iterable[str],
+    sections: Iterable[ArticleSection | str],
     summary_items: Iterable[str],
     transcript_path: Optional[str] = None,
 ) -> str:
@@ -89,8 +128,6 @@ def render_markdown_note(
         f"- Source: {source_url}",
         f"- Generated: {generated_at}",
     ]
-    if transcript_path:
-        lines.append(f"- Transcript: `{transcript_path}`")
 
     lines.extend(["", "## Summary", ""])
     summary_items = list(summary_items)
@@ -99,14 +136,20 @@ def render_markdown_note(
     else:
         lines.append("- No summary could be generated.")
 
-    lines.extend(["", "## Structured Notes", ""])
+    lines.extend(["", "## Segmented Notes", ""])
     for index, section in enumerate(sections, start=1):
-        title = section_title(section, index=index)
+        article_section = _coerce_section(section, index)
+        title = article_section.title
         heading = title if title.startswith("Section ") else f"{index}. {title}"
-        lines.extend([f"### {heading}", "", section, ""])
+        lines.extend([f"### {heading}", "", article_section.body, ""])
 
-    lines.extend(["## Full Transcript", "", transcript_text.strip(), ""])
     return "\n".join(lines)
+
+
+def _coerce_section(section: ArticleSection | str, index: int) -> ArticleSection:
+    if isinstance(section, ArticleSection):
+        return section
+    return ArticleSection(title=section_title(section, index=index), body=section)
 
 
 def safe_filename(name: str) -> str:

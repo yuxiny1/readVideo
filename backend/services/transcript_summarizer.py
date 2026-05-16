@@ -13,6 +13,18 @@ class SummaryWindow:
     end: int
 
 
+@dataclass(frozen=True)
+class ArticleSection:
+    title: str
+    body: str
+
+
+@dataclass(frozen=True)
+class ArticleNote:
+    summary_items: list[str]
+    sections: list[ArticleSection]
+
+
 PROMOTIONAL_PATTERNS = (
     "hello",
     "大家好",
@@ -126,7 +138,56 @@ def summarize_transcript_with_ollama(
     return items[:max_items]
 
 
+def build_article_note_with_ollama(
+    transcript_text: str,
+    model: str = "qwen2.5:3b",
+    url: str = "http://127.0.0.1:11434/api/generate",
+    timeout_seconds: int = 240,
+    max_summary_items: int = 7,
+    max_sections: int = 8,
+    chunk_chars: int = 7000,
+) -> ArticleNote:
+    chunks = _prompt_chunks(transcript_text, max_chars=chunk_chars)
+    if not chunks:
+        return ArticleNote(summary_items=[], sections=[])
+
+    if len(chunks) == 1:
+        prompt = _article_note_prompt(chunks[0], max_summary_items, max_sections)
+        return _parse_article_note(
+            _request_ollama_text(prompt, model, url, timeout_seconds),
+            max_summary_items=max_summary_items,
+            max_sections=max_sections,
+        )
+
+    chunk_notes: list[str] = []
+    for index, chunk in enumerate(chunks, start=1):
+        prompt = _chunk_article_prompt(chunk, index, len(chunks))
+        note = _request_ollama_text(prompt, model, url, timeout_seconds)
+        if note.strip():
+            chunk_notes.append(f"Chunk {index}/{len(chunks)}\n{note.strip()}")
+
+    if not chunk_notes:
+        raise RuntimeError("Ollama note generation did not return usable chunk notes.")
+
+    prompt = _article_note_prompt("\n\n".join(chunk_notes), max_summary_items, max_sections)
+    article = _parse_article_note(
+        _request_ollama_text(prompt, model, url, timeout_seconds),
+        max_summary_items=max_summary_items,
+        max_sections=max_sections,
+    )
+    if article.summary_items or article.sections:
+        return article
+
+    fallback_summary = _parse_markdown_bullets("\n".join(chunk_notes))[:max_summary_items]
+    return ArticleNote(summary_items=fallback_summary, sections=[])
+
+
 def _request_ollama_summary(prompt: str, model: str, url: str, timeout_seconds: int) -> list[str]:
+    text = _request_ollama_text(prompt, model, url, timeout_seconds)
+    return _parse_markdown_bullets(text)
+
+
+def _request_ollama_text(prompt: str, model: str, url: str, timeout_seconds: int) -> str:
     payload = json.dumps(
         {
             "model": model,
@@ -157,8 +218,7 @@ def _request_ollama_summary(prompt: str, model: str, url: str, timeout_seconds: 
             f"Ollama summary failed. Make sure Ollama is running at {url} and the model is installed: ollama pull {model}"
         ) from exc
 
-    text = str(data.get("response", "")).strip()
-    return _parse_markdown_bullets(text)
+    return str(data.get("response", "")).strip()
 
 
 def _chunk_summary_prompt(chunk: str, index: int, total: int) -> str:
@@ -179,6 +239,162 @@ def _final_summary_prompt(notes_text: str, max_items: int) -> str:
         "不要泛泛而谈，不要编造，不要加入广告、订阅提醒或免责声明。\n\n"
         f"内容:\n{notes_text}"
     )
+
+
+def _chunk_article_prompt(chunk: str, index: int, total: int) -> str:
+    return (
+        "你是一个严谨的视频笔记编辑。下面是完整转录文本中的一个连续片段。"
+        "请先去掉口头禅、重复识别、寒暄、订阅提醒，只保留真正的信息。"
+        "输出中文 Markdown，包含 3 到 5 条片段要点和 2 到 4 个可能的章节主题。"
+        "要求保留具体事实、定义、例子、数字、因果关系和行动建议；不要逐字复制长段转录；不要编造。\n\n"
+        f"片段 {index}/{total}:\n{chunk}"
+    )
+
+
+def _article_note_prompt(material: str, max_summary_items: int, max_sections: int) -> str:
+    return (
+        "你是一个中文长文编辑，要把视频转录整理成一篇清晰、可阅读的文章式笔记。"
+        "输入可能是完整转录，也可能是按顺序整理过的片段笔记。"
+        "请用完整内容做全局组织，不要只看开头，不要重复同一句话，不要把逐字稿粘贴进笔记。\n\n"
+        "输出必须严格使用下面的 Markdown 结构：\n"
+        "## Summary\n"
+        f"- 5 到 {max_summary_items} 条全局摘要，每条都是「主题: 具体结论/事实/行动点」\n\n"
+        "## Sections\n"
+        f"### 1. 清楚的章节标题\n"
+        "用 2 到 5 句自然段总结这一段的核心内容；必要时可加 1 到 3 条 bullet。"
+        f"总共输出 3 到 {max_sections} 个章节，按视频逻辑顺序排列。\n\n"
+        "章节标题要具体，不要写“Transcript Segment”“片段总结”这种过程词。"
+        "如果主题真的不明确，才使用 Section 1、Section 2。"
+        "只基于输入内容，不要编造，不要广告，不要免责声明。\n\n"
+        f"内容:\n{material}"
+    )
+
+
+def _parse_article_note(text: str, max_summary_items: int = 7, max_sections: int = 8) -> ArticleNote:
+    summary_items: list[str] = []
+    sections: list[ArticleSection] = []
+    mode = ""
+    current_title = ""
+    current_body: list[str] = []
+
+    def flush_section():
+        nonlocal current_title, current_body
+        body = _clean_section_body("\n".join(current_body))
+        title = _clean_section_title(current_title, len(sections) + 1)
+        if body:
+            sections.append(ArticleSection(title=title, body=body))
+        current_title = ""
+        current_body = []
+
+    for raw_line in text.splitlines():
+        line = raw_line.rstrip()
+        stripped = line.strip()
+        if not stripped:
+            if current_body:
+                current_body.append("")
+            continue
+
+        heading_match = re.match(r"^(#{1,4})\s+(.+?)\s*$", stripped)
+        if heading_match:
+            heading_text = heading_match.group(2).strip()
+            heading_lower = heading_text.lower()
+            if any(word in heading_lower for word in ("summary", "摘要", "总结", "總結", "要点", "要點")):
+                flush_section()
+                mode = "summary"
+                continue
+            if any(word in heading_lower for word in ("section", "sections", "章节", "章節", "分段", "正文", "笔记", "筆記")) and heading_match.group(1) in {"#", "##"}:
+                flush_section()
+                mode = "sections"
+                continue
+            if mode == "sections" or heading_match.group(1) in {"###", "####"}:
+                flush_section()
+                mode = "sections"
+                current_title = heading_text
+                continue
+
+        if mode == "summary":
+            item = _parse_summary_line(stripped)
+            if item:
+                summary_items.append(item)
+            continue
+
+        if mode == "sections":
+            current_body.append(stripped)
+            continue
+
+        item = _parse_summary_line(stripped)
+        if item and len(summary_items) < max_summary_items:
+            summary_items.append(item)
+
+    flush_section()
+    if not sections:
+        sections = _parse_numbered_sections(text, max_sections)
+
+    return ArticleNote(
+        summary_items=_dedupe_items(summary_items)[:max_summary_items],
+        sections=sections[:max_sections],
+    )
+
+
+def _parse_summary_line(line: str) -> str:
+    has_marker = re.match(r"^\s*(?:[-*]|\d+[.)])\s+", line)
+    item = re.sub(r"^\s*(?:[-*]|\d+[.)])\s*", "", line).strip()
+    item = item.strip("-* ")
+    if not item or _is_promotional(item):
+        return ""
+    if not has_marker and ":" not in item and "：" not in item:
+        return ""
+    return _trim_sentence(item, max_len=240)
+
+
+def _parse_numbered_sections(text: str, max_sections: int) -> list[ArticleSection]:
+    pattern = re.compile(r"(?m)^\s*(?:###\s*)?(?:\d+[.)、]\s*)?([^\n:：]{2,48})[:：]\s*$")
+    matches = list(pattern.finditer(text))
+    sections: list[ArticleSection] = []
+    for index, match in enumerate(matches[:max_sections]):
+        start = match.end()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        body = _clean_section_body(text[start:end])
+        if body:
+            sections.append(ArticleSection(title=_clean_section_title(match.group(1), index + 1), body=body))
+    return sections
+
+
+def _clean_section_title(title: str, index: int) -> str:
+    cleaned = re.sub(r"^\s*(?:#+\s*)?(?:\d+[.)、]\s*)?", "", title).strip()
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" :-：")
+    lower_cleaned = cleaned.lower()
+    banned = ("transcript segment", "片段总结", "片段總結", "转录片段", "轉錄片段")
+    if not cleaned or any(term in lower_cleaned for term in banned):
+        return f"Section {index}"
+    if len(cleaned) > 56:
+        cleaned = cleaned[:55].rstrip() + "..."
+    return cleaned
+
+
+def _clean_section_body(body: str) -> str:
+    lines = []
+    blank_pending = False
+    for raw_line in body.splitlines():
+        line = raw_line.strip()
+        if not line:
+            blank_pending = bool(lines)
+            continue
+        if _is_promotional(line):
+            continue
+        if blank_pending and lines and lines[-1] != "":
+            lines.append("")
+        lines.append(line)
+        blank_pending = False
+    return "\n".join(lines).strip()
+
+
+def _dedupe_items(items: list[str]) -> list[str]:
+    selected: list[str] = []
+    for item in items:
+        if item and not _is_duplicate_summary(item, selected):
+            selected.append(item)
+    return selected
 
 
 def _tokens(sentence: str) -> list[str]:

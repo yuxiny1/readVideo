@@ -10,7 +10,7 @@ The default transcription backend is local `whisper.cpp`, so OpenAI API access i
 - Transcribes speech in the original language; it does not translate between languages.
 - Uses local `whisper.cpp` by default, with optional OpenAI transcription support.
 - Saves the raw transcript next to the downloaded video.
-- Creates a Markdown note with summary, structured sections, and full transcript.
+- Creates a Markdown note with summary and segmented notes; the raw transcript stays in its own `.txt` file instead of being embedded in the note.
 - Can summarize notes with either a local extractive summarizer or an optional Ollama local LLM.
 - Lets you choose the Markdown output folder per request.
 - Provides a simple FastAPI frontend and JSON API.
@@ -55,12 +55,14 @@ READVIDEO_OLLAMA_MODEL=qwen2.5:3b
 READVIDEO_OLLAMA_URL=http://127.0.0.1:11434/api/generate
 ```
 
-Optional Ollama note summaries:
+Optional Ollama article-style notes:
 
 ```bash
 ollama pull qwen2.5:3b
 READVIDEO_NOTES_BACKEND=ollama
 ```
+
+`READVIDEO_NOTES_BACKEND=extractive` means Quick Notes: fastest, no AI model needed. `READVIDEO_NOTES_BACKEND=ollama` means Better Local AI Notes: slower, but asks a local Ollama model to turn the full transcript into a readable summary plus article-style sections.
 
 Optional OpenAI backend:
 
