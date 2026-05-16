@@ -40,11 +40,6 @@ export class ProcessPanelComponent {
     this.form.patch({notesDir});
   }
 
-  setNotesBackend(notesBackend: "extractive" | "ollama"): void {
-    this.form.patch({notesBackend});
-    this.workflow.validateOllamaSelection();
-  }
-
   setTranscriptionBackend(transcriptionBackend: "local" | "openai"): void {
     this.form.patch({transcriptionBackend});
   }

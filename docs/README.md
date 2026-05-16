@@ -12,7 +12,7 @@ For local transcription quality, `ggml-large-v3-turbo.bin` is the recommended de
 - Uses local `whisper.cpp` by default, with optional OpenAI transcription support.
 - Saves the raw transcript next to the downloaded video.
 - Creates a Markdown note with key points, a narrative summary paragraph, and segmented notes; the raw transcript stays in its own `.txt` file instead of being embedded in the note.
-- Can create Quick Notes with simple local rules, or Better Local AI Notes with an optional Ollama model.
+- Creates Better Local AI Notes with Ollama by default.
 - Lets you choose the Markdown output folder per request.
 - Can delete the downloaded local video after a successful run while keeping the transcript, Markdown note, and history.
 - Provides a simple FastAPI frontend and JSON API.
@@ -69,19 +69,19 @@ READVIDEO_NOTES_DIR=notes
 READVIDEO_LOCAL_WHISPER_CLI=whisper-cli
 READVIDEO_LOCAL_WHISPER_MODEL=models/ggml-large-v3-turbo.bin
 READVIDEO_LOCAL_WHISPER_LANGUAGE=auto
-READVIDEO_NOTES_BACKEND=extractive
-READVIDEO_OLLAMA_MODEL=qwen2.5:3b
+READVIDEO_NOTES_BACKEND=ollama
+READVIDEO_OLLAMA_MODEL=qwen2.5:32b
 READVIDEO_OLLAMA_URL=http://127.0.0.1:11434/api/generate
 ```
 
-Optional Ollama note summaries:
+Default Ollama note model:
 
 ```bash
-ollama pull qwen2.5:3b
+ollama pull qwen2.5:32b
 READVIDEO_NOTES_BACKEND=ollama
 ```
 
-`READVIDEO_NOTES_BACKEND=extractive` means Quick Notes: fastest, no AI model needed. `READVIDEO_NOTES_BACKEND=ollama` means Better Local AI Notes: slower, but asks a local Ollama model to turn the full transcript into key points, a narrative summary paragraph, and high-detail article-style sections that preserve names, dates, examples, numbers, and the original flow. The Markdown note no longer embeds the full transcript; the transcript remains available as its separate `.txt` output.
+`READVIDEO_NOTES_BACKEND=ollama` means Better Local AI Notes: slower, but uses a local Ollama model to turn the full transcript into key points, a narrative summary paragraph, and high-detail article-style sections that preserve names, dates, examples, numbers, and the original flow. The default model is `qwen2.5:32b` when available. The Markdown note no longer embeds the full transcript; the transcript remains available as its separate `.txt` output.
 
 Optional OpenAI backend:
 
@@ -143,8 +143,8 @@ curl -X POST "http://localhost:8000/process_video/" \
     "task_id": "demo-1",
     "url": "https://www.youtube.com/watch?v=<VIDEO_ID>",
     "notes_dir": "/Users/you/Documents/Notes",
-    "notes_backend": "extractive",
-    "ollama_model": "qwen2.5:3b",
+    "notes_backend": "ollama",
+    "ollama_model": "qwen2.5:32b",
     "delete_video_after_completion": true
   }'
 ```

@@ -110,7 +110,7 @@ export interface ProcessPayload {
   transcription_model: string | null;
   local_whisper_model: string | null;
   local_whisper_language: string | null;
-  notes_backend: "extractive" | "ollama";
+  notes_backend: "ollama";
   ollama_model: string | null;
   reuse_task_id?: string | null;
   force_download?: boolean;

@@ -31,10 +31,10 @@ class OllamaModelOption:
 
 
 RECOMMENDED_OLLAMA_MODELS = (
-    OllamaModelOption("qwen2.5:3b", "Qwen2.5 3B", "1.9GB", "Current lightweight default; fast, but weaker notes."),
+    OllamaModelOption("qwen2.5:3b", "Qwen2.5 3B", "1.9GB", "Lightweight fallback; fast, but weaker notes."),
     OllamaModelOption("qwen2.5:7b", "Qwen2.5 7B", "4.7GB", "Good general Chinese/English summaries on typical laptops."),
     OllamaModelOption("qwen2.5:14b", "Qwen2.5 14B", "9.0GB", "Better structure and reasoning if you have enough memory."),
-    OllamaModelOption("qwen2.5:32b", "Qwen2.5 32B", "20GB", "Much stronger, but needs a powerful machine."),
+    OllamaModelOption("qwen2.5:32b", "Qwen2.5 32B", "20GB", "Default strongest local notes model when installed."),
     OllamaModelOption("qwen3:8b", "Qwen3 8B", "5.2GB", "Newer Qwen family; strong balanced option."),
     OllamaModelOption("qwen3:14b", "Qwen3 14B", "9.3GB", "Higher quality local summaries with moderate hardware cost."),
     OllamaModelOption("qwen3:30b", "Qwen3 30B", "19GB", "Large local model for stronger reasoning and organization."),
