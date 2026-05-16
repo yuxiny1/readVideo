@@ -179,11 +179,11 @@ async def process_video(
         if resolved_notes_backend == "ollama":
             append_task_log(
                 task_id,
-                f"Summarizing with Ollama model {resolved_ollama_model}.",
+                f"Writing better local AI notes with Ollama model {resolved_ollama_model}.",
                 status="organizing_notes",
             )
         else:
-            append_task_log(task_id, "Summarizing with local extractive notes.", status="organizing_notes")
+            append_task_log(task_id, "Writing quick notes without an AI model.", status="organizing_notes")
         note_result = await asyncio.to_thread(
             write_markdown_note,
             result.text,

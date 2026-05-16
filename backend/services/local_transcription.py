@@ -5,6 +5,8 @@ from functools import lru_cache
 from dataclasses import dataclass
 from pathlib import Path
 
+from backend.services.downloader import clean_filename_part
+
 
 DEFAULT_AUDIO_FILTER = "highpass=f=80,lowpass=f=8000,loudnorm=I=-16:TP=-1.5:LRA=11"
 
@@ -54,7 +56,7 @@ class LocalWhisperTranscription:
             raise FileNotFoundError(f"Video file not found: {video_file_path}")
 
         audio_path = video_path.with_suffix(".local-whisper.wav")
-        output_base = video_path.with_name(f"{video_path.stem}_transcription")
+        output_base = video_path.with_name(f"{clean_filename_part(video_path.stem)}_transcription")
         transcript_path = output_base.with_suffix(".txt")
 
         try:
@@ -71,6 +73,7 @@ class LocalWhisperTranscription:
                 )
             )
 
+            transcript_path = _resolve_transcript_path(transcript_path, output_base, audio_path, video_path)
             text = transcript_path.read_text(encoding="utf-8")
             text = _normalize_whisper_text(text)
             transcript_path.write_text(text, encoding="utf-8")
@@ -97,6 +100,58 @@ def _normalize_whisper_text(text: str) -> str:
         lines.append(line)
         previous_line = line
     return "\n".join(lines) + ("\n" if lines else "")
+
+
+def _resolve_transcript_path(
+    expected_path: Path,
+    output_base: Path,
+    audio_path: Path,
+    video_path: Path,
+) -> Path:
+    candidates = [
+        expected_path,
+        output_base.with_suffix(".txt"),
+        audio_path.with_suffix(".txt"),
+        video_path.with_suffix(".txt"),
+        video_path.with_name(f"{video_path.stem}.txt"),
+        video_path.with_name(f"{clean_filename_part(video_path.stem)}.txt"),
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return _standardize_transcript_path(candidate, expected_path)
+
+    recent_txt_files = sorted(
+        expected_path.parent.glob("*.txt"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    for candidate in recent_txt_files[:8]:
+        if _looks_like_whisper_output(candidate, video_path, output_base):
+            return _standardize_transcript_path(candidate, expected_path)
+
+    checked = "\n".join(str(candidate) for candidate in dict.fromkeys(candidates))
+    raise FileNotFoundError(f"Whisper finished but transcript was not found. Checked:\n{checked}")
+
+
+def _standardize_transcript_path(found_path: Path, expected_path: Path) -> Path:
+    if found_path == expected_path:
+        return expected_path
+    if expected_path.exists():
+        expected_path.unlink()
+    found_path.replace(expected_path)
+    return expected_path
+
+
+def _looks_like_whisper_output(candidate: Path, video_path: Path, output_base: Path) -> bool:
+    candidate_stem = clean_filename_part(candidate.stem).lower()
+    video_stem = clean_filename_part(video_path.stem).lower()
+    output_stem = clean_filename_part(output_base.stem).lower()
+    audio_stem = f"{video_stem}.local-whisper"
+    return (
+        candidate_stem in {video_stem, output_stem, audio_stem}
+        or candidate_stem.startswith(video_stem[:80])
+        or output_stem.startswith(candidate_stem)
+    )
 
 
 def _build_ffmpeg_command(video_path: Path, audio_path: Path, audio_filter: str = DEFAULT_AUDIO_FILTER) -> list[str]:
