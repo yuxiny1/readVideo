@@ -8,6 +8,8 @@ from backend.services.notes import (
     ArticleSection,
     build_article_note_with_ollama,
     chunk_transcript,
+    original_transcript_segments,
+    original_transcript_segments_for_sections,
     summarize_transcript,
     summarize_transcript_with_backend,
     summarize_transcript_with_ollama,
@@ -19,6 +21,35 @@ class NotesTest(unittest.TestCase):
     def test_chunk_transcript_groups_lines(self):
         chunks = chunk_transcript("第一行內容\n第二行內容\n第三行內容", max_chars=10)
         self.assertGreaterEqual(len(chunks), 2)
+        self.assertIn("\n", chunks[0])
+
+    def test_original_transcript_segments_match_section_count(self):
+        segments = original_transcript_segments(
+            "第一段原文\n第二段原文\n第三段原文\n第四段原文",
+            section_count=3,
+        )
+
+        self.assertEqual(len(segments), 3)
+        self.assertIn("第一段原文", segments[0])
+        self.assertIn("第四段原文", segments[-1])
+
+    def test_original_transcript_segments_match_section_topics(self):
+        transcript = "\n".join(
+            [
+                "Ray Dalio from Bridgewater talks about long-term investments and geopolitics.",
+                "The United States has about 750 bases in about 80 countries and promises defense.",
+                "China's rise is creating a tribute system type of system in Asia.",
+            ]
+        )
+        sections = [
+            ArticleSection(title="中国崛起与朝贡体系", body="中国的崛起类似朝贡系统。"),
+            ArticleSection(title="美国军事基地", body="美国在全球有约750个基地。"),
+        ]
+
+        segments = original_transcript_segments_for_sections(transcript, sections)
+
+        self.assertIn("China's rise", segments[0])
+        self.assertIn("750 bases", segments[1])
 
     def test_write_markdown_note_creates_summary_and_file(self):
         transcript = "\n".join(
@@ -40,6 +71,9 @@ class NotesTest(unittest.TestCase):
         self.assertIn("# 測試影片", markdown)
         self.assertIn("## Summary", markdown)
         self.assertIn("## Segmented Notes", markdown)
+        self.assertIn("#### Original Transcript", markdown)
+        self.assertIn("```text", markdown)
+        self.assertIn("市場正在創新高但是宏觀情況仍然不確定", markdown)
         self.assertNotIn("## Full Transcript", markdown)
         self.assertNotIn("Transcript:", markdown)
         self.assertTrue(result.summary)
@@ -209,9 +243,10 @@ class NotesTest(unittest.TestCase):
         self.assertIn("## Segmented Notes", markdown)
         self.assertIn("### 1. 学习路线", markdown)
         self.assertIn("先建立课程地图", markdown)
+        self.assertIn("#### Original Transcript", markdown)
+        self.assertIn("完整逐字稿第二行", markdown)
         self.assertNotIn("## Full Transcript", markdown)
         self.assertNotIn("/tmp/transcript.txt", markdown)
-        self.assertNotIn("完整逐字稿第二行", markdown)
 
 
 if __name__ == "__main__":
