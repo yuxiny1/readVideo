@@ -125,6 +125,13 @@ export class ReadvideoApiService {
     });
   }
 
+  async reorderWatchItems(itemIds: number[]): Promise<WatchItem[]> {
+    return this.request<WatchItem[]>("/watchlist/reorder", {
+      method: "PATCH",
+      body: JSON.stringify({item_ids: itemIds}),
+    });
+  }
+
   async deleteWatchItem(id: number): Promise<unknown> {
     return this.request(`/watchlist/${encodeURIComponent(id)}`, {method: "DELETE"});
   }
