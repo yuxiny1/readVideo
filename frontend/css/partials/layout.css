@@ -1,9 +1,9 @@
 .workspace {
   width: min(1240px, 100%);
   margin: 0 auto;
-  padding: 24px 28px 32px;
+  padding: 26px 28px 36px;
   display: grid;
-  grid-template-columns: minmax(480px, 1fr) clamp(320px, 29vw, 380px);
+  grid-template-columns: minmax(520px, 1fr) clamp(340px, 29vw, 400px);
   grid-template-areas:
     "process watch"
     "output watch";
@@ -32,11 +32,26 @@
 }
 
 .tool-panel {
-  background: var(--panel);
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 252, 255, 0.86));
   border: 1px solid var(--line);
   border-radius: 8px;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow), var(--panel-glow);
   padding: 18px;
+}
+
+.tool-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(0, 166, 184, 0), rgba(0, 166, 184, 0.58), rgba(47, 191, 143, 0));
+  opacity: 0.74;
+}
+
+.tool-panel:hover {
+  box-shadow: var(--shadow-hover), var(--panel-glow);
 }
 
 rv-process-panel,
@@ -106,7 +121,7 @@ rv-saved-sources {
 label {
   display: block;
   margin-bottom: 6px;
-  color: #3a3a3c;
+  color: #354050;
   font-size: 13px;
   font-weight: 700;
 }
