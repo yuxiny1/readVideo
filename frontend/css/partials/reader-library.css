@@ -68,7 +68,7 @@
   padding: 11px 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fbfbfd;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(247, 251, 255, 0.7));
   color: var(--text);
   overflow: hidden;
   text-align: left;
@@ -78,8 +78,9 @@
 .reader-note-item.active,
 .reader-file-item:hover,
 .reader-file-item.active {
-  border-color: #a8cef6;
-  background: #f1f8ff;
+  border-color: rgba(0, 166, 184, 0.34);
+  background: rgba(241, 250, 255, 0.92);
+  box-shadow: 0 10px 24px rgba(9, 44, 84, 0.08);
 }
 
 .reader-note-item strong,

@@ -12,8 +12,14 @@
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fbfbfd;
+  background: rgba(255, 255, 255, 0.68);
   text-align: left;
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.task-row:hover {
+  border-color: rgba(0, 166, 184, 0.3);
+  box-shadow: 0 12px 28px rgba(9, 44, 84, 0.08);
 }
 
 .task-row strong,
@@ -47,9 +53,14 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
-  background: #fbfbfd;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(247, 251, 255, 0.72));
   cursor: grab;
   transition: border-color 140ms ease, box-shadow 140ms ease, opacity 140ms ease, transform 140ms ease;
+}
+
+.watch-item:hover {
+  border-color: rgba(0, 166, 184, 0.28);
+  box-shadow: 0 14px 34px rgba(9, 44, 84, 0.1);
 }
 
 .watch-item.dragging {
@@ -123,7 +134,7 @@
 .drag-grip span {
   height: 2px;
   border-radius: 999px;
-  background: #98989f;
+  background: linear-gradient(90deg, var(--cyan), #98989f);
 }
 
 .watch-title {
@@ -187,5 +198,5 @@
   border: 1px dashed var(--line-strong);
   border-radius: 8px;
   color: var(--muted);
-  background: #fbfbfd;
+  background: rgba(255, 255, 255, 0.58);
 }

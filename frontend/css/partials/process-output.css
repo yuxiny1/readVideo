@@ -1,17 +1,29 @@
 .progress-strip {
   margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1px solid var(--line);
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(247, 251, 255, 0.74);
 }
 
 .step {
   min-height: 30px;
   padding: 6px 10px;
   border-radius: 999px;
-  background: #f1f1f4;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.66);
   color: var(--muted);
   font-size: 12px;
   font-weight: 750;
+}
+
+.step.active {
+  border-color: rgba(25, 120, 79, 0.18);
+  box-shadow: 0 0 0 3px rgba(47, 191, 143, 0.08);
+}
+
+.step.pending {
+  border-color: rgba(181, 93, 0, 0.18);
 }
 
 .notice {
@@ -21,6 +33,7 @@
   padding: 12px;
   white-space: pre-wrap;
   word-break: break-word;
+  border: 1px solid transparent;
 }
 
 .duplicate-panel {
@@ -28,7 +41,7 @@
   padding: 14px;
   border: 1px solid #f6c586;
   border-radius: 8px;
-  background: #fffaf0;
+  background: linear-gradient(135deg, #fffaf0, rgba(255, 255, 255, 0.84));
 }
 
 .duplicate-message {
@@ -73,14 +86,14 @@
   margin-top: 10px;
   overflow: hidden;
   border-radius: 999px;
-  background: #ececf1;
+  background: rgba(42, 58, 82, 0.1);
 }
 
 .meter-fill {
   width: 0;
   height: 100%;
   border-radius: inherit;
-  background: var(--blue);
+  background: linear-gradient(90deg, var(--blue), var(--cyan), var(--mint));
   transition: width 180ms ease;
 }
 
@@ -98,7 +111,7 @@
   list-style: none;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fbfbfd;
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .task-log li {
@@ -107,7 +120,7 @@
   gap: 8px;
   padding: 8px 10px;
   border-bottom: 1px solid #edf1f7;
-  color: #273244;
+  color: var(--ink-soft);
   font-size: 12px;
   line-height: 1.35;
 }
@@ -118,7 +131,7 @@
 
 .task-log li.error {
   color: var(--red);
-  background: #fff8f7;
+  background: rgba(255, 248, 247, 0.86);
 }
 
 .task-log li.muted {
@@ -154,7 +167,7 @@
   grid-template-columns: 110px minmax(0, 1fr);
   gap: 10px;
   padding: 9px 0;
-  border-bottom: 1px solid #edf1f7;
+  border-bottom: 1px solid rgba(111, 129, 153, 0.16);
 }
 
 code {
@@ -168,7 +181,7 @@ code {
   gap: 10px;
   align-items: start;
   padding: 9px 0;
-  border-bottom: 1px solid #edf1f7;
+  border-bottom: 1px solid rgba(111, 129, 153, 0.16);
 }
 
 dt {
@@ -190,7 +203,7 @@ dd {
   word-break: break-word;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fbfbfd;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(246, 252, 255, 0.72));
   color: #1d1d1f;
   font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }

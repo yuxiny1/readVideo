@@ -6,10 +6,12 @@ textarea {
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   padding: 10px 12px;
-  background: #fbfbfd;
+  background: rgba(255, 255, 255, 0.78);
   color: var(--text);
   font: inherit;
   letter-spacing: 0;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.72) inset;
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
 }
 
 input[type="checkbox"] {
@@ -27,9 +29,10 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  outline: 3px solid rgba(21, 94, 239, 0.16);
-  border-color: var(--blue);
+  outline: 0;
+  border-color: var(--cyan);
   background: #fff;
+  box-shadow: var(--focus-ring), 0 1px 0 rgba(255, 255, 255, 0.82) inset;
 }
 
 button,
@@ -37,14 +40,31 @@ button,
   min-height: 40px;
   border-radius: 8px;
   font: inherit;
-  font-weight: 700;
+  font-weight: 760;
   letter-spacing: 0;
+  transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease, border-color 140ms ease;
 }
 
 button {
   border: 0;
   padding: 10px 14px;
   cursor: pointer;
+}
+
+button:hover:not(:disabled),
+.quiet-link:hover {
+  transform: translateY(-1px);
+}
+
+button:active:not(:disabled),
+.quiet-link:active {
+  transform: translateY(0);
+}
+
+button:focus-visible,
+.quiet-link:focus-visible {
+  outline: 0;
+  box-shadow: var(--focus-ring);
 }
 
 button:disabled {
@@ -54,18 +74,27 @@ button:disabled {
 
 .primary-button {
   width: fit-content;
-  background: var(--blue);
+  background: linear-gradient(135deg, var(--blue), var(--cyan));
   color: #fff;
+  box-shadow: 0 12px 28px rgba(10, 132, 255, 0.24), 0 1px 0 rgba(255, 255, 255, 0.2) inset;
 }
 
 .primary-button:hover:not(:disabled) {
-  background: var(--blue-dark);
+  background: linear-gradient(135deg, var(--blue-dark), #008fa0);
+  box-shadow: 0 16px 34px rgba(0, 143, 160, 0.28), 0 1px 0 rgba(255, 255, 255, 0.24) inset;
 }
 
 .secondary-button {
-  background: #f5f5f7;
-  color: #2c2c2e;
-  border: 1px solid #d8d8de;
+  background: rgba(255, 255, 255, 0.7);
+  color: #263241;
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 8px 22px rgba(25, 44, 72, 0.05);
+}
+
+.secondary-button:hover:not(:disabled),
+.quiet-link:hover {
+  border-color: rgba(0, 166, 184, 0.36);
+  background: rgba(244, 253, 255, 0.86);
 }
 
 .small-button {
@@ -75,9 +104,14 @@ button:disabled {
 }
 
 .danger-button {
-  background: #fff5f5;
+  background: rgba(255, 245, 245, 0.9);
   color: var(--red);
-  border: 1px solid #ffd1d1;
+  border: 1px solid rgba(217, 45, 32, 0.2);
+}
+
+.danger-button:hover:not(:disabled) {
+  border-color: rgba(217, 45, 32, 0.34);
+  background: #fff1f0;
 }
 
 .full {
@@ -88,10 +122,10 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   padding: 8px 12px;
-  color: #2c2c2e;
+  color: #263241;
   text-decoration: none;
-  background: #f5f5f7;
-  border: 1px solid #d8d8de;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--line-strong);
 }
 
 .small-link {
@@ -108,19 +142,21 @@ button:disabled {
   border-radius: 999px;
   font-size: 12px;
   font-weight: 750;
+  border: 1px solid transparent;
 }
 
 .pill.muted,
 .notice.muted {
   color: var(--muted);
-  background: #f1f1f4;
+  background: rgba(255, 255, 255, 0.62);
+  border-color: var(--line);
 }
 
 .pill.ok,
 .notice.ok,
 .step.active {
   color: var(--green);
-  background: #e7f6ee;
+  background: rgba(231, 246, 238, 0.86);
 }
 
 .pill.error,
@@ -173,7 +209,7 @@ button:disabled {
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fbfbfd;
+  background: rgba(255, 255, 255, 0.66);
 }
 
 .checkbox-option input[type="checkbox"] {
@@ -199,7 +235,7 @@ button:disabled {
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fbfbfd;
+  background: linear-gradient(135deg, rgba(244, 253, 255, 0.86), rgba(255, 255, 255, 0.7));
 }
 
 .inline-help-panel p {
