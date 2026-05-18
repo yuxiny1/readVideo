@@ -12,9 +12,10 @@
     "start": ".venv/bin/python main.py",
     "build": "npm run build:frontend",
     "build:frontend": "ng build",
-    "check": "npm run check:frontend && .venv/bin/python -m unittest -v",
+    "check": "npm run check:frontend && npm run test:coverage",
     "check:frontend": "ng build --configuration development",
-    "test": ".venv/bin/python -m unittest -v"
+    "test": ".venv/bin/python -m unittest -v",
+    "test:coverage": ".venv/bin/python -m coverage run -m unittest discover -v && .venv/bin/python -m coverage report --fail-under=80"
   },
   "dependencies": {
     "@angular/common": "21.2.13",

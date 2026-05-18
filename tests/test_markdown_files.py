@@ -27,6 +27,21 @@ class MarkdownFilesTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Only Markdown"):
                 resolve_markdown_file(str(text_file))
 
+    def test_list_markdown_files_rejects_missing_or_non_directory_path(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = Path(tmpdir) / "note.md"
+            file_path.write_text("# Note", encoding="utf-8")
+
+            with self.assertRaises(FileNotFoundError):
+                list_markdown_files(str(Path(tmpdir) / "missing"))
+            with self.assertRaises(NotADirectoryError):
+                list_markdown_files(str(file_path))
+
+    def test_resolve_markdown_file_rejects_missing_markdown_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with self.assertRaises(FileNotFoundError):
+                resolve_markdown_file(str(Path(tmpdir) / "missing.md"))
+
     def test_read_markdown_file_returns_content(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             note = Path(tmpdir) / "note.md"

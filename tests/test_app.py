@@ -35,6 +35,19 @@ class MainAppTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "greater than 0"):
                 load_settings()
 
+    def test_load_settings_validates_backend_names_and_integer_chunks(self):
+        with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "bad"}, clear=True):
+            with self.assertRaisesRegex(RuntimeError, "must be local or openai"):
+                load_settings()
+
+        with patch.dict("os.environ", {"READVIDEO_NOTES_BACKEND": "bad"}, clear=True):
+            with self.assertRaisesRegex(RuntimeError, "must be extractive or ollama"):
+                load_settings()
+
+        with patch.dict("os.environ", {"READVIDEO_CHUNK_SECONDS": "soon"}, clear=True):
+            with self.assertRaisesRegex(RuntimeError, "must be an integer"):
+                load_settings()
+
     def test_process_video_endpoint_accepts_json_body(self):
         async def fake_process_video(
             task_id,
@@ -99,6 +112,13 @@ class MainAppTest(unittest.TestCase):
     def test_history_page_serves_frontend(self):
         client = TestClient(app)
         response = client.get("/history")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("rv-root", response.text)
+
+    def test_reader_page_serves_frontend(self):
+        client = TestClient(app)
+        response = client.get("/reader")
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("rv-root", response.text)
