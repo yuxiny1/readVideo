@@ -26,6 +26,7 @@ export class SavedSourcesComponent implements OnInit {
   readonly draggedItemId = signal<number | null>(null);
   readonly dropTarget = signal<{id: number; position: DropPosition} | null>(null);
   readonly orderSaving = signal(false);
+  readonly openActionsId = signal<number | null>(null);
   newItem = {name: "", url: "", notes: ""};
   private orderBeforeDrag: WatchItem[] = [];
 
@@ -58,6 +59,14 @@ export class SavedSourcesComponent implements OnInit {
 
   useUrl(url: string): void {
     this.form.patch({url});
+  }
+
+  toggleActions(itemId: number): void {
+    this.openActionsId.update((openId) => openId === itemId ? null : itemId);
+  }
+
+  closeActions(): void {
+    this.openActionsId.set(null);
   }
 
   async downloadUrl(url: string): Promise<void> {
@@ -138,6 +147,7 @@ export class SavedSourcesComponent implements OnInit {
   clearDragState(): void {
     this.draggedItemId.set(null);
     this.dropTarget.set(null);
+    this.closeActions();
   }
 
   isDropTarget(item: WatchItem, position: DropPosition): boolean {

@@ -8,6 +8,25 @@ import {ReadvideoApiService} from "../../services/readvideo-api.service";
 import {formatBytes} from "../../shared/format";
 import {FavoriteFolder, FavoriteSummary, MarkdownFile} from "../../types/readvideo.types";
 
+type LibraryMode = "all" | "favorites" | "files";
+type LibrarySort = "recent" | "title" | "folder" | "path";
+type ReaderWidth = "focus" | "wide";
+type ReaderTextSize = "standard" | "large";
+type ReaderViewMode = "rendered" | "markdown";
+
+interface ReaderHeading {
+  id: string;
+  level: number;
+  title: string;
+}
+
+interface ReaderLibraryItem {
+  kind: "favorite" | "file";
+  path: string;
+  favorite?: FavoriteSummary;
+  file?: MarkdownFile;
+}
+
 @Component({
   selector: "rv-reader-page",
   standalone: true,
@@ -24,7 +43,8 @@ export class ReaderPageComponent implements OnInit {
   readonly path = signal("");
   readonly title = signal("Choose a Markdown note");
   readonly documentMeta = signal("Favorites and local Markdown files appear on the left.");
-  readonly html = signal<SafeHtml>(this.sanitizer.bypassSecurityTrustHtml('<div class="reader-empty">Pick a note to start reading.</div>'));
+  readonly rawContent = signal("");
+  readonly emptyMessage = signal("Pick a note to start reading.");
   readonly favorites = signal<FavoriteSummary[]>([]);
   readonly folders = signal<FavoriteFolder[]>([]);
   readonly activeFolderId = signal("all");
@@ -33,12 +53,18 @@ export class ReaderPageComponent implements OnInit {
   readonly defaultNotesDir = signal("notes");
   readonly error = signal("");
   readonly searchQuery = signal("");
+  readonly documentQuery = signal("");
+  readonly libraryMode = signal<LibraryMode>("all");
+  readonly librarySort = signal<LibrarySort>("recent");
+  readonly readerWidth = signal<ReaderWidth>("focus");
+  readonly readerTextSize = signal<ReaderTextSize>("standard");
+  readonly viewMode = signal<ReaderViewMode>("rendered");
   markdownFolder = "notes";
 
   readonly filteredFavorites = computed(() => {
     const active = this.activeFolderId();
     const query = this.searchQuery().trim().toLowerCase();
-    return this.favorites().filter((item) => {
+    const matches = this.favorites().filter((item) => {
       const inFolder = active === "all"
         || (active === "unfiled" && !item.folder_id)
         || String(item.folder_id) === active;
@@ -49,9 +75,60 @@ export class ReaderPageComponent implements OnInit {
         .toLowerCase()
         .includes(query);
     });
+    return this.sortFavorites(matches);
+  });
+  readonly visibleFavoriteNotes = computed(() => this.filteredFavorites().slice(0, 3));
+
+  readonly filteredFiles = computed(() => {
+    const query = this.searchQuery().trim().toLowerCase();
+    const matches = this.files().filter((file) => {
+      if (!query) return true;
+      return [file.name, file.path, file.modified_at]
+        .join(" ")
+        .toLowerCase()
+        .includes(query);
+    });
+    return this.sortFiles(matches);
+  });
+
+  readonly visibleLibraryItems = computed<ReaderLibraryItem[]>(() => {
+    const mode = this.libraryMode();
+    const items: ReaderLibraryItem[] = [];
+    if (mode === "all" || mode === "favorites") {
+      items.push(...this.filteredFavorites().map((favorite) => ({
+        kind: "favorite" as const,
+        path: favorite.markdown_path || "",
+        favorite,
+      })));
+    }
+    if (mode === "all" || mode === "files") {
+      items.push(...this.filteredFiles().map((file) => ({
+        kind: "file" as const,
+        path: file.path,
+        file,
+      })));
+    }
+    return items;
   });
 
   readonly libraryCount = computed(() => `${this.filteredFavorites().length} favorites · ${this.fileCount()}`);
+  readonly headings = computed(() => this.extractHeadings(this.rawContent()));
+  readonly sourceUrl = computed(() => this.extractMetadata("Source"));
+  readonly generatedAt = computed(() => this.extractMetadata("Generated"));
+  readonly transcriptPath = computed(() => this.extractMetadata("Transcript").replace(/^`|`$/g, ""));
+  readonly searchMatchCount = computed(() => this.countMatches(this.rawContent(), this.documentQuery()));
+  readonly html = computed<SafeHtml>(() => {
+    const content = this.rawContent();
+    const html = content
+      ? this.renderMarkdown(content)
+      : `<div class="reader-empty">${this.escapeHtml(this.emptyMessage())}</div>`;
+    return this.sanitizer.bypassSecurityTrustHtml(html);
+  });
+  readonly canOpenPrevious = computed(() => this.activeLibraryIndex() > 0);
+  readonly canOpenNext = computed(() => {
+    const index = this.activeLibraryIndex();
+    return index >= 0 && index < this.visibleLibraryItems().filter((item) => item.path || item.favorite).length - 1;
+  });
 
   async ngOnInit(): Promise<void> {
     await this.initialize();
@@ -143,8 +220,10 @@ export class ReaderPageComponent implements OnInit {
       const document = await this.api.markdownDocument(path);
       this.path.set(document.path);
       this.title.set(this.extractTitle(document.content) || this.fileName(document.path));
-      this.documentMeta.set(`${this.fileName(document.path)} · ${this.readingStats(document.content)}`);
-      this.html.set(this.sanitizer.bypassSecurityTrustHtml(this.renderMarkdown(document.content)));
+      this.rawContent.set(document.content);
+      this.documentMeta.set(`${this.fileName(document.path)} · ${this.readingStats(document.content)} · ${this.headings().length} sections`);
+      this.emptyMessage.set("Pick a note to start reading.");
+      this.documentQuery.set("");
       this.status.set("Open");
       if (updateRoute) {
         await this.router.navigate([], {
@@ -157,8 +236,70 @@ export class ReaderPageComponent implements OnInit {
       this.status.set("Error");
       const message = this.message(error);
       this.error.set(message);
-      this.html.set(this.sanitizer.bypassSecurityTrustHtml(`<div class="reader-empty">${this.escapeHtml(message)}</div>`));
+      this.rawContent.set("");
+      this.emptyMessage.set(message);
     }
+  }
+
+  setLibraryMode(mode: LibraryMode): void {
+    this.libraryMode.set(mode);
+  }
+
+  setLibrarySort(sort: string): void {
+    if (["recent", "title", "folder", "path"].includes(sort)) {
+      this.librarySort.set(sort as LibrarySort);
+    }
+  }
+
+  setReaderWidth(width: ReaderWidth): void {
+    this.readerWidth.set(width);
+  }
+
+  setReaderTextSize(size: ReaderTextSize): void {
+    this.readerTextSize.set(size);
+  }
+
+  setViewMode(mode: ReaderViewMode): void {
+    this.viewMode.set(mode);
+  }
+
+  async openAdjacent(direction: -1 | 1): Promise<void> {
+    const items = this.visibleLibraryItems().filter((item) => item.path || item.favorite);
+    const currentIndex = this.activeLibraryIndex(items);
+    const next = items[currentIndex + direction];
+    if (!next) return;
+    await this.openLibraryItem(next);
+  }
+
+  async openLibraryItem(item: ReaderLibraryItem): Promise<void> {
+    if (item.kind === "favorite" && item.favorite) {
+      await this.openFavorite(item.favorite);
+      return;
+    }
+    if (item.kind === "file" && item.file) {
+      await this.openFile(item.file);
+    }
+  }
+
+  scrollToHeading(id: string): void {
+    document.getElementById(id)?.scrollIntoView({behavior: "smooth", block: "start"});
+  }
+
+  findInDocument(): void {
+    const query = this.documentQuery().trim();
+    if (!query) return;
+    const finder = window as Window & {find?: (text: string) => boolean};
+    finder.find?.(query);
+  }
+
+  async copyPath(value = this.path()): Promise<void> {
+    if (!value) return;
+    await this.copyText(value, "Path copied");
+  }
+
+  async copyMarkdown(): Promise<void> {
+    if (!this.rawContent()) return;
+    await this.copyText(this.rawContent(), "Markdown copied");
   }
 
   folderCount(id: string | number): number {
@@ -187,12 +328,99 @@ export class ReaderPageComponent implements OnInit {
     return `/api/markdown_files/download?path=${encodeURIComponent(path)}`;
   }
 
+  private activeLibraryIndex(items = this.visibleLibraryItems().filter((item) => item.path || item.favorite)): number {
+    const currentPath = this.path();
+    if (!currentPath) return -1;
+    return items.findIndex((item) => item.path === currentPath);
+  }
+
+  private sortFavorites(items: FavoriteSummary[]): FavoriteSummary[] {
+    const sort = this.librarySort();
+    return [...items].sort((first, second) => {
+      if (sort === "title") return this.compareText(this.titleFor(first), this.titleFor(second));
+      if (sort === "folder") {
+        return this.compareText(first.folder_name || "Unfiled", second.folder_name || "Unfiled")
+          || this.compareText(this.titleFor(first), this.titleFor(second));
+      }
+      if (sort === "path") return this.compareText(first.markdown_path || "", second.markdown_path || "");
+      return this.dateValue(second.updated_at || second.created_at) - this.dateValue(first.updated_at || first.created_at);
+    });
+  }
+
+  private sortFiles(items: MarkdownFile[]): MarkdownFile[] {
+    const sort = this.librarySort();
+    return [...items].sort((first, second) => {
+      if (sort === "title" || sort === "folder") return this.compareText(first.name, second.name);
+      if (sort === "path") return this.compareText(first.path, second.path);
+      return this.dateValue(second.modified_at) - this.dateValue(first.modified_at);
+    });
+  }
+
+  private compareText(first: string, second: string): number {
+    return first.localeCompare(second, undefined, {numeric: true, sensitivity: "base"});
+  }
+
+  private dateValue(value: string): number {
+    const date = Date.parse(value);
+    return Number.isNaN(date) ? 0 : date;
+  }
+
+  private extractMetadata(label: "Source" | "Generated" | "Transcript"): string {
+    const match = this.rawContent().match(new RegExp(`^${label}:\\s*(.+)$`, "m"));
+    return match ? match[1].trim() : "";
+  }
+
+  private extractHeadings(markdown: string): ReaderHeading[] {
+    const headings: ReaderHeading[] = [];
+    let index = 0;
+    for (const line of markdown.split(/\r?\n/)) {
+      const heading = line.match(/^(#{1,4})\s+(.+)$/);
+      if (!heading) continue;
+      index += 1;
+      const level = heading[1].length;
+      if (level > 3) continue;
+      headings.push({
+        id: `section-${index}`,
+        level,
+        title: this.stripMarkdown(heading[2]),
+      });
+    }
+    return headings;
+  }
+
+  private countMatches(content: string, query: string): number {
+    const needle = query.trim().toLowerCase();
+    if (!content || !needle) return 0;
+    let count = 0;
+    let position = 0;
+    const haystack = content.toLowerCase();
+    while ((position = haystack.indexOf(needle, position)) !== -1) {
+      count += 1;
+      position += needle.length;
+    }
+    return count;
+  }
+
+  private async copyText(value: string, successStatus: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(value);
+      this.status.set(successStatus);
+      window.setTimeout(() => {
+        if (this.status() === successStatus) this.status.set(this.path() ? "Open" : "Idle");
+      }, 1200);
+    } catch (error) {
+      this.status.set("Error");
+      this.error.set(this.message(error));
+    }
+  }
+
   private renderMarkdown(markdown: string): string {
     const lines = markdown.split(/\r?\n/);
     const html: string[] = [];
     let inList: "ul" | "ol" | null = null;
     let inCode = false;
     let codeLines: string[] = [];
+    let headingIndex = 0;
 
     const closeList = () => {
       if (inList) {
@@ -235,7 +463,8 @@ export class ReaderPageComponent implements OnInit {
       if (heading) {
         closeList();
         const level = heading[1].length;
-        html.push(`<h${level}>${this.inlineMarkdown(heading[2])}</h${level}>`);
+        headingIndex += 1;
+        html.push(`<h${level} id="section-${headingIndex}">${this.inlineMarkdown(heading[2])}</h${level}>`);
         continue;
       }
 
@@ -285,6 +514,14 @@ export class ReaderPageComponent implements OnInit {
   private extractTitle(markdown: string): string {
     const heading = markdown.match(/^#\s+(.+)$/m);
     return heading ? heading[1].trim() : "";
+  }
+
+  private stripMarkdown(value: string): string {
+    return value
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/\*([^*]+)\*/g, "$1")
+      .trim();
   }
 
   private fileName(path: string): string {

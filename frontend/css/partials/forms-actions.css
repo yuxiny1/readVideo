@@ -134,6 +134,40 @@ button:disabled {
   font-size: 12px;
 }
 
+.segmented-control {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.segmented-control button {
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 780;
+}
+
+.segmented-control button:hover:not(:disabled),
+.segmented-control button.active {
+  border-color: rgba(0, 166, 184, 0.28);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink-soft);
+  box-shadow: 0 8px 18px rgba(9, 44, 84, 0.07);
+}
+
+.compact-segmented {
+  min-width: 132px;
+}
+
 .pill {
   display: inline-flex;
   align-items: center;

@@ -5,9 +5,14 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from backend.core.task_state import TASKS, clear_tasks
+from backend.core.task_state import TASKS, clear_tasks, set_task_status
 from backend.services.markdown_notes import NoteResult
-from backend.services.video_processor import process_video
+from backend.services.video_processor import (
+    _download_percent,
+    build_download_progress_hook,
+    delete_downloaded_video_after_completion,
+    process_video,
+)
 from backend.storage.history import HistoryStore
 
 
@@ -125,6 +130,53 @@ class VideoProcessorReuseTest(unittest.TestCase):
             self.assertEqual(task["download_status"], "deleted_after_completion")
             self.assertEqual(record.video_path, str(video))
             self.assertTrue(any("Deleted local video after completion" in log["message"] for log in task["logs"]))
+
+    def test_delete_downloaded_video_records_missing_file_without_failing(self):
+        set_task_status("missing-delete", "completed")
+
+        deleted = delete_downloaded_video_after_completion("missing-delete", "missing.mp4", "downloads")
+
+        self.assertFalse(deleted)
+        self.assertFalse(TASKS["missing-delete"]["video_deleted_after_completion"])
+        self.assertIn("already missing", TASKS["missing-delete"]["video_delete_error"])
+
+    def test_download_progress_hook_updates_task_details_and_logs_buckets(self):
+        set_task_status("progress-task", "downloading")
+        hook = build_download_progress_hook("progress-task")
+
+        with patch("backend.services.video_processor.time.monotonic", side_effect=[1.0, 2.0, 3.0]):
+            hook(
+                {
+                    "status": "downloading",
+                    "filename": "/tmp/demo.part",
+                    "downloaded_bytes": 50,
+                    "total_bytes": 100,
+                    "speed": 1024,
+                    "eta": 5,
+                }
+            )
+            hook(
+                {
+                    "status": "downloading",
+                    "filename": "/tmp/demo.part",
+                    "downloaded_bytes": 75,
+                    "total_bytes": 100,
+                }
+            )
+            hook({"status": "finished", "filename": "/tmp/demo.mp4", "downloaded_bytes": 100, "total_bytes": 100})
+
+        task = TASKS["progress-task"]
+        self.assertEqual(task["download_status"], "finished")
+        self.assertEqual(task["download_filename"], "demo.mp4")
+        self.assertEqual(task["download_percent"], 100)
+        self.assertTrue(any("Download 50.0% complete." in log["message"] for log in task["logs"]))
+        self.assertTrue(any("Download finished" in log["message"] for log in task["logs"]))
+
+    def test_download_percent_handles_missing_and_caps_at_one_hundred(self):
+        self.assertIsNone(_download_percent(None, 100))
+        self.assertIsNone(_download_percent(100, 0))
+        self.assertEqual(_download_percent(150, 100), 100.0)
+        self.assertEqual(_download_percent(25, 100), 25.0)
 
 
 if __name__ == "__main__":

@@ -53,16 +53,33 @@
             </span>
           </button>
           <div class="watch-item-content">
-            <p class="watch-title">{{ item.name }}</p>
-            <a class="watch-url" [href]="item.url" target="_blank" rel="noreferrer">{{ item.url }}</a>
+            <div class="watch-item-header">
+              <div>
+                <p class="watch-title">{{ item.name }}</p>
+                <a class="watch-url" [href]="item.url" target="_blank" rel="noreferrer">{{ item.url }}</a>
+              </div>
+              <div class="watch-action-menu">
+                <button
+                  class="secondary-button small-button action-menu-button"
+                  type="button"
+                  [attr.aria-expanded]="openActionsId() === item.id"
+                  [attr.aria-label]="'Actions for ' + item.name"
+                  (click)="toggleActions(item.id)"
+                >
+                  Actions
+                </button>
+                @if (openActionsId() === item.id) {
+                  <div class="action-menu-panel">
+                    <button type="button" (click)="useUrl(item.url); closeActions()">Use</button>
+                    <button type="button" (click)="loadUpdates(item); closeActions()">Updates</button>
+                    <button class="danger-menu-item" type="button" (click)="deleteItem(item); closeActions()">Delete</button>
+                  </div>
+                }
+              </div>
+            </div>
             @if (item.notes) {
               <p class="watch-notes">{{ item.notes }}</p>
             }
-            <div class="watch-actions">
-              <button class="secondary-button" type="button" (click)="useUrl(item.url)">Use</button>
-              <button class="secondary-button" type="button" (click)="loadUpdates(item)">Updates</button>
-              <button class="danger-button" type="button" (click)="deleteItem(item)">Delete</button>
-            </div>
             <div class="source-updates">
               @if (errors()[item.id]) {
                 <div class="empty-state">{{ errors()[item.id] }}</div>

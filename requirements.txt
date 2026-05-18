@@ -8,6 +8,7 @@ yt-dlp>=2025.1.15
 openai>=1.60.0
 moviepy>=2.0.0
 python-dotenv>=1.0.0
+coverage>=7.6
 
 # System dependency: install ffmpeg separately.
 # macOS: brew install ffmpeg

@@ -11,7 +11,7 @@
   min-height: 74px;
   padding: 18px 24px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, auto);
   gap: 16px;
   align-items: start;
   border-bottom: 1px solid var(--line);
@@ -29,6 +29,31 @@
   overflow-wrap: anywhere;
   font-size: 12px;
   font-weight: 700;
+}
+
+.reader-meta-line {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.reader-document-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.reader-findbar {
+  padding: 12px 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  background: rgba(247, 251, 255, 0.7);
 }
 
 .markdown-reader {
@@ -51,6 +76,24 @@
   line-height: 1.76;
 }
 
+.modern-reader.reader-copy-wide p,
+.modern-reader.reader-copy-wide ul,
+.modern-reader.reader-copy-wide ol,
+.modern-reader.reader-copy-wide blockquote,
+.modern-reader.reader-copy-wide hr {
+  max-width: 104ch;
+}
+
+.modern-reader.reader-copy-large {
+  font-size: 18px;
+}
+
+.modern-reader.reader-copy-large p,
+.modern-reader.reader-copy-large li {
+  font-size: 18px;
+  line-height: 1.82;
+}
+
 .markdown-reader h1,
 .markdown-reader h2,
 .markdown-reader h3 {
@@ -66,6 +109,7 @@
 }
 
 .modern-reader h1 {
+  scroll-margin-top: 110px;
   margin-bottom: 18px;
   font-size: clamp(28px, 4vw, 42px);
   line-height: 1.12;
@@ -73,6 +117,7 @@
 }
 
 .modern-reader h2 {
+  scroll-margin-top: 110px;
   margin-top: 34px;
   padding-top: 10px;
   font-size: 24px;
@@ -80,6 +125,7 @@
 }
 
 .modern-reader h3 {
+  scroll-margin-top: 110px;
   margin-top: 28px;
   color: #2c2c2e;
   font-size: 18px;
@@ -88,6 +134,7 @@
 }
 
 .modern-reader h4 {
+  scroll-margin-top: 110px;
   margin: 24px 0 8px;
   color: #3a3a3c;
   font-size: 15px;
@@ -185,6 +232,49 @@
   font-size: 15px;
   font-weight: 700;
   text-align: center;
+}
+
+.markdown-source {
+  min-height: calc(100vh - 252px);
+  margin: 0;
+  padding: clamp(22px, 4vw, 46px);
+  overflow: auto;
+  border: 0;
+  background: rgba(18, 25, 34, 0.96);
+  color: #f6fbff;
+  font: 13px/1.72 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.markdown-source.reader-copy-wide {
+  font-size: 14px;
+}
+
+.markdown-source.reader-copy-large {
+  font-size: 15px;
+  line-height: 1.82;
+}
+
+.path-copy-button {
+  max-width: 100%;
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  overflow-wrap: anywhere;
+  font-size: inherit;
+  font-weight: 760;
+  line-height: inherit;
+  text-align: left;
+}
+
+.path-copy-button:hover,
+.path-copy-button:focus-visible {
+  color: var(--cyan);
+  text-decoration: underline;
+  transform: none;
 }
 
 .file-row {

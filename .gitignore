@@ -4,6 +4,8 @@ token.json
 yt_dlp_download.log
 client_secret.json
 *.log
+.coverage
+htmlcov/
 /downloads
 /notes
 readvideo.sqlite3
