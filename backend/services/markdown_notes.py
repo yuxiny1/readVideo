@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Iterable, Optional
 
 from backend.services.transcript_summarizer import (
+    build_editorial_article_with_backend,
     section_title,
     summarize_transcript,
     summarize_transcript_with_backend,
@@ -35,6 +36,7 @@ def write_markdown_note(
     summary_backend: str = "extractive",
     ollama_model: str = "qwen2.5:3b",
     ollama_url: str = "http://127.0.0.1:11434/api/generate",
+    note_style: str = "detailed",
 ) -> NoteResult:
     sections = build_transcript_sections(transcript_text)
     summary_items = summarize_transcript_with_backend(
@@ -43,6 +45,16 @@ def write_markdown_note(
         ollama_model=ollama_model,
         ollama_url=ollama_url,
     )
+    editorial_paragraphs = []
+    if note_style == "commercial":
+        editorial_paragraphs = build_editorial_article_with_backend(
+            transcript_text,
+            summary_items,
+            _section_note_tuples(sections),
+            backend=summary_backend,
+            ollama_model=ollama_model,
+            ollama_url=ollama_url,
+        )
     markdown = render_markdown_note(
         video_title=video_title,
         source_url=source_url,
@@ -50,6 +62,8 @@ def write_markdown_note(
         sections=sections,
         summary_items=summary_items,
         transcript_path=transcript_path,
+        note_style=note_style,
+        editorial_paragraphs=editorial_paragraphs,
     )
 
     notes_dir = Path(output_dir).expanduser()
@@ -105,8 +119,11 @@ def render_markdown_note(
     sections: Iterable[str],
     summary_items: Iterable[str],
     transcript_path: Optional[str] = None,
+    note_style: str = "detailed",
+    editorial_paragraphs: Optional[Iterable[str]] = None,
 ) -> str:
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
+    section_data = [_coerce_section(section) for section in sections]
     lines = [
         f"# {video_title}",
         "",
@@ -123,18 +140,26 @@ def render_markdown_note(
     else:
         lines.append("- No summary could be generated.")
 
+    if note_style == "commercial":
+        paragraphs = list(editorial_paragraphs or [])
+        lines.extend(["", "## Editorial Article", ""])
+        if paragraphs:
+            for paragraph in paragraphs:
+                lines.extend([paragraph.strip(), ""])
+        else:
+            lines.append("No editorial article could be generated.")
+
     lines.extend(["", "## Structured Notes", ""])
-    for index, section in enumerate(sections, start=1):
-        section_data = _coerce_section(section)
-        lines.extend([f"### {index}. {section_data.title}", ""])
+    for index, section in enumerate(section_data, start=1):
+        lines.extend([f"### {index}. {section.title}", ""])
 
         lines.extend(["#### Section Notes", ""])
-        if section_data.summary_items:
-            lines.extend(f"- {item}" for item in section_data.summary_items)
+        if section.summary_items:
+            lines.extend(f"- {item}" for item in section.summary_items)
         else:
             lines.append("- No section notes could be generated.")
 
-        lines.extend(["", "#### Original Transcript", "", "```text", section_data.text.strip(), "```", ""])
+        lines.extend(["", "#### Original Transcript", "", "```text", section.text.strip(), "```", ""])
 
     lines.extend(["## Full Transcript", "", transcript_text.strip(), ""])
     return "\n".join(lines)
@@ -148,6 +173,10 @@ def _coerce_section(section: TranscriptSection | str) -> TranscriptSection:
         text=section,
         summary_items=tuple(summarize_transcript(section, max_items=4)),
     )
+
+
+def _section_note_tuples(sections: Iterable[TranscriptSection]) -> list[tuple[str, str, tuple[str, ...]]]:
+    return [(section.title, section.text, section.summary_items) for section in sections]
 
 
 def safe_filename(name: str) -> str:

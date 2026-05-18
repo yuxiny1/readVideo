@@ -4,8 +4,12 @@ from pathlib import Path
 from unittest.mock import patch
 
 from backend.services.notes import (
+    TranscriptSection,
+    build_editorial_article_fallback,
+    build_editorial_article_with_ollama,
     build_transcript_sections,
     chunk_transcript,
+    render_markdown_note,
     summarize_transcript,
     summarize_transcript_with_backend,
     summarize_transcript_with_ollama,
@@ -43,6 +47,50 @@ class NotesTest(unittest.TestCase):
         self.assertIn("```text", markdown)
         self.assertIn("市場正在創新高但是宏觀情況仍然不確定", markdown)
         self.assertTrue(result.summary)
+
+    def test_write_markdown_note_can_create_commercial_editorial_section(self):
+        transcript = "\n".join(
+            [
+                "美国债务持续增加并影响投资者对美元体系的信心",
+                "市场短期反应有限但长期成本会反映在利息支出上",
+                "中国影响力提升正在改变亚洲商业秩序",
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = write_markdown_note(
+                transcript,
+                "商业分析影片",
+                "https://www.youtube.com/watch?v=test",
+                tmpdir,
+                note_style="commercial",
+            )
+            markdown = Path(result.markdown_path).read_text(encoding="utf-8")
+
+        self.assertIn("## Editorial Article", markdown)
+        self.assertIn("## Structured Notes", markdown)
+        self.assertLess(markdown.index("## Editorial Article"), markdown.index("## Structured Notes"))
+        self.assertIn("这支视频的核心", markdown)
+
+    def test_render_markdown_note_keeps_editorial_article_before_original_sections(self):
+        markdown = render_markdown_note(
+            video_title="Demo",
+            source_url="https://www.youtube.com/watch?v=test",
+            transcript_text="原始分段文本",
+            sections=[
+                TranscriptSection(
+                    title="市場背景",
+                    text="原始分段文本",
+                    summary_items=("市场影响: 短期有限",),
+                )
+            ],
+            summary_items=["市场影响: 短期有限"],
+            note_style="commercial",
+            editorial_paragraphs=["这是一个克制但更像商业文章的摘要段落。"],
+        )
+
+        self.assertIn("## Editorial Article\n\n这是一个克制但更像商业文章的摘要段落。", markdown)
+        self.assertIn("#### Original Transcript", markdown)
+        self.assertLess(markdown.index("## Editorial Article"), markdown.index("#### Original Transcript"))
 
     def test_build_transcript_sections_keeps_original_segment_text(self):
         transcript = "第一段討論市場和債務\n第二段討論中國和亞洲秩序\n第三段討論投資者如何分散風險"
@@ -109,6 +157,35 @@ class NotesTest(unittest.TestCase):
 
         self.assertTrue(any(item.startswith("美伊冲突:") for item in summary))
         self.assertTrue(any(item.startswith("中国影响力:") for item in summary))
+
+    def test_editorial_article_fallback_uses_summary_and_section_context(self):
+        paragraphs = build_editorial_article_fallback(
+            ["债务风险: 美国利息支出升高", "市场影响: 短期股市反应有限"],
+            [("美元體系", "原文", ("美元体系: 信心变化",))],
+        )
+
+        self.assertGreaterEqual(len(paragraphs), 3)
+        self.assertIn("美国利息支出升高", paragraphs[0])
+        self.assertTrue(any("美元體系" in paragraph for paragraph in paragraphs))
+
+    def test_ollama_editorial_article_prompt_avoids_specific_media_imitation(self):
+        prompts = []
+
+        def fake_request(prompt, model, url, timeout_seconds, temperature=0.2):
+            prompts.append(prompt)
+            return "第一段分析商业背景。\n\n第二段解释为什么重要。"
+
+        with patch("backend.services.transcript_summarizer._request_ollama_text", side_effect=fake_request):
+            paragraphs = build_editorial_article_with_ollama(
+                "美国债务扩大，投资者关注利息成本。",
+                ["债务风险: 美国利息支出升高"],
+                [("美元體系", "美国债务扩大", ("美元体系: 信心变化",))],
+            )
+
+        self.assertEqual(paragraphs, ["第一段分析商业背景。", "第二段解释为什么重要。"])
+        self.assertIn("商业分析式文章摘要", prompts[0])
+        self.assertIn("忙碌的商业读者", prompts[0])
+        self.assertIn("不要模仿或复制任何特定媒体", prompts[0])
 
     def test_ollama_summary_summarizes_all_chunks_then_combines(self):
         transcript = "\n".join(

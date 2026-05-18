@@ -95,6 +95,27 @@ def summarize_transcript_with_backend(
     raise RuntimeError("summary_backend must be extractive or ollama.")
 
 
+def build_editorial_article_with_backend(
+    transcript_text: str,
+    summary_items: list[str],
+    section_notes: list[tuple[str, str, tuple[str, ...]]],
+    backend: str = "extractive",
+    ollama_model: str = "qwen2.5:3b",
+    ollama_url: str = "http://127.0.0.1:11434/api/generate",
+) -> list[str]:
+    if backend == "ollama":
+        return build_editorial_article_with_ollama(
+            transcript_text,
+            summary_items,
+            section_notes,
+            model=ollama_model,
+            url=ollama_url,
+        )
+    if backend == "extractive":
+        return build_editorial_article_fallback(summary_items, section_notes)
+    raise RuntimeError("summary_backend must be extractive or ollama.")
+
+
 def summarize_transcript_with_ollama(
     transcript_text: str,
     model: str = "qwen2.5:3b",
@@ -129,13 +150,85 @@ def summarize_transcript_with_ollama(
     return items[:max_items]
 
 
+def build_editorial_article_with_ollama(
+    transcript_text: str,
+    summary_items: list[str],
+    section_notes: list[tuple[str, str, tuple[str, ...]]],
+    model: str = "qwen2.5:3b",
+    url: str = "http://127.0.0.1:11434/api/generate",
+    timeout_seconds: int = 240,
+    chunk_chars: int = 7000,
+) -> list[str]:
+    chunks = _prompt_chunks(transcript_text, max_chars=chunk_chars)
+    if not chunks:
+        return build_editorial_article_fallback(summary_items, section_notes)
+
+    source_text = _editorial_source_text(summary_items, section_notes)
+    if len(chunks) == 1:
+        prompt = _editorial_article_prompt(source_text, chunks[0])
+        article_text = _request_ollama_text(prompt, model, url, timeout_seconds, temperature=0.35)
+        paragraphs = _parse_editorial_paragraphs(article_text)
+        return paragraphs or build_editorial_article_fallback(summary_items, section_notes)
+
+    chunk_briefs: list[str] = []
+    for index, chunk in enumerate(chunks, start=1):
+        prompt = _editorial_chunk_prompt(chunk, index, len(chunks))
+        chunk_briefs.extend(_request_ollama_summary(prompt, model, url, timeout_seconds))
+
+    combined_context = "\n".join(f"- {item}" for item in chunk_briefs) or source_text
+    prompt = _editorial_article_prompt(source_text, combined_context)
+    article_text = _request_ollama_text(prompt, model, url, timeout_seconds, temperature=0.35)
+    paragraphs = _parse_editorial_paragraphs(article_text)
+    return paragraphs or build_editorial_article_fallback(summary_items, section_notes)
+
+
+def build_editorial_article_fallback(
+    summary_items: list[str],
+    section_notes: list[tuple[str, str, tuple[str, ...]]],
+) -> list[str]:
+    facts = [_strip_topic(item) for item in summary_items if item.strip()]
+    section_titles = [title for title, _, _ in section_notes if title and title != "Transcript Segment"]
+    first_fact = facts[0] if facts else "这支视频围绕一个正在形成的商业与政策议题展开"
+    second_fact = facts[1] if len(facts) > 1 else ""
+
+    paragraphs = [
+        f"这支视频的核心并不是单一事件本身，而是它背后正在改变的商业环境。{first_fact}",
+    ]
+    if second_fact:
+        paragraphs.append(f"更值得注意的是，视频把短期新闻放进了更长的周期中观察。{second_fact}")
+
+    if section_titles:
+        topic_list = "、".join(dict.fromkeys(section_titles[:4]))
+        paragraphs.append(f"从结构上看，讨论集中在 {topic_list} 等几个层面，重点不是制造情绪，而是解释这些变量如何互相影响。")
+
+    remaining = facts[2:5]
+    if remaining:
+        paragraphs.append("对读者来说，最有价值的部分在于几个可跟踪的判断：" + "；".join(remaining) + "。")
+
+    paragraphs.append(
+        "这类内容更适合被当作一份背景材料来读：先抓住主线，再回到分段原文核对细节。真正的结论不只在摘要里，也藏在说话人如何排列事实、风险和时间顺序之中。"
+    )
+    return [_trim_sentence(paragraph, max_len=520) for paragraph in paragraphs if paragraph.strip()]
+
+
 def _request_ollama_summary(prompt: str, model: str, url: str, timeout_seconds: int) -> list[str]:
+    text = _request_ollama_text(prompt, model, url, timeout_seconds, temperature=0.2)
+    return _parse_markdown_bullets(text)
+
+
+def _request_ollama_text(
+    prompt: str,
+    model: str,
+    url: str,
+    timeout_seconds: int,
+    temperature: float = 0.2,
+) -> str:
     payload = json.dumps(
         {
             "model": model,
             "prompt": prompt,
             "stream": False,
-            "options": {"temperature": 0.2},
+            "options": {"temperature": temperature},
         }
     ).encode("utf-8")
     request = urllib.request.Request(
@@ -153,8 +246,73 @@ def _request_ollama_summary(prompt: str, model: str, url: str, timeout_seconds: 
             f"Ollama summary failed. Make sure Ollama is running and the model is installed: ollama pull {model}"
         ) from exc
 
-    text = str(data.get("response", "")).strip()
-    return _parse_markdown_bullets(text)
+    return str(data.get("response", "")).strip()
+
+
+def _editorial_chunk_prompt(chunk: str, index: int, total: int) -> str:
+    return (
+        "你是一个商业新闻编辑。下面是长视频转录文本的一段。"
+        "请输出 5 到 8 条中文 Markdown bullet，提炼这一段中可以用于商业分析文章的事实、数字、因果关系、人物观点和风险。"
+        "不要写成普通摘要，不要加入文本中没有的背景，不要模仿任何特定媒体的固定措辞。\n\n"
+        f"片段 {index}/{total}:\n{chunk}"
+    )
+
+
+def _editorial_article_prompt(source_text: str, transcript_or_brief: str) -> str:
+    return (
+        "你是一名资深商业新闻编辑，要把 YouTube 转录内容改写成中文商业分析式文章摘要。"
+        "风格要求：像严肃商业报刊的解释型文章，有清晰的 lede、背景、利害关系、转折和影响；"
+        "语气克制、具体、有判断，但不要夸张，不要空泛，不要模仿或复制任何特定媒体的专有文风、标题套路或固定句式。"
+        "输出要求：只输出 5 到 8 个自然段；不要 Markdown bullet；不要编造转录里没有的事实；"
+        "如果原文信息不足，请明确保持谨慎。每段 60 到 140 个中文字符，适合忙碌的商业读者快速阅读。\n\n"
+        f"已有结构化要点:\n{source_text}\n\n"
+        f"转录文本或分段简报:\n{transcript_or_brief}"
+    )
+
+
+def _editorial_source_text(
+    summary_items: list[str],
+    section_notes: list[tuple[str, str, tuple[str, ...]]],
+) -> str:
+    lines = ["Summary:"]
+    lines.extend(f"- {item}" for item in summary_items)
+    lines.append("")
+    lines.append("Sections:")
+    for title, text, notes in section_notes:
+        lines.append(f"- {title}: {'; '.join(notes) if notes else _trim_sentence(text, max_len=160)}")
+    return "\n".join(lines)
+
+
+def _parse_editorial_paragraphs(text: str) -> list[str]:
+    paragraphs = []
+    current = []
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            if current:
+                paragraphs.append(_clean_editorial_paragraph(" ".join(current)))
+                current = []
+            continue
+        if re.match(r"^#{1,6}\s+", line):
+            continue
+        has_marker = re.match(r"^\s*(?:[-*]|\d+[.)])\s*", line)
+        if has_marker and current:
+            paragraphs.append(_clean_editorial_paragraph(" ".join(current)))
+            current = []
+        line = re.sub(r"^\s*(?:[-*]|\d+[.)])\s*", "", line).strip()
+        if line:
+            current.append(line)
+
+    if current:
+        paragraphs.append(_clean_editorial_paragraph(" ".join(current)))
+
+    return [paragraph for paragraph in paragraphs if paragraph and not _is_promotional(paragraph)][:8]
+
+
+def _clean_editorial_paragraph(paragraph: str) -> str:
+    paragraph = re.sub(r"\s+", " ", paragraph).strip()
+    paragraph = paragraph.strip("-* ")
+    return paragraph
 
 
 def _chunk_summary_prompt(chunk: str, index: int, total: int) -> str:
@@ -188,6 +346,15 @@ def _trim_sentence(sentence: str, max_len: int = 190) -> str:
     if len(sentence) <= max_len:
         return sentence
     return sentence[: max_len - 1].rstrip() + "..."
+
+
+def _strip_topic(item: str) -> str:
+    item = item.strip()
+    if ":" in item:
+        return item.split(":", 1)[1].strip()
+    if "：" in item:
+        return item.split("：", 1)[1].strip()
+    return item
 
 
 def _content_lines(transcript_text: str) -> list[str]:

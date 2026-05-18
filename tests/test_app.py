@@ -65,6 +65,15 @@ class MainAppTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "READVIDEO_DOWNLOAD_MEDIA"):
                 load_settings()
 
+    def test_load_settings_validates_note_style(self):
+        with patch.dict(
+            "os.environ",
+            {"READVIDEO_TRANSCRIPTION_BACKEND": "local", "READVIDEO_NOTE_STYLE": "tabloid"},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "READVIDEO_NOTE_STYLE"):
+                load_settings()
+
     def test_load_settings_prefers_best_installed_local_whisper_model(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             models_dir = Path(tmpdir) / "models"
@@ -107,6 +116,7 @@ class MainAppTest(unittest.TestCase):
             local_whisper_language=None,
             notes_dir=None,
             notes_backend=None,
+            note_style=None,
             ollama_model=None,
         ):
             captured.update(
@@ -118,6 +128,7 @@ class MainAppTest(unittest.TestCase):
                     "local_whisper_language": local_whisper_language,
                     "notes_dir": notes_dir,
                     "notes_backend": notes_backend,
+                    "note_style": note_style,
                     "ollama_model": ollama_model,
                 }
             )
@@ -141,6 +152,7 @@ class MainAppTest(unittest.TestCase):
                     "local_whisper_language": "auto",
                     "transcription_prompt": "Jim Keller, CUDA",
                     "notes_backend": "extractive",
+                    "note_style": "commercial",
                     "ollama_model": "qwen3:14b",
                 },
             )
@@ -151,6 +163,7 @@ class MainAppTest(unittest.TestCase):
         self.assertEqual(captured["local_whisper_model"], "models/ggml-medium.bin")
         self.assertEqual(captured["local_whisper_language"], "auto")
         self.assertEqual(captured["transcription_prompt"], "Jim Keller, CUDA")
+        self.assertEqual(captured["note_style"], "commercial")
 
     def test_process_video_endpoint_validates_notes_backend(self):
         with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}):
@@ -161,6 +174,20 @@ class MainAppTest(unittest.TestCase):
                     "task_id": "test-task",
                     "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
                     "notes_backend": "missing",
+                },
+            )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_process_video_endpoint_validates_note_style(self):
+        with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}):
+            client = TestClient(app)
+            response = client.post(
+                "/process_video/",
+                json={
+                    "task_id": "test-task",
+                    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                    "note_style": "tabloid",
                 },
             )
 
@@ -210,6 +237,8 @@ class MainAppTest(unittest.TestCase):
         self.assertIn("watch-sort", response.text)
         self.assertIn("transcription-backend", response.text)
         self.assertIn("local-whisper-model-select", response.text)
+        self.assertIn("note-style", response.text)
+        self.assertIn("Commercial Editorial", response.text)
 
     def test_history_page_serves_frontend(self):
         client = TestClient(app)
@@ -252,6 +281,7 @@ class MainAppTest(unittest.TestCase):
         self.assertIn("local_whisper_model", data)
         self.assertEqual(data["local_whisper_language"], "auto")
         self.assertEqual(data["local_whisper_chunk_seconds"], 60)
+        self.assertEqual(data["note_style"], "detailed")
         self.assertIn("openai_transcription_model_options", data)
 
     def test_tasks_endpoint_lists_recent_task_metadata(self):

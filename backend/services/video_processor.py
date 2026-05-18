@@ -49,6 +49,7 @@ async def process_video(
     local_whisper_language: Optional[str] = None,
     notes_dir: Optional[str] = None,
     notes_backend: Optional[str] = None,
+    note_style: Optional[str] = None,
     ollama_model: Optional[str] = None,
 ):
     settings = None
@@ -63,6 +64,7 @@ async def process_video(
             local_whisper_language,
         )
         resolved_notes_backend = resolve_notes_backend(notes_backend, settings.notes_backend)
+        resolved_note_style = resolve_note_style(note_style, settings.note_style)
         resolved_ollama_model = ollama_model or settings.ollama_model
         set_task_status(task_id, "downloading", url=url)
         persist_task_history(settings.database_path, task_id)
@@ -93,6 +95,7 @@ async def process_video(
             resolved_notes_backend,
             resolved_ollama_model,
             settings.ollama_url,
+            resolved_note_style,
         )
 
         set_task_status(
@@ -107,6 +110,7 @@ async def process_video(
             section_count=note_result.section_count,
             transcription_backend=settings.transcription_backend,
             summary_backend=note_result.summary_backend,
+            note_style=resolved_note_style,
             ollama_model=resolved_ollama_model if resolved_notes_backend == "ollama" else None,
             chunk_count=getattr(result, "chunk_count", None),
         )
@@ -123,6 +127,13 @@ def resolve_notes_backend(request_backend: Optional[str], default_backend: str) 
     if backend not in {"extractive", "ollama"}:
         raise RuntimeError("notes_backend must be extractive or ollama.")
     return backend
+
+
+def resolve_note_style(request_style: Optional[str], default_style: str) -> str:
+    style = (request_style or default_style).lower()
+    if style not in {"detailed", "commercial"}:
+        raise RuntimeError("note_style must be detailed or commercial.")
+    return style
 
 
 def resolve_transcription_settings(

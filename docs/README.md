@@ -12,6 +12,7 @@ The default transcription backend is local `whisper.cpp`, so OpenAI API access i
 - Lets you choose transcription backend, spoken-language detection, prompt terms, and larger local Whisper models per run.
 - Saves the raw transcript next to the downloaded media file.
 - Creates a Markdown note with summary, structured sections, each section's original transcript, and the full transcript.
+- Can add a commercial editorial article section for a polished business-news style summary.
 - Can summarize notes with either a local extractive summarizer or an optional Ollama local LLM.
 - Uses a full-transcript chunk-and-combine workflow for Ollama summaries so long videos are not summarized from only an excerpt.
 - Lets you choose or pull larger Ollama models from the browser when you want stronger local summaries.
@@ -72,6 +73,7 @@ READVIDEO_LOCAL_WHISPER_PROMPT=
 READVIDEO_LOCAL_WHISPER_AUDIO_FILTER=highpass=f=80,lowpass=f=8000,loudnorm=I=-16:TP=-1.5:LRA=11
 READVIDEO_LOCAL_WHISPER_CHUNK_SECONDS=60
 READVIDEO_NOTES_BACKEND=extractive
+READVIDEO_NOTE_STYLE=detailed
 READVIDEO_OLLAMA_MODEL=qwen2.5:3b
 READVIDEO_OLLAMA_URL=http://127.0.0.1:11434/api/generate
 ```
@@ -92,6 +94,8 @@ curl -L -o models/ggml-large-v3-turbo.bin \
 `READVIDEO_LOCAL_WHISPER_PROMPT` can contain names and technical terms that appear in the video, such as `Jim Keller, CUDA, OpenAI`. The app automatically adds the video title to the transcription prompt, applies a light speech audio filter before local transcription, and transcribes local audio in chunks. This is much more reliable for long YouTube videos and reduces silence/outro hallucinations.
 
 `READVIDEO_OLLAMA_MODEL` is only used for Markdown summary and note organization when `READVIDEO_NOTES_BACKEND=ollama`. It does not transcribe audio.
+
+`READVIDEO_NOTE_STYLE=detailed` keeps the current note format. Set `READVIDEO_NOTE_STYLE=commercial` or choose `Commercial Editorial` in the New Video page to add an `Editorial Article` section before the structured notes. That section is written as a concise business-news analysis article for busy readers while still preserving the original transcript sections for verification.
 
 Optional Ollama note summaries:
 
@@ -153,6 +157,7 @@ curl -X POST "http://localhost:8000/process_video/" \
     "transcription_prompt": "Jim Keller, CUDA, OpenAI",
     "notes_dir": "/Users/you/Documents/Notes",
     "notes_backend": "extractive",
+    "note_style": "commercial",
     "ollama_model": "qwen2.5:3b"
   }'
 ```

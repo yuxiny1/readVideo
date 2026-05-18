@@ -39,6 +39,7 @@ const elements = {
   openaiTranscriptionModel: document.querySelector("#openai-transcription-model"),
   transcriptionPrompt: document.querySelector("#transcription-prompt"),
   notesBackend: document.querySelector("#notes-backend"),
+  noteStyle: document.querySelector("#note-style"),
   ollamaModelSelect: document.querySelector("#ollama-model-select"),
   ollamaModelCustom: document.querySelector("#ollama-model-custom"),
   pullOllamaModel: document.querySelector("#pull-ollama-model"),
@@ -197,11 +198,16 @@ async function loadConfig() {
       api("/api/transcription/models"),
     ]);
     setPill(elements.healthPill, health.status === "ok" ? "Online" : "Check", health.status === "ok" ? "ok" : "muted");
-    setPill(elements.backendPill, `${config.transcription_backend} / ${config.notes_backend} / ${config.download_media || "audio"}`, "muted");
+    setPill(
+      elements.backendPill,
+      `${config.transcription_backend} / ${config.notes_backend} / ${config.note_style || "detailed"} / ${config.download_media || "audio"}`,
+      "muted",
+    );
     elements.notesDir.placeholder = config.notes_dir || "notes";
     elements.transcriptionBackend.value = config.transcription_backend || "local";
     elements.transcriptionPrompt.value = config.transcription_prompt || "";
     elements.notesBackend.value = config.notes_backend || "extractive";
+    elements.noteStyle.value = config.note_style || "detailed";
     state.whisperModelOptions = transcriptionModels.whisper || [];
     state.whisperInstalledModels = transcriptionModels.installed_whisper || [];
     state.transcriptionLanguages = transcriptionModels.languages || [];
@@ -330,6 +336,7 @@ function buildProcessPayload(url) {
     local_whisper_language: elements.transcriptionLanguage.value || "auto",
     notes_dir: elements.notesDir.value.trim() || null,
     notes_backend: elements.notesBackend.value,
+    note_style: elements.noteStyle.value,
     ollama_model: selectedOllamaModel() || null,
   };
 }
