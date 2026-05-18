@@ -64,6 +64,10 @@
   padding-right: 2px;
 }
 
+.favorite-note-list {
+  max-height: 238px;
+}
+
 .reader-note-item,
 .reader-file-item {
   width: 100%;

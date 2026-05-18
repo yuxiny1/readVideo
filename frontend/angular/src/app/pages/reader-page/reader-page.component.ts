@@ -77,6 +77,7 @@ export class ReaderPageComponent implements OnInit {
     });
     return this.sortFavorites(matches);
   });
+  readonly visibleFavoriteNotes = computed(() => this.filteredFavorites().slice(0, 3));
 
   readonly filteredFiles = computed(() => {
     const query = this.searchQuery().trim().toLowerCase();

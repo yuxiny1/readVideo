@@ -71,13 +71,13 @@
         <section class="reader-section">
           <div class="section-heading-row">
             <h3>Favorite Notes</h3>
-            <span class="caption">{{ filteredFavorites().length }}</span>
+            <span class="caption">{{ visibleFavoriteNotes().length }}/{{ filteredFavorites().length }}</span>
           </div>
-          <div class="reader-note-list">
+          <div class="reader-note-list favorite-note-list">
             @if (!filteredFavorites().length) {
               <div class="empty-state">No favorites match this folder or search.</div>
             } @else {
-              @for (item of filteredFavorites(); track item.id) {
+              @for (item of visibleFavoriteNotes(); track item.id) {
                 <button class="reader-note-item" [ngClass]="isActivePath(item.markdown_path) ? 'active' : ''" type="button" (click)="openFavorite(item)">
                   <strong>{{ titleFor(item) }}</strong>
                   <span>{{ item.folder_name || "Unfiled" }}</span>
