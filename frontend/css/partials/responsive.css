@@ -31,6 +31,23 @@
   rv-saved-sources {
     position: static;
   }
+
+  .reader-workspace {
+    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  }
+
+  .reader-inspector {
+    position: static;
+    grid-column: 1 / -1;
+  }
+
+  .reader-inspector-panel {
+    max-height: none;
+  }
+
+  .reader-outline-list {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
 }
 
 @media (max-width: 880px) {
@@ -53,7 +70,8 @@
     position: static;
   }
 
-  .reader-library-panel {
+  .reader-library-panel,
+  .reader-inspector-panel {
     max-height: none;
   }
 
@@ -66,6 +84,15 @@
 
   .task-log li {
     grid-template-columns: 1fr;
+  }
+
+  .reader-document-bar,
+  .reader-findbar {
+    grid-template-columns: 1fr;
+  }
+
+  .reader-document-actions {
+    justify-content: flex-start;
   }
 }
 
