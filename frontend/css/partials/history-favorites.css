@@ -31,28 +31,60 @@
 }
 
 .favorite-tag-filter-card {
-  margin-bottom: 10px;
-  padding: 8px 10px;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
   border: 1px solid rgba(10, 132, 255, 0.14);
   border-radius: 8px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(241, 248, 255, 0.78));
 }
 
 .favorite-tag-filter-card .section-heading-row {
-  margin-bottom: 6px;
+  margin-bottom: 0;
+}
+
+.favorite-tag-filter-card h3 {
+  margin: 0;
+}
+
+.favorite-tag-filter-card .section-heading-row .caption {
+  display: none;
+}
+
+.favorite-tag-filter-card .tag-chip,
+.priority-tag-panel .tag-chip,
+.note-tag-manager .tag-chip {
+  min-height: 24px;
+  padding: 3px 7px;
+  font-size: 11px;
 }
 
 .note-tag-manager {
   display: grid;
-  gap: 7px;
-  padding: 9px 10px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 8px;
+  align-items: center;
+  padding: 7px 8px;
   border: 1px solid rgba(10, 132, 255, 0.16);
   border-radius: 8px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(242, 249, 255, 0.78));
 }
 
 .note-tag-manager .section-heading-row {
-  min-height: 28px;
+  min-height: 24px;
+  display: inline-flex;
+  justify-content: flex-start;
+}
+
+.note-tag-manager .tag-input-row {
+  grid-column: 1 / -1;
+}
+
+.note-tag-manager .note-tag-strip {
+  margin-top: 0;
 }
 
 .history-card-header {
@@ -267,7 +299,8 @@
 }
 
 .priority-tag-panel {
-  padding: 12px;
+  padding: 8px;
+  gap: 6px;
   border-color: rgba(10, 132, 255, 0.2);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(241, 248, 255, 0.86)),
@@ -275,7 +308,11 @@
 }
 
 .priority-tag-panel .panel-header {
-  margin-bottom: 4px;
+  margin-bottom: 0;
+}
+
+.priority-tag-panel h2 {
+  font-size: 14px;
 }
 
 .tag-management-list {
