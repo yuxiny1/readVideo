@@ -217,6 +217,9 @@ class NotesTest(unittest.TestCase):
 
         def fake_request(prompt, model, url, timeout_seconds):
             self.assertIn("商业新闻分析式文章摘要", prompt)
+            self.assertIn("## Business Lens", prompt)
+            self.assertIn("商业核心", prompt)
+            self.assertIn("关键指标", prompt)
             self.assertIn("忙碌的商业读者", prompt)
             self.assertIn("不要模仿或复制任何特定媒体", prompt)
             return "\n".join(
@@ -224,6 +227,12 @@ class NotesTest(unittest.TestCase):
                     "## Summary",
                     "这段内容把市场变化放在企业决策的背景下，强调需求、风险和现金流需要重新排序。",
                     "- 商业判断: 企业需要重新评估需求和现金流。",
+                    "",
+                    "## Business Lens",
+                    "- 商业核心: 企业需要重新评估需求和现金流。",
+                    "### Risks",
+                    "- 风险: 市场变化会进入预算和战略优先级。",
+                    "- 下一步信号: 观察真实需求和现金流质量。",
                     "",
                     "## Editorial Article",
                     "市场变化正在把企业管理层推回一个更基本的问题：哪些需求是真实的，哪些增长只是环境宽松时的幻觉。",
@@ -239,6 +248,8 @@ class NotesTest(unittest.TestCase):
         with patch("backend.services.transcript_summarizer._request_ollama_text", side_effect=fake_request):
             article = build_article_note_with_ollama(transcript, note_style="commercial")
 
+        self.assertEqual(len(article.business_items), 3)
+        self.assertIn("现金流质量", article.business_items[2])
         self.assertEqual(len(article.editorial_paragraphs), 2)
         self.assertIn("企业管理层", article.editorial_paragraphs[0])
         self.assertEqual(article.sections[0].title, "市场变化")
@@ -247,6 +258,10 @@ class NotesTest(unittest.TestCase):
         article = ArticleNote(
             summary_items=["商业判断: 企业需要重新评估需求和现金流。"],
             summary_paragraphs=["这段内容把市场变化放在企业决策背景下。"],
+            business_items=[
+                "商业核心: 企业需要重新评估需求和现金流。",
+                "风险: 市场变化会进入预算和战略优先级。",
+            ],
             editorial_paragraphs=[
                 "市场变化正在把企业管理层推回一个更基本的问题：哪些需求是真实的。",
                 "这段视频的商业含义在于，风险会进入现金流、预算和战略优先级。",
@@ -272,6 +287,8 @@ class NotesTest(unittest.TestCase):
             )
             markdown = Path(result.markdown_path).read_text(encoding="utf-8")
 
+        self.assertIn("## Business Lens", markdown)
+        self.assertIn("商业核心: 企业需要重新评估需求和现金流", markdown)
         self.assertIn("## Editorial Article", markdown)
         self.assertIn("企业管理层", markdown)
         self.assertIn("## Segmented Notes", markdown)
