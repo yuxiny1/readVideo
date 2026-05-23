@@ -13,8 +13,10 @@ type LibrarySort = "recent" | "title" | "folder" | "path";
 type ReaderWidth = "standard" | "wide";
 type ReaderTextSize = "standard" | "large";
 type ReaderViewMode = "rendered" | "markdown";
+type ReaderFocusTheme = "light" | "dark";
 
 const FOCUS_MODE_STORAGE_KEY = "readvideo.reader.focusMode";
+const FOCUS_THEME_STORAGE_KEY = "readvideo.reader.focusTheme";
 
 interface ReaderHeading {
   id: string;
@@ -59,6 +61,7 @@ export class ReaderPageComponent implements OnInit {
   readonly libraryMode = signal<LibraryMode>("all");
   readonly librarySort = signal<LibrarySort>("recent");
   readonly focusMode = signal(readFocusModeDefault());
+  readonly focusTheme = signal<ReaderFocusTheme>(readFocusThemeDefault());
   readonly readerWidth = signal<ReaderWidth>("standard");
   readonly readerTextSize = signal<ReaderTextSize>("standard");
   readonly viewMode = signal<ReaderViewMode>("rendered");
@@ -269,6 +272,11 @@ export class ReaderPageComponent implements OnInit {
   setFocusMode(enabled: boolean): void {
     this.focusMode.set(enabled);
     persistFocusModeDefault(enabled);
+  }
+
+  setFocusTheme(theme: ReaderFocusTheme): void {
+    this.focusTheme.set(theme);
+    persistFocusThemeDefault(theme);
   }
 
   setViewMode(mode: ReaderViewMode): void {
@@ -576,6 +584,24 @@ function readFocusModeDefault(): boolean {
 function persistFocusModeDefault(enabled: boolean): void {
   try {
     localStorage.setItem(FOCUS_MODE_STORAGE_KEY, enabled ? "true" : "false");
+  } catch {
+    // Ignore private browsing or storage-disabled environments.
+  }
+}
+
+
+function readFocusThemeDefault(): ReaderFocusTheme {
+  try {
+    return localStorage.getItem(FOCUS_THEME_STORAGE_KEY) === "dark" ? "dark" : "light";
+  } catch {
+    return "light";
+  }
+}
+
+
+function persistFocusThemeDefault(theme: ReaderFocusTheme): void {
+  try {
+    localStorage.setItem(FOCUS_THEME_STORAGE_KEY, theme);
   } catch {
     // Ignore private browsing or storage-disabled environments.
   }

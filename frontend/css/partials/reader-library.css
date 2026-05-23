@@ -2,6 +2,44 @@
   justify-content: space-between;
 }
 
+.app-layout:has(.reader-workspace.reader-focus-mode) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app-layout:has(.reader-workspace.reader-focus-mode) .sidebar {
+  display: none;
+}
+
+.page-content:has(.reader-workspace.reader-focus-mode) {
+  min-height: 100vh;
+}
+
+.page-content:has(.reader-workspace.reader-focus-dark) {
+  background:
+    linear-gradient(180deg, rgba(42, 38, 30, 0.36), transparent 44%),
+    linear-gradient(135deg, #101114 0%, #17181c 52%, #1c1a16 100%);
+}
+
+.reader-topbar.reader-focus-topbar {
+  min-height: 64px;
+  padding: 14px 24px;
+}
+
+.reader-topbar.reader-focus-dark {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+  background: rgba(18, 19, 22, 0.84);
+  color: #f4efe4;
+}
+
+.reader-topbar.reader-focus-dark .pill {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.reader-topbar.reader-focus-dark .pill.muted,
+.reader-topbar.reader-focus-dark .quiet-link {
+  color: #b7b0a4;
+}
+
 .reader-workspace {
   width: min(1440px, 100%);
   margin: 0 auto;
@@ -13,13 +51,14 @@
 }
 
 .reader-workspace.reader-focus-mode {
-  width: min(1080px, 100%);
+  width: min(1040px, 100%);
   grid-template-columns: minmax(0, 1fr);
-  padding: 18px 24px 42px;
+  padding: 18px clamp(18px, 4vw, 42px) 42px;
 }
 
 .reader-workspace.reader-focus-mode .reader-stage {
   min-height: calc(100vh - 134px);
+  border-radius: 8px;
 }
 
 .reader-workspace.reader-focus-mode .reader-document-bar {
@@ -30,10 +69,76 @@
   backdrop-filter: blur(18px);
 }
 
+.reader-workspace.reader-focus-dark {
+  color-scheme: dark;
+}
+
+.reader-workspace.reader-focus-dark .reader-stage {
+  border-color: rgba(255, 255, 255, 0.11);
+  background: #121315;
+  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.34);
+}
+
+.reader-workspace.reader-focus-dark .reader-document-bar {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+  background: rgba(19, 20, 23, 0.9);
+  color: #f4efe4;
+}
+
+.reader-workspace.reader-focus-dark .reader-path,
+.reader-workspace.reader-focus-dark .reader-meta-line,
+.reader-topbar.reader-focus-dark .caption {
+  color: #aaa397;
+}
+
+.reader-workspace.reader-focus-dark .segmented-control,
+.reader-topbar.reader-focus-dark .segmented-control {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.reader-workspace.reader-focus-dark .segmented-control button,
+.reader-topbar.reader-focus-dark .segmented-control button {
+  color: #d8d1c6;
+}
+
+.reader-workspace.reader-focus-dark .segmented-control button.active,
+.reader-topbar.reader-focus-dark .segmented-control button.active {
+  background: rgba(241, 235, 222, 0.14);
+  color: #fffaf0;
+}
+
+.reader-workspace.reader-focus-dark .secondary-button,
+.reader-topbar.reader-focus-dark .secondary-button,
+.reader-workspace.reader-focus-dark .quiet-link,
+.reader-topbar.reader-focus-dark .quiet-link {
+  border-color: rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.07);
+  color: #f1eadf;
+}
+
+.reader-workspace.reader-focus-dark .secondary-button:hover,
+.reader-topbar.reader-focus-dark .secondary-button:hover,
+.reader-workspace.reader-focus-dark .quiet-link:hover,
+.reader-topbar.reader-focus-dark .quiet-link:hover {
+  background: rgba(255, 255, 255, 0.11);
+}
+
 .focus-mode-button.active {
   border-color: rgba(0, 122, 255, 0.28);
   background: rgba(0, 122, 255, 0.08);
   color: #0a58ca;
+}
+
+.reader-workspace.reader-focus-dark .focus-mode-button.active,
+.reader-topbar.reader-focus-dark .focus-mode-button.active {
+  border-color: rgba(245, 205, 128, 0.3);
+  background: rgba(245, 205, 128, 0.13);
+  color: #ffe2a3;
+}
+
+.focus-theme-toggle {
+  min-width: 122px;
 }
 
 .reader-library,

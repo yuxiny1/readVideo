@@ -1,4 +1,8 @@
-<header class="topbar reader-topbar">
+<header
+  class="topbar reader-topbar"
+  [class.reader-focus-topbar]="focusMode()"
+  [class.reader-focus-dark]="focusMode() && focusTheme() === 'dark'"
+>
   <div>
     <h1>readVideo Reader</h1>
     <div class="meta-row">
@@ -13,7 +17,11 @@
   </div>
 </header>
 
-<main class="reader-workspace" [class.reader-focus-mode]="focusMode()">
+<main
+  class="reader-workspace"
+  [class.reader-focus-mode]="focusMode()"
+  [class.reader-focus-dark]="focusMode() && focusTheme() === 'dark'"
+>
   @if (!focusMode()) {
     <aside class="reader-library">
       <section class="tool-panel reader-library-panel">
@@ -144,6 +152,10 @@
           <button type="button" [ngClass]="viewMode() === 'markdown' ? 'active' : ''" (click)="setViewMode('markdown')">MD</button>
         </div>
         @if (focusMode()) {
+          <div class="segmented-control compact-segmented focus-theme-toggle" aria-label="Focus theme">
+            <button type="button" [ngClass]="focusTheme() === 'light' ? 'active' : ''" (click)="setFocusTheme('light')">Light</button>
+            <button type="button" [ngClass]="focusTheme() === 'dark' ? 'active' : ''" (click)="setFocusTheme('dark')">Dark</button>
+          </div>
           <div class="segmented-control compact-segmented" aria-label="Focus text size">
             <button type="button" [ngClass]="readerTextSize() === 'standard' ? 'active' : ''" (click)="setReaderTextSize('standard')">Standard</button>
             <button type="button" [ngClass]="readerTextSize() === 'large' ? 'active' : ''" (click)="setReaderTextSize('large')">Large</button>
