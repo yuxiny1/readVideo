@@ -30,11 +30,18 @@ class FrontendContractTest(unittest.TestCase):
         self.assertIn("focusMode", component)
         self.assertIn("toggleFocusMode", component)
         self.assertIn("readvideo.reader.focusMode", component)
+        self.assertIn("focusTheme", component)
+        self.assertIn("readvideo.reader.focusTheme", component)
         self.assertIn("reader-focus-mode", template)
+        self.assertIn("reader-focus-dark", template)
         self.assertIn("Focus Mode", template)
+        self.assertIn("Dark", template)
         self.assertIn("@if (!focusMode())", template)
         self.assertIn(".reader-workspace.reader-focus-mode", library_styles)
+        self.assertIn(".reader-workspace.reader-focus-dark", library_styles)
+        self.assertIn(".app-layout:has(.reader-workspace.reader-focus-mode)", library_styles)
         self.assertIn(".reader-focus-mode .modern-reader", document_styles)
+        self.assertIn(".reader-focus-dark .modern-reader", document_styles)
 
     def test_saved_sources_exposes_compact_actions_menu(self):
         template = read_repo_file("frontend/angular/src/app/components/saved-sources/saved-sources.component.html")

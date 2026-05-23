@@ -60,6 +60,21 @@
   background: rgba(255, 255, 255, 0.86);
 }
 
+.reader-focus-dark .reader-findbar {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+  background: rgba(22, 23, 26, 0.9);
+}
+
+.reader-focus-dark .reader-findbar input {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f4efe4;
+}
+
+.reader-focus-dark .reader-findbar input::placeholder {
+  color: #8e877d;
+}
+
 .markdown-reader {
   max-height: 620px;
   overflow: auto;
@@ -85,12 +100,62 @@
   padding: clamp(34px, 6vw, 76px);
 }
 
+.reader-focus-mode .modern-reader::selection,
+.reader-focus-mode .markdown-source::selection {
+  color: #081014;
+  background: rgba(245, 205, 128, 0.55);
+}
+
 .reader-focus-mode .modern-reader p,
 .reader-focus-mode .modern-reader ul,
 .reader-focus-mode .modern-reader ol,
 .reader-focus-mode .modern-reader blockquote,
 .reader-focus-mode .modern-reader hr {
   max-width: 76ch;
+}
+
+.reader-focus-dark .modern-reader {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 160px),
+    #121315;
+  color: #f4efe4;
+}
+
+.reader-focus-dark .modern-reader h1,
+.reader-focus-dark .modern-reader h2,
+.reader-focus-dark .modern-reader h3,
+.reader-focus-dark .modern-reader h4 {
+  color: #fff7e8;
+}
+
+.reader-focus-dark .modern-reader h2 {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.reader-focus-dark .modern-reader p,
+.reader-focus-dark .modern-reader li {
+  color: #ddd5c8;
+}
+
+.reader-focus-dark .modern-reader blockquote {
+  border-left-color: #f5cd80;
+  background: rgba(245, 205, 128, 0.08);
+  color: #ece1d2;
+}
+
+.reader-focus-dark .modern-reader hr {
+  border-top-color: rgba(255, 255, 255, 0.12);
+}
+
+.reader-focus-dark .modern-reader code {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffe2a3;
+}
+
+.reader-focus-dark .modern-reader pre,
+.reader-focus-dark .markdown-source {
+  background: #0c0d0f;
+  color: #f1eadf;
 }
 
 .modern-reader.reader-copy-wide p,
