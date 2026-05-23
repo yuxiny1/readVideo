@@ -27,7 +27,7 @@ from backend.services.ollama_models import (
     recommended_models,
 )
 from backend.services.source_updates import list_source_updates
-from backend.services.video_processor import process_video, resolve_notes_backend, resolve_transcription_settings
+from backend.services.video_processor import process_video, resolve_note_style, resolve_notes_backend, resolve_transcription_settings
 from backend.services.whisper_models import (
     download_whisper_model,
     list_installed_whisper_models,
@@ -73,6 +73,7 @@ async def create_task(request: ProcessVideoRequest, background_tasks: Background
     try:
         settings = load_settings()
         resolve_notes_backend(request.notes_backend, settings.notes_backend)
+        resolve_note_style(request.note_style, settings.note_style)
         resolve_transcription_settings(
             settings,
             request.transcription_backend,
@@ -102,6 +103,7 @@ async def create_task(request: ProcessVideoRequest, background_tasks: Background
         str(request.url),
         request.notes_dir,
         request.notes_backend,
+        request.note_style,
         request.ollama_model,
         request.reuse_task_id,
         request.force_download,
@@ -362,6 +364,7 @@ async def app_config():
         "download_dir": settings.download_dir,
         "notes_dir": settings.notes_dir,
         "notes_backend": settings.notes_backend,
+        "note_style": settings.note_style,
         "ollama_model": settings.ollama_model,
         "ollama_model_options": recommended_models(),
         "local_whisper_model": settings.local_whisper_model,

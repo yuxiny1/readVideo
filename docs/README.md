@@ -13,6 +13,7 @@ For local transcription quality, `ggml-large-v3-turbo.bin` is the recommended de
 - Saves the raw transcript next to the downloaded video.
 - Creates a Markdown note with key points, a narrative summary paragraph, and segmented notes; the raw transcript stays in its own `.txt` file instead of being embedded in the note.
 - Creates Better Local AI Notes with Ollama by default.
+- Can add a Commercial Editorial article summary section for a more business-publication style read.
 - Lets you choose the Markdown output folder per request.
 - Can delete the downloaded local video after a successful run while keeping the transcript, Markdown note, and history.
 - Provides a simple FastAPI frontend and JSON API.
@@ -70,6 +71,7 @@ READVIDEO_LOCAL_WHISPER_CLI=whisper-cli
 READVIDEO_LOCAL_WHISPER_MODEL=models/ggml-large-v3-turbo.bin
 READVIDEO_LOCAL_WHISPER_LANGUAGE=auto
 READVIDEO_NOTES_BACKEND=ollama
+READVIDEO_NOTE_STYLE=detailed
 READVIDEO_OLLAMA_MODEL=qwen2.5:32b
 READVIDEO_OLLAMA_URL=http://127.0.0.1:11434/api/generate
 ```
@@ -82,6 +84,8 @@ READVIDEO_NOTES_BACKEND=ollama
 ```
 
 `READVIDEO_NOTES_BACKEND=ollama` means Better Local AI Notes: slower, but uses a local Ollama model to turn the full transcript into key points, a narrative summary paragraph, and high-detail article-style sections that preserve names, dates, examples, numbers, and the original flow. The default model is `qwen2.5:32b` when available. The Markdown note no longer embeds the full transcript; the transcript remains available as its separate `.txt` output.
+
+`READVIDEO_NOTE_STYLE=commercial` keeps the detailed segmented notes and adds an `Editorial Article` section before them. This mode asks the local model for a more polished business-news analysis summary with a clear lede, context, stakes, and implications. The default `detailed` mode preserves the current notes format.
 
 Optional OpenAI backend:
 
@@ -144,6 +148,7 @@ curl -X POST "http://localhost:8000/process_video/" \
     "url": "https://www.youtube.com/watch?v=<VIDEO_ID>",
     "notes_dir": "/Users/you/Documents/Notes",
     "notes_backend": "ollama",
+    "note_style": "commercial",
     "ollama_model": "qwen2.5:32b",
     "delete_video_after_completion": true
   }'

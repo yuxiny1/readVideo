@@ -67,15 +67,16 @@ class VideoProcessorReuseTest(unittest.TestCase):
                     summary_backend="extractive",
                 ),
             ) as write_note:
-                asyncio.run(process_video("new-task", "https://youtu.be/abc123"))
+                asyncio.run(process_video("new-task", "https://youtu.be/abc123", note_style="commercial"))
 
         task = TASKS["new-task"]
         self.assertEqual(task["status"], "completed")
         self.assertEqual(task["download_status"], "reused")
+        self.assertEqual(task["note_style"], "commercial")
         self.assertEqual(task["reused_from_task_id"], "old-task")
         self.assertEqual(task["transcription_backend"], "reused")
         write_note.assert_called_once()
-        self.assertEqual(write_note.call_args.args[0], "existing transcript")
+        self.assertEqual(write_note.call_args.kwargs["transcript_text"], "existing transcript")
 
     def test_process_video_deletes_local_video_after_success(self):
         with tempfile.TemporaryDirectory() as tmpdir:

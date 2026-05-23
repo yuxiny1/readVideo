@@ -57,6 +57,10 @@ export class ProcessPanelComponent {
     this.form.patch({localWhisperLanguage});
   }
 
+  setNoteStyle(noteStyle: "detailed" | "commercial"): void {
+    this.form.patch({noteStyle});
+  }
+
   setOllamaModel(ollamaModel: string): void {
     this.form.patch({ollamaModel});
     this.workflow.validateOllamaSelection();

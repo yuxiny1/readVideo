@@ -212,6 +212,70 @@ class NotesTest(unittest.TestCase):
         self.assertIn("用户问题 2", article.sections[0].body)
         self.assertIn("下一步行动", article.sections[1].body)
 
+    def test_commercial_ollama_prompt_parses_editorial_article(self):
+        transcript = "市场正在变化，企业需要重新判断需求、风险和现金流。"
+
+        def fake_request(prompt, model, url, timeout_seconds):
+            self.assertIn("商业新闻分析式文章摘要", prompt)
+            self.assertIn("忙碌的商业读者", prompt)
+            self.assertIn("不要模仿或复制任何特定媒体", prompt)
+            return "\n".join(
+                [
+                    "## Summary",
+                    "这段内容把市场变化放在企业决策的背景下，强调需求、风险和现金流需要重新排序。",
+                    "- 商业判断: 企业需要重新评估需求和现金流。",
+                    "",
+                    "## Editorial Article",
+                    "市场变化正在把企业管理层推回一个更基本的问题：哪些需求是真实的，哪些增长只是环境宽松时的幻觉。",
+                    "",
+                    "这段视频的商业含义在于，风险不再只是宏观背景，而是会进入现金流、预算和战略优先级。",
+                    "",
+                    "## Sections",
+                    "### 1. 市场变化",
+                    "视频说明市场正在变化，企业需要重新判断需求、风险和现金流。",
+                ]
+            )
+
+        with patch("backend.services.transcript_summarizer._request_ollama_text", side_effect=fake_request):
+            article = build_article_note_with_ollama(transcript, note_style="commercial")
+
+        self.assertEqual(len(article.editorial_paragraphs), 2)
+        self.assertIn("企业管理层", article.editorial_paragraphs[0])
+        self.assertEqual(article.sections[0].title, "市场变化")
+
+    def test_write_markdown_note_can_add_commercial_editorial_article(self):
+        article = ArticleNote(
+            summary_items=["商业判断: 企业需要重新评估需求和现金流。"],
+            summary_paragraphs=["这段内容把市场变化放在企业决策背景下。"],
+            editorial_paragraphs=[
+                "市场变化正在把企业管理层推回一个更基本的问题：哪些需求是真实的。",
+                "这段视频的商业含义在于，风险会进入现金流、预算和战略优先级。",
+            ],
+            sections=[
+                ArticleSection(
+                    title="市场变化",
+                    body="视频说明市场正在变化，企业需要重新判断需求、风险和现金流。",
+                )
+            ],
+        )
+        with tempfile.TemporaryDirectory() as tmpdir, patch(
+            "backend.services.markdown_notes.build_article_note_with_ollama",
+            return_value=article,
+        ):
+            result = write_markdown_note(
+                "市场正在变化\n企业需要重新判断需求、风险和现金流",
+                "商业视频",
+                "https://www.youtube.com/watch?v=test",
+                tmpdir,
+                summary_backend="ollama",
+                note_style="commercial",
+            )
+            markdown = Path(result.markdown_path).read_text(encoding="utf-8")
+
+        self.assertIn("## Editorial Article", markdown)
+        self.assertIn("企业管理层", markdown)
+        self.assertIn("## Segmented Notes", markdown)
+
     def test_write_markdown_note_uses_ollama_article_sections_without_full_transcript(self):
         article = ArticleNote(
             summary_items=["核心结论: 这节课把计算机科学入门拆成清晰路径。"],

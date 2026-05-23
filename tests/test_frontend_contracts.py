@@ -39,6 +39,16 @@ class FrontendContractTest(unittest.TestCase):
         self.assertEqual(package["scripts"]["check"], "npm run check:frontend && npm run test:coverage")
         self.assertIn("coverage report --fail-under=80", package["scripts"]["test:coverage"])
 
+    def test_new_video_exposes_commercial_editorial_note_style(self):
+        template = read_repo_file("frontend/angular/src/app/components/process-panel/process-panel.component.html")
+        form_service = read_repo_file("frontend/angular/src/app/services/process-form.service.ts")
+        types = read_repo_file("frontend/angular/src/app/types/readvideo.types.ts")
+
+        self.assertIn('name="note_style"', template)
+        self.assertIn("Commercial Editorial", template)
+        self.assertIn('note_style: form.noteStyle', form_service)
+        self.assertIn('"detailed" | "commercial"', types)
+
 
 if __name__ == "__main__":
     unittest.main()

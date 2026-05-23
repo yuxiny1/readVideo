@@ -13,6 +13,7 @@ class ProcessVideoRequest(BaseModel):
     local_whisper_language: Optional[str] = Field(default=None, min_length=1)
     notes_dir: Optional[str] = Field(default=None, min_length=1)
     notes_backend: Optional[str] = Field(default=None, min_length=1)
+    note_style: Optional[str] = Field(default=None, min_length=1)
     ollama_model: Optional[str] = Field(default=None, min_length=1)
     reuse_task_id: Optional[str] = Field(default=None, min_length=1)
     force_download: bool = False

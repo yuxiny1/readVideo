@@ -31,12 +31,14 @@ def write_markdown_note(
     summary_backend: str = "extractive",
     ollama_model: str = "qwen2.5:32b",
     ollama_url: str = "http://127.0.0.1:11434/api/generate",
+    note_style: str = "detailed",
 ) -> NoteResult:
     article_note = build_article_note(
         transcript_text,
         summary_backend=summary_backend,
         ollama_model=ollama_model,
         ollama_url=ollama_url,
+        note_style=note_style,
     )
     markdown = render_markdown_note(
         video_title=video_title,
@@ -46,6 +48,8 @@ def write_markdown_note(
         summary_items=article_note.summary_items,
         transcript_path=transcript_path,
         summary_paragraphs=article_note.summary_paragraphs,
+        editorial_paragraphs=article_note.editorial_paragraphs,
+        note_style=note_style,
     )
 
     notes_dir = Path(output_dir).expanduser()
@@ -66,17 +70,20 @@ def build_article_note(
     summary_backend: str = "extractive",
     ollama_model: str = "qwen2.5:32b",
     ollama_url: str = "http://127.0.0.1:11434/api/generate",
+    note_style: str = "detailed",
 ) -> ArticleNote:
     if summary_backend == "ollama":
         article_note = build_article_note_with_ollama(
             transcript_text,
             model=ollama_model,
             url=ollama_url,
+            note_style=note_style,
         )
         return ArticleNote(
             summary_items=article_note.summary_items or summarize_transcript(transcript_text),
             sections=article_note.sections or _extractive_sections(transcript_text),
             summary_paragraphs=article_note.summary_paragraphs,
+            editorial_paragraphs=article_note.editorial_paragraphs,
         )
 
     summary_items = summarize_transcript_with_backend(
@@ -89,6 +96,7 @@ def build_article_note(
         summary_items=summary_items,
         sections=_extractive_sections(transcript_text),
         summary_paragraphs=_paragraphs_from_summary_items(summary_items),
+        editorial_paragraphs=[],
     )
 
 
@@ -182,6 +190,8 @@ def render_markdown_note(
     summary_items: Iterable[str],
     transcript_path: Optional[str] = None,
     summary_paragraphs: Optional[Iterable[str]] = None,
+    editorial_paragraphs: Optional[Iterable[str]] = None,
+    note_style: str = "detailed",
 ) -> str:
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
     lines = [
@@ -194,6 +204,7 @@ def render_markdown_note(
     lines.extend(["", "## Summary", ""])
     summary_items = list(summary_items)
     summary_paragraphs = list(summary_paragraphs or [])
+    article_sections = [_coerce_section(section, index) for index, section in enumerate(sections, start=1)]
     if summary_items:
         lines.extend(f"- {item}" for item in summary_items)
     else:
@@ -203,8 +214,20 @@ def render_markdown_note(
         for paragraph in summary_paragraphs:
             lines.extend([paragraph, ""])
 
+    editorial_paragraphs = list(editorial_paragraphs or [])
+    if note_style == "commercial":
+        editorial_paragraphs = editorial_paragraphs or _fallback_editorial_paragraphs(
+            video_title,
+            summary_items,
+            summary_paragraphs,
+            article_sections,
+        )
+        if editorial_paragraphs:
+            lines.extend(["", "## Editorial Article", ""])
+            for paragraph in editorial_paragraphs:
+                lines.extend([paragraph, ""])
+
     lines.extend(["", "## Segmented Notes", ""])
-    article_sections = [_coerce_section(section, index) for index, section in enumerate(sections, start=1)]
     raw_segments = original_transcript_segments_for_sections(transcript_text, article_sections)
     for index, article_section in enumerate(article_sections, start=1):
         title = article_section.title
@@ -236,6 +259,41 @@ def _paragraphs_from_summary_items(summary_items: list[str], max_items: int = 5)
     if not fragments:
         return []
     return ["；".join(fragments).rstrip("；。") + "。"]
+
+
+def _fallback_editorial_paragraphs(
+    video_title: str,
+    summary_items: Iterable[str],
+    summary_paragraphs: Iterable[str],
+    sections: Iterable[ArticleSection],
+) -> list[str]:
+    paragraphs = [paragraph.strip() for paragraph in summary_paragraphs if paragraph.strip()]
+    section_list = list(sections)
+    if not paragraphs and summary_items:
+        stripped_items = [
+            re.sub(r"^[^:：]{2,18}[:：]\s*", "", item).strip()
+            for item in summary_items
+            if item.strip()
+        ]
+        stripped_items = [item for item in stripped_items if item]
+        if stripped_items:
+            paragraphs.append(f"{video_title} 的核心并不只是几条结论，而是一组需要放在商业语境里理解的变化。{stripped_items[0]}")
+
+    for section in section_list[:4]:
+        body = re.sub(r"^\s*(?:[-*]|\d+[.)])\s*", "", section.body.strip())
+        body = re.sub(r"\s+", " ", body)
+        if not body:
+            continue
+        paragraphs.append(f"在“{section.title}”这一部分，视频把问题推进到更具体的层面：{body}")
+
+    return [_trim_paragraph(paragraph) for paragraph in paragraphs if paragraph][:8]
+
+
+def _trim_paragraph(paragraph: str, max_len: int = 720) -> str:
+    paragraph = paragraph.strip()
+    if len(paragraph) <= max_len:
+        return paragraph
+    return paragraph[: max_len - 1].rstrip() + "..."
 
 
 def _coerce_section(section: ArticleSection | str, index: int) -> ArticleSection:
