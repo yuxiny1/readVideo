@@ -50,6 +50,7 @@ async def process_video(
     url: str,
     notes_dir: Optional[str] = None,
     notes_backend: Optional[str] = None,
+    note_style: Optional[str] = None,
     ollama_model: Optional[str] = None,
     reuse_task_id: Optional[str] = None,
     force_download: bool = False,
@@ -71,6 +72,7 @@ async def process_video(
             local_whisper_language=local_whisper_language,
         )
         resolved_notes_backend = resolve_notes_backend(notes_backend, settings.notes_backend)
+        resolved_note_style = resolve_note_style(note_style, settings.note_style)
         resolved_ollama_model = ollama_model or settings.ollama_model
         candidate = None
         if not force_download:
@@ -91,6 +93,7 @@ async def process_video(
                 title=video_title,
                 video_path=downloaded_file_path,
                 notes_backend=resolved_notes_backend,
+                note_style=resolved_note_style,
                 ollama_model=resolved_ollama_model if resolved_notes_backend == "ollama" else None,
                 transcription_backend=settings.transcription_backend,
                 transcription_model=settings.transcription_model if settings.transcription_backend == "openai" else None,
@@ -112,6 +115,7 @@ async def process_video(
                 "downloading",
                 url=url,
                 notes_backend=resolved_notes_backend,
+                note_style=resolved_note_style,
                 ollama_model=resolved_ollama_model if resolved_notes_backend == "ollama" else None,
                 transcription_backend=settings.transcription_backend,
                 transcription_model=settings.transcription_model if settings.transcription_backend == "openai" else None,
@@ -177,23 +181,25 @@ async def process_video(
             persist_task_history(settings.database_path, task_id)
 
         if resolved_notes_backend == "ollama":
+            style_label = "commercial editorial article" if resolved_note_style == "commercial" else "high-detail paragraph"
             append_task_log(
                 task_id,
-                f"Writing high-detail paragraph summary and article-style notes with Ollama model {resolved_ollama_model}.",
+                f"Writing {style_label} summary and article-style notes with Ollama model {resolved_ollama_model}.",
                 status="organizing_notes",
             )
         else:
             append_task_log(task_id, "Writing quick notes without an AI model.", status="organizing_notes")
         note_result = await asyncio.to_thread(
             write_markdown_note,
-            result.text,
-            video_title,
-            url,
-            notes_dir or settings.notes_dir,
-            result.transcription_path,
-            resolved_notes_backend,
-            resolved_ollama_model,
-            settings.ollama_url,
+            transcript_text=result.text,
+            video_title=video_title,
+            source_url=url,
+            output_dir=notes_dir or settings.notes_dir,
+            transcript_path=result.transcription_path,
+            summary_backend=resolved_notes_backend,
+            ollama_model=resolved_ollama_model,
+            ollama_url=settings.ollama_url,
+            note_style=resolved_note_style,
         )
 
         set_task_status(
@@ -209,6 +215,7 @@ async def process_video(
             transcription_backend=resolved_transcription_backend,
             summary_backend=note_result.summary_backend,
             ollama_model=resolved_ollama_model if resolved_notes_backend == "ollama" else None,
+            note_style=resolved_note_style,
             chunk_count=getattr(result, "chunk_count", None),
             delete_video_after_completion=delete_video_after_completion,
             log_message=f"Markdown note saved to {note_result.markdown_path}",
@@ -264,6 +271,13 @@ def resolve_notes_backend(request_backend: Optional[str], default_backend: str) 
     if backend not in {"extractive", "ollama"}:
         raise RuntimeError("notes_backend must be extractive or ollama.")
     return backend
+
+
+def resolve_note_style(request_style: Optional[str], default_style: str) -> str:
+    style = (request_style or default_style).lower()
+    if style not in {"detailed", "commercial"}:
+        raise RuntimeError("note_style must be detailed or commercial.")
+    return style
 
 
 def resolve_transcription_settings(

@@ -14,6 +14,7 @@ export interface AppConfig {
   download_dir: string;
   notes_dir: string;
   notes_backend: "extractive" | "ollama";
+  note_style: "detailed" | "commercial";
   ollama_model: string;
   local_whisper_model: string;
   local_whisper_language: string;
@@ -86,6 +87,7 @@ export interface TaskRecord {
   transcription_backend?: string;
   summary_backend?: string;
   notes_backend?: string;
+  note_style?: string;
   ollama_model?: string;
   created_at?: string;
   updated_at?: string;
@@ -111,6 +113,7 @@ export interface ProcessPayload {
   local_whisper_model: string | null;
   local_whisper_language: string | null;
   notes_backend: "ollama";
+  note_style: "detailed" | "commercial";
   ollama_model: string | null;
   reuse_task_id?: string | null;
   force_download?: boolean;

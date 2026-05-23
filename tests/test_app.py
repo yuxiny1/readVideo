@@ -44,6 +44,10 @@ class MainAppTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "must be extractive or ollama"):
                 load_settings()
 
+        with patch.dict("os.environ", {"READVIDEO_NOTE_STYLE": "tabloid"}, clear=True):
+            with self.assertRaisesRegex(RuntimeError, "must be detailed or commercial"):
+                load_settings()
+
         with patch.dict("os.environ", {"READVIDEO_CHUNK_SECONDS": "soon"}, clear=True):
             with self.assertRaisesRegex(RuntimeError, "must be an integer"):
                 load_settings()
@@ -54,6 +58,7 @@ class MainAppTest(unittest.TestCase):
             url,
             notes_dir=None,
             notes_backend=None,
+            note_style=None,
             ollama_model=None,
             reuse_task_id=None,
             force_download=False,
@@ -65,6 +70,7 @@ class MainAppTest(unittest.TestCase):
             local_whisper_language=None,
         ):
             self.assertTrue(delete_video_after_completion)
+            self.assertEqual(note_style, "commercial")
             set_task_status(task_id, "completed", url=url)
 
         with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
@@ -80,6 +86,7 @@ class MainAppTest(unittest.TestCase):
                 json={
                     "task_id": "test-task",
                     "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                    "note_style": "commercial",
                     "delete_video_after_completion": True,
                 },
             )
@@ -139,6 +146,7 @@ class MainAppTest(unittest.TestCase):
         data = response.json()
         self.assertEqual(data["transcription_backend"], "local")
         self.assertEqual(data["notes_backend"], "ollama")
+        self.assertEqual(data["note_style"], "detailed")
         self.assertEqual(data["ollama_model"], "qwen2.5:32b")
         self.assertEqual(data["local_whisper_model"], "models/ggml-large-v3-turbo.bin")
         self.assertNotIn("openai_api_key", data)

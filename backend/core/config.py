@@ -26,6 +26,7 @@ class Settings:
     local_whisper_audio_filter: str = "highpass=f=80,lowpass=f=8000,loudnorm=I=-16:TP=-1.5:LRA=11"
     notes_dir: str = "notes"
     notes_backend: str = "ollama"
+    note_style: str = "detailed"
     ollama_model: str = "qwen2.5:32b"
     ollama_url: str = "http://127.0.0.1:11434/api/generate"
     database_path: str = "readvideo.sqlite3"
@@ -91,6 +92,10 @@ def load_settings() -> Settings:
     if notes_backend not in {"extractive", "ollama"}:
         raise RuntimeError("READVIDEO_NOTES_BACKEND must be extractive or ollama.")
 
+    note_style = os.getenv("READVIDEO_NOTE_STYLE", "detailed").lower()
+    if note_style not in {"detailed", "commercial"}:
+        raise RuntimeError("READVIDEO_NOTE_STYLE must be detailed or commercial.")
+
     return Settings(
         transcription_backend=transcription_backend,
         openai_api_key=load_openai_api_key(required=transcription_backend == "openai"),
@@ -107,6 +112,7 @@ def load_settings() -> Settings:
         ),
         notes_dir=os.getenv("READVIDEO_NOTES_DIR", "notes"),
         notes_backend=notes_backend,
+        note_style=note_style,
         ollama_model=os.getenv("READVIDEO_OLLAMA_MODEL", "qwen2.5:32b"),
         ollama_url=os.getenv("READVIDEO_OLLAMA_URL", "http://127.0.0.1:11434/api/generate"),
         database_path=os.getenv("READVIDEO_DATABASE_PATH", "readvideo.sqlite3"),

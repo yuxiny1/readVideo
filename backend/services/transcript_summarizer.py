@@ -24,6 +24,7 @@ class ArticleNote:
     summary_items: list[str]
     sections: list[ArticleSection]
     summary_paragraphs: list[str] = field(default_factory=list)
+    editorial_paragraphs: list[str] = field(default_factory=list)
 
 
 PROMOTIONAL_PATTERNS = (
@@ -147,13 +148,14 @@ def build_article_note_with_ollama(
     max_summary_items: int = 7,
     max_sections: int = 10,
     chunk_chars: int = 5200,
+    note_style: str = "detailed",
 ) -> ArticleNote:
     chunks = _prompt_chunks(transcript_text, max_chars=chunk_chars)
     if not chunks:
         return ArticleNote(summary_items=[], sections=[], summary_paragraphs=[])
 
     if len(chunks) == 1:
-        prompt = _article_note_prompt(chunks[0], max_summary_items, max_sections)
+        prompt = _article_note_prompt(chunks[0], max_summary_items, max_sections, note_style)
         return _parse_article_note(
             _request_ollama_text(prompt, model, url, timeout_seconds),
             max_summary_items=max_summary_items,
@@ -170,7 +172,7 @@ def build_article_note_with_ollama(
     if not chunk_notes:
         raise RuntimeError("Ollama note generation did not return usable chunk notes.")
 
-    prompt = _article_note_prompt("\n\n".join(chunk_notes), max_summary_items, max_sections)
+    prompt = _article_note_prompt("\n\n".join(chunk_notes), max_summary_items, max_sections, note_style)
     article = _parse_article_note(
         _request_ollama_text(prompt, model, url, timeout_seconds),
         max_summary_items=max_summary_items,
@@ -184,6 +186,7 @@ def build_article_note_with_ollama(
         summary_items=fallback_summary,
         sections=[],
         summary_paragraphs=_paragraphs_from_summary_items(fallback_summary),
+        editorial_paragraphs=[],
     )
 
 
@@ -263,7 +266,18 @@ def _chunk_article_prompt(chunk: str, index: int, total: int) -> str:
     )
 
 
-def _article_note_prompt(material: str, max_summary_items: int, max_sections: int) -> str:
+def _article_note_prompt(material: str, max_summary_items: int, max_sections: int, note_style: str = "detailed") -> str:
+    commercial_instruction = ""
+    if note_style == "commercial":
+        commercial_instruction = (
+            "\n## Editorial Article\n"
+            "在 Summary 和 Sections 之间，额外写一个 5 到 8 段的商业新闻分析式文章摘要。"
+            "这一部分面向忙碌的商业读者：第一段要有有力的 lede，第二段交代为什么重要，"
+            "后续段落按事实、背景、冲突、影响和下一步组织。"
+            "语言要克制、清晰、具备报道感和分析感，像严肃商业媒体的 briefing，"
+            "但不要模仿或复制任何特定媒体的固定表达。"
+            "不要使用 bullet，不要写标题解释，不要泛泛鸡汤，不要编造。\n"
+        )
     return (
         "你是一个中文长文编辑，要把视频转录整理成一篇清晰、可阅读、信息覆盖充分的文章式笔记。"
         "输入可能是完整转录，也可能是按顺序整理过的片段笔记。"
@@ -274,6 +288,7 @@ def _article_note_prompt(material: str, max_summary_items: int, max_sections: in
         "先写 1 到 2 段正文式总述，每段 2 到 4 句，像文章摘要一样概括原文整体内容、主线和结论。\n"
         "然后写 5 到 "
         f"{max_summary_items} 条 Markdown bullet，每条都是「主题: 具体结论/事实/行动点」。\n\n"
+        f"{commercial_instruction}"
         "## Sections\n"
         f"### 1. 清楚的章节标题\n"
         "每个章节写成详细正文，而不是短摘要：先用 2 到 4 个自然段按原文顺序复原这一段的主要内容，"
@@ -292,6 +307,8 @@ def _parse_article_note(text: str, max_summary_items: int = 7, max_sections: int
     summary_items: list[str] = []
     summary_paragraphs: list[str] = []
     summary_paragraph_lines: list[str] = []
+    editorial_paragraphs: list[str] = []
+    editorial_lines: list[str] = []
     sections: list[ArticleSection] = []
     mode = ""
     current_title = ""
@@ -313,12 +330,22 @@ def _parse_article_note(text: str, max_summary_items: int = 7, max_sections: int
             summary_paragraphs.append(paragraph)
         summary_paragraph_lines = []
 
+    def flush_editorial_paragraph():
+        nonlocal editorial_lines
+        paragraph = _clean_editorial_paragraph(" ".join(editorial_lines))
+        if paragraph:
+            editorial_paragraphs.append(paragraph)
+        editorial_lines = []
+
     for raw_line in text.splitlines():
         line = raw_line.rstrip()
         stripped = line.strip()
         if not stripped:
             if mode == "summary":
                 flush_summary_paragraph()
+                continue
+            if mode == "editorial":
+                flush_editorial_paragraph()
                 continue
             if current_body:
                 current_body.append("")
@@ -330,19 +357,31 @@ def _parse_article_note(text: str, max_summary_items: int = 7, max_sections: int
             heading_lower = heading_text.lower()
             if any(word in heading_lower for word in ("summary", "摘要", "总结", "總結", "要点", "要點")):
                 flush_summary_paragraph()
+                flush_editorial_paragraph()
                 flush_section()
                 mode = "summary"
+                continue
+            if any(word in heading_lower for word in ("editorial", "commercial article", "商业文章", "商業文章", "商业新闻", "商業新聞")):
+                flush_summary_paragraph()
+                flush_editorial_paragraph()
+                flush_section()
+                mode = "editorial"
                 continue
             if mode == "summary" and any(word in heading_lower for word in ("key points", "要点", "要點", "重点", "重點")):
                 flush_summary_paragraph()
                 continue
+            if mode == "editorial" and _is_editorial_label(heading_text):
+                flush_editorial_paragraph()
+                continue
             if any(word in heading_lower for word in ("section", "sections", "章节", "章節", "分段", "正文", "笔记", "筆記")) and heading_match.group(1) in {"#", "##"}:
                 flush_summary_paragraph()
+                flush_editorial_paragraph()
                 flush_section()
                 mode = "sections"
                 continue
             if mode == "sections" or heading_match.group(1) in {"###", "####"}:
                 flush_summary_paragraph()
+                flush_editorial_paragraph()
                 flush_section()
                 mode = "sections"
                 current_title = heading_text
@@ -357,6 +396,11 @@ def _parse_article_note(text: str, max_summary_items: int = 7, max_sections: int
                 summary_paragraph_lines.append(stripped)
             continue
 
+        if mode == "editorial":
+            if not _is_editorial_label(stripped):
+                editorial_lines.append(stripped)
+            continue
+
         if mode == "sections":
             current_body.append(stripped)
             continue
@@ -366,16 +410,19 @@ def _parse_article_note(text: str, max_summary_items: int = 7, max_sections: int
             summary_items.append(item)
 
     flush_summary_paragraph()
+    flush_editorial_paragraph()
     flush_section()
     if not sections:
         sections = _parse_numbered_sections(text, max_sections)
 
     summary_items = _dedupe_items(summary_items)[:max_summary_items]
     summary_paragraphs = _dedupe_paragraphs(summary_paragraphs) or _paragraphs_from_summary_items(summary_items)
+    editorial_paragraphs = _dedupe_paragraphs(editorial_paragraphs)
     return ArticleNote(
         summary_items=summary_items,
         sections=sections[:max_sections],
         summary_paragraphs=summary_paragraphs[:2],
+        editorial_paragraphs=editorial_paragraphs[:8],
     )
 
 
@@ -409,12 +456,38 @@ def _is_summary_label(line: str) -> bool:
     }
 
 
+def _is_editorial_label(line: str) -> bool:
+    normalized = line.strip().strip(":：").lower()
+    return normalized in {
+        "editorial article",
+        "commercial article",
+        "article",
+        "lede",
+        "lead",
+        "nut graf",
+        "why it matters",
+        "business briefing",
+        "商业文章",
+        "商業文章",
+        "商业新闻分析",
+        "商業新聞分析",
+    }
+
+
 def _clean_summary_paragraph(paragraph: str) -> str:
     paragraph = re.sub(r"^\s*(?:[-*]|\d+[.)])\s*", "", paragraph).strip()
     paragraph = re.sub(r"\s+", " ", paragraph)
     if not paragraph or _is_promotional(paragraph) or _is_summary_label(paragraph):
         return ""
     return _trim_sentence(paragraph, max_len=520)
+
+
+def _clean_editorial_paragraph(paragraph: str) -> str:
+    paragraph = re.sub(r"^\s*(?:[-*]|\d+[.)])\s*", "", paragraph).strip()
+    paragraph = re.sub(r"\s+", " ", paragraph)
+    if not paragraph or _is_promotional(paragraph) or _is_editorial_label(paragraph):
+        return ""
+    return _trim_sentence(paragraph, max_len=720)
 
 
 def _parse_numbered_sections(text: str, max_sections: int) -> list[ArticleSection]:

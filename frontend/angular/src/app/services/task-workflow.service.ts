@@ -72,6 +72,7 @@ export class TaskWorkflowService {
         localWhisperModel: config.local_whisper_model || "models/ggml-large-v3-turbo.bin",
         localWhisperLanguage: config.local_whisper_language || "auto",
         notesBackend: "ollama",
+        noteStyle: config.note_style || "detailed",
         ollamaModel: config.ollama_model || "qwen2.5:32b",
       });
       await Promise.all([this.loadOllamaModels(true), this.loadTranscriptionModels(true), this.loadRecentTasks()]);

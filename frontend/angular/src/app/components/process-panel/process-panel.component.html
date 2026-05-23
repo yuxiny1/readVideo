@@ -96,11 +96,19 @@
 
     <div class="form-grid">
       <div>
-        <label>Notes Style</label>
-        <div class="inline-help-panel">
-          <strong>Better Local AI Notes</strong>
-          <p>Uses the strongest installed Ollama model to write detailed, article-style notes with fuller section coverage.</p>
-        </div>
+        <label for="note-style">Notes Style</label>
+        <select
+          id="note-style"
+          name="note_style"
+          [ngModel]="form.form().noteStyle"
+          (ngModelChange)="setNoteStyle($event)"
+        >
+          <option value="detailed">Detailed Notes</option>
+          <option value="commercial">Commercial Editorial</option>
+        </select>
+        <p class="field-status muted">
+          Commercial Editorial adds a polished business-news style article summary before the segmented notes.
+        </p>
       </div>
       <div>
         <label for="ollama-model">Local AI Model</label>
