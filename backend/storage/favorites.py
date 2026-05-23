@@ -180,6 +180,25 @@ class FavoriteStore:
             ).fetchone()
         return _row_to_folder(row)
 
+    def update_folder(self, folder_id: int, name: str, notes: str = "") -> Optional[FavoriteFolder]:
+        now = datetime.now().isoformat(timespec="seconds")
+        with self._connect() as conn:
+            cursor = conn.execute(
+                """
+                UPDATE favorite_folders
+                SET name = ?, notes = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (name.strip(), notes.strip(), now, folder_id),
+            )
+            if cursor.rowcount == 0:
+                return None
+            row = conn.execute(
+                "SELECT id, name, notes, created_at, updated_at FROM favorite_folders WHERE id = ?",
+                (folder_id,),
+            ).fetchone()
+        return _row_to_folder(row)
+
     def assign_folder(self, item_id: int, folder_id: Optional[int]) -> FavoriteSummary:
         now = datetime.now().isoformat(timespec="seconds")
         with self._connect() as conn:

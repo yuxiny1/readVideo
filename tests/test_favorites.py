@@ -66,6 +66,18 @@ class FavoriteStoreTest(unittest.TestCase):
             self.assertTrue(store.delete_folder(folder.id))
             self.assertIsNone(store.get_item(favorite.id).folder_id)
 
+    def test_update_folder_name_and_notes(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store = FavoriteStore(str(Path(tmpdir) / "favorites.sqlite3"))
+            folder = store.add_folder("Drafts", "rough notes")
+
+            updated = store.update_folder(folder.id, "Course Notes", "finished lessons")
+
+            self.assertIsNotNone(updated)
+            self.assertEqual(updated.name, "Course Notes")
+            self.assertEqual(updated.notes, "finished lessons")
+            self.assertIsNone(store.update_folder(999, "Missing", ""))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -154,6 +154,11 @@ export class ReaderPageComponent implements OnInit {
   async initialize(): Promise<void> {
     await this.loadConfig();
     await Promise.all([this.loadFolders(), this.loadFavorites(), this.loadTags()]);
+    const favoriteFolderId = this.route.snapshot.queryParamMap.get("favoriteFolderId");
+    if (favoriteFolderId) {
+      this.setActiveFavoriteFolder(favoriteFolderId);
+      this.libraryMode.set("favorites");
+    }
     const folder = this.route.snapshot.queryParamMap.get("folder") || this.markdownFolder;
     await this.loadMarkdownFiles(folder);
     const path = this.route.snapshot.queryParamMap.get("path");
@@ -272,6 +277,11 @@ export class ReaderPageComponent implements OnInit {
 
   setActiveTag(tag: string): void {
     this.activeTag.set(tag);
+  }
+
+  setActiveFavoriteFolder(id: string): void {
+    const valid = id === "all" || id === "unfiled" || this.folders().some((folder) => String(folder.id) === id);
+    this.activeFolderId.set(valid ? id : "all");
   }
 
   setLibrarySort(sort: string): void {

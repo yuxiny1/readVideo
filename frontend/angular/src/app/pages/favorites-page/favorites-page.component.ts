@@ -24,7 +24,9 @@ export class FavoritesPageComponent implements OnInit {
   readonly searchQuery = signal("");
   readonly error = signal("");
   readonly notice = signal("");
+  readonly editingFolderId = signal<number | null>(null);
   readonly tagDrafts: Record<number, string> = {};
+  readonly folderDrafts: Record<number, {name: string; notes: string}> = {};
   folderName = "";
   folderNotes = "";
 
@@ -76,7 +78,9 @@ export class FavoritesPageComponent implements OnInit {
   }
 
   async loadFolders(): Promise<void> {
-    this.folders.set(await this.api.favoriteFolders());
+    const folders = await this.api.favoriteFolders();
+    this.folders.set(folders);
+    this.syncFolderDrafts(folders);
   }
 
   async loadTags(): Promise<void> {
@@ -106,6 +110,26 @@ export class FavoritesPageComponent implements OnInit {
     return String(folder.id);
   }
 
+  folderTags(id: string | number): string[] {
+    const tags = new Set<string>();
+    for (const item of this.favoritesForFolder(id)) {
+      for (const tag of this.tagsFor(item)) {
+        tags.add(tag);
+      }
+    }
+    return [...tags].sort((first, second) => first.localeCompare(second, undefined, {sensitivity: "base"})).slice(0, 5);
+  }
+
+  folderInitial(folder: FavoriteFolder): string {
+    return (folder.name.trim()[0] || "N").toUpperCase();
+  }
+
+  favoritesForFolder(id: string | number): FavoriteSummary[] {
+    if (id === "all") return this.favorites();
+    if (id === "unfiled") return this.favorites().filter((item) => !item.folder_id);
+    return this.favorites().filter((item) => item.folder_id === Number(id));
+  }
+
   async createFolder(): Promise<void> {
     try {
       await this.api.addFavoriteFolder(this.folderName.trim(), this.folderNotes.trim());
@@ -113,6 +137,45 @@ export class FavoritesPageComponent implements OnInit {
       this.folderNotes = "";
       this.notice.set("Folder created");
       await this.loadFolders();
+    } catch (error) {
+      this.error.set(this.message(error));
+    }
+  }
+
+  beginEditFolder(folder: FavoriteFolder): void {
+    this.folderDrafts[folder.id] = {name: folder.name, notes: folder.notes};
+    this.editingFolderId.set(folder.id);
+  }
+
+  cancelEditFolder(): void {
+    this.editingFolderId.set(null);
+  }
+
+  folderDraftName(folder: FavoriteFolder): string {
+    return this.folderDrafts[folder.id]?.name ?? folder.name;
+  }
+
+  folderDraftNotes(folder: FavoriteFolder): string {
+    return this.folderDrafts[folder.id]?.notes ?? folder.notes;
+  }
+
+  setFolderDraftName(folder: FavoriteFolder, value: string): void {
+    this.folderDrafts[folder.id] = {...(this.folderDrafts[folder.id] || {name: folder.name, notes: folder.notes}), name: value};
+  }
+
+  setFolderDraftNotes(folder: FavoriteFolder, value: string): void {
+    this.folderDrafts[folder.id] = {...(this.folderDrafts[folder.id] || {name: folder.name, notes: folder.notes}), notes: value};
+  }
+
+  async saveFolder(folder: FavoriteFolder): Promise<void> {
+    try {
+      const draft = this.folderDrafts[folder.id] || {name: folder.name, notes: folder.notes};
+      const updated = await this.api.updateFavoriteFolder(folder.id, draft.name.trim(), draft.notes.trim());
+      this.folders.update((folders) => folders.map((item) => item.id === updated.id ? updated : item));
+      this.folderDrafts[updated.id] = {name: updated.name, notes: updated.notes};
+      this.editingFolderId.set(null);
+      this.notice.set("Folder updated");
+      await this.loadFavorites();
     } catch (error) {
       this.error.set(this.message(error));
     }
@@ -189,6 +252,19 @@ export class FavoritesPageComponent implements OnInit {
     await this.router.navigate(["/reader"], {queryParams: {folder: item.notes_dir}});
   }
 
+  async openFolderInReader(id: string | number): Promise<void> {
+    await this.router.navigate(["/reader"], {queryParams: {favoriteFolderId: String(id)}});
+  }
+
+  async copyFolderLabel(folder: FavoriteFolder): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(folder.name);
+      this.notice.set("Folder name copied");
+    } catch (error) {
+      this.error.set(this.message(error));
+    }
+  }
+
   title(item: FavoriteSummary): string {
     return item.title || item.url || item.task_id;
   }
@@ -211,6 +287,20 @@ export class FavoritesPageComponent implements OnInit {
     for (const key of Object.keys(this.tagDrafts)) {
       if (!ids.has(Number(key))) {
         delete this.tagDrafts[Number(key)];
+      }
+    }
+  }
+
+  private syncFolderDrafts(folders: FavoriteFolder[]): void {
+    const ids = new Set(folders.map((folder) => folder.id));
+    for (const folder of folders) {
+      if (!(folder.id in this.folderDrafts)) {
+        this.folderDrafts[folder.id] = {name: folder.name, notes: folder.notes};
+      }
+    }
+    for (const key of Object.keys(this.folderDrafts)) {
+      if (!ids.has(Number(key))) {
+        delete this.folderDrafts[Number(key)];
       }
     }
   }

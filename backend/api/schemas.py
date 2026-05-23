@@ -54,6 +54,11 @@ class FavoriteFolderRequest(BaseModel):
     notes: str = ""
 
 
+class FavoriteFolderUpdateRequest(BaseModel):
+    name: str = Field(min_length=1)
+    notes: str = ""
+
+
 class FavoriteFolderAssignmentRequest(BaseModel):
     folder_id: Optional[int] = None
 

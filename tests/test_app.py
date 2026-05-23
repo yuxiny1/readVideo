@@ -374,14 +374,20 @@ class MainAppTest(unittest.TestCase):
             client = TestClient(app)
             favorite = client.post("/api/favorites", json={"task_id": "favorite-task"}).json()
             folder = client.post("/api/favorites/folders", json={"name": "AI", "notes": "models"}).json()
+            renamed = client.patch(
+                f"/api/favorites/folders/{folder['id']}",
+                json={"name": "AI Course", "notes": "lectures"},
+            )
             assigned = client.patch(
                 f"/api/favorites/{favorite['id']}/folder",
                 json={"folder_id": folder["id"]},
             )
             markdown = client.get(f"/api/favorites/{favorite['id']}/markdown")
 
+        self.assertEqual(renamed.status_code, 200)
+        self.assertEqual(renamed.json()["name"], "AI Course")
         self.assertEqual(assigned.status_code, 200)
-        self.assertEqual(assigned.json()["folder_name"], "AI")
+        self.assertEqual(assigned.json()["folder_name"], "AI Course")
         self.assertEqual(markdown.status_code, 200)
         self.assertEqual(markdown.json()["content"], "# Favorite\n\nBody")
 
