@@ -319,7 +319,7 @@ export class ReaderPageComponent implements OnInit {
 
   async copyMarkdown(): Promise<void> {
     if (!this.rawContent()) return;
-    await this.copyText(this.rawContent(), "Markdown copied");
+    await this.copyText(this.rawContent(), "Full Markdown copied");
   }
 
   folderCount(id: string | number): number {
