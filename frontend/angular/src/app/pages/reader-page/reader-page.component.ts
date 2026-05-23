@@ -67,6 +67,7 @@ export class ReaderPageComponent implements OnInit {
   readonly readerWidth = signal<ReaderWidth>("standard");
   readonly readerTextSize = signal<ReaderTextSize>("standard");
   readonly viewMode = signal<ReaderViewMode>("rendered");
+  readonly tagDrafts: Record<number, string> = {};
   markdownFolder = "notes";
 
   readonly filteredFavorites = computed(() => {
@@ -179,7 +180,9 @@ export class ReaderPageComponent implements OnInit {
 
   async loadFavorites(): Promise<void> {
     try {
-      this.favorites.set(await this.api.favorites());
+      const favorites = await this.api.favorites();
+      this.favorites.set(favorites);
+      this.syncTagDrafts(favorites);
     } catch (error) {
       this.error.set(this.message(error));
     }
@@ -355,6 +358,33 @@ export class ReaderPageComponent implements OnInit {
     await this.copyText(this.rawContent(), "Full Markdown copied");
   }
 
+  activeTagDraft(): string {
+    const item = this.activeFavorite();
+    if (!item) return "";
+    return this.tagDraft(item);
+  }
+
+  setActiveTagDraft(value: string): void {
+    const item = this.activeFavorite();
+    if (!item) return;
+    this.tagDrafts[item.id] = value;
+  }
+
+  async saveActiveTags(): Promise<void> {
+    const item = this.activeFavorite();
+    if (!item) return;
+    try {
+      const updated = await this.api.updateFavoriteTags(item.id, this.parseTags(this.tagDraft(item)));
+      this.replaceFavorite(updated);
+      this.tagDrafts[item.id] = this.tagsFor(updated).join(", ");
+      this.status.set("Tags saved");
+      await this.loadTags();
+    } catch (error) {
+      this.status.set("Error");
+      this.error.set(this.message(error));
+    }
+  }
+
   folderCount(id: string | number): number {
     if (id === "all") return this.favorites().length;
     if (id === "unfiled") return this.favorites().filter((item) => !item.folder_id).length;
@@ -376,6 +406,13 @@ export class ReaderPageComponent implements OnInit {
 
   tagsFor(item: FavoriteSummary): string[] {
     return item.tags || [];
+  }
+
+  tagDraft(item: FavoriteSummary): string {
+    if (!(item.id in this.tagDrafts)) {
+      this.tagDrafts[item.id] = this.tagsFor(item).join(", ");
+    }
+    return this.tagDrafts[item.id];
   }
 
   isActivePath(path: string): boolean {
@@ -425,6 +462,32 @@ export class ReaderPageComponent implements OnInit {
   private hasTag(tags: string[], tag: string): boolean {
     const needle = tag.toLowerCase();
     return tags.some((item) => item.toLowerCase() === needle);
+  }
+
+  private replaceFavorite(updated: FavoriteSummary): void {
+    this.favorites.update((items) => items.map((item) => item.id === updated.id ? updated : item));
+  }
+
+  private syncTagDrafts(items: FavoriteSummary[]): void {
+    const ids = new Set(items.map((item) => item.id));
+    for (const item of items) {
+      if (!(item.id in this.tagDrafts)) {
+        this.tagDrafts[item.id] = this.tagsFor(item).join(", ");
+      }
+    }
+    for (const key of Object.keys(this.tagDrafts)) {
+      if (!ids.has(Number(key))) {
+        delete this.tagDrafts[Number(key)];
+      }
+    }
+  }
+
+  private parseTags(value: string): string[] {
+    return value
+      .replace(/(^|\s)#/g, "$1,")
+      .split(/[,;\n]+/)
+      .map((tag) => tag.trim().replace(/^#/, ""))
+      .filter(Boolean);
   }
 
   private dateValue(value: string): number {

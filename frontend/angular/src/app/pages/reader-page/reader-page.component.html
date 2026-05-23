@@ -177,6 +177,16 @@
           } @else {
             <span class="tag-chip muted">No tags</span>
           }
+          <div class="reader-tag-edit-row">
+            <input
+              name="reader-active-tags"
+              placeholder="course, ai, finance"
+              [disabled]="!activeFavorite()"
+              [ngModel]="activeTagDraft()"
+              (ngModelChange)="setActiveTagDraft($event)"
+            >
+            <button class="secondary-button small-button" type="button" [disabled]="!activeFavorite()" (click)="saveActiveTags()">Save Tags</button>
+          </div>
         </div>
       </div>
       <div class="reader-document-actions">

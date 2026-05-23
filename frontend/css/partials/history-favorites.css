@@ -31,20 +31,28 @@
 }
 
 .favorite-tag-filter-card {
-  margin-bottom: 14px;
-  padding: 12px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
   border: 1px solid rgba(10, 132, 255, 0.14);
   border-radius: 8px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(241, 248, 255, 0.78));
 }
 
+.favorite-tag-filter-card .section-heading-row {
+  margin-bottom: 6px;
+}
+
 .note-tag-manager {
   display: grid;
-  gap: 9px;
-  padding: 12px;
+  gap: 7px;
+  padding: 9px 10px;
   border: 1px solid rgba(10, 132, 255, 0.16);
   border-radius: 8px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(242, 249, 255, 0.78));
+}
+
+.note-tag-manager .section-heading-row {
+  min-height: 28px;
 }
 
 .history-card-header {
@@ -255,14 +263,19 @@
 
 .notebook-tag-panel {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 .priority-tag-panel {
+  padding: 12px;
   border-color: rgba(10, 132, 255, 0.2);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(241, 248, 255, 0.86)),
     linear-gradient(90deg, rgba(10, 132, 255, 0.1), transparent 52%);
+}
+
+.priority-tag-panel .panel-header {
+  margin-bottom: 4px;
 }
 
 .tag-management-list {
