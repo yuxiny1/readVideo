@@ -21,7 +21,7 @@
 .tag-strip {
   display: flex;
   flex-wrap: wrap;
-  gap: 7px;
+  gap: 5px;
   align-items: center;
 }
 
@@ -87,13 +87,13 @@ button.tag-chip {
 .tag-input-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
+  gap: 6px;
   align-items: start;
 }
 
 .tag-input-row input {
-  min-height: 34px;
-  padding: 7px 10px;
+  min-height: 32px;
+  padding: 6px 9px;
   font-size: 12px;
 }
 
