@@ -6,7 +6,7 @@
         <button class="primary-button" type="button" (click)="readSummary(workflow.latestTask())">Read Summary</button>
       }
       <button class="secondary-button" type="button" [disabled]="!canFavorite(workflow.latestTask())" (click)="workflow.favoriteLatestSummary()">Favorite Summary</button>
-      <button class="secondary-button" type="button" [disabled]="!workflow.latestSummary()" (click)="workflow.copySummary()">Copy Summary</button>
+      <button class="secondary-button" type="button" [disabled]="!workflow.canCopyLatestOutput()" (click)="workflow.copyLatestOutput()">Copy Full Note</button>
     </div>
   </div>
 

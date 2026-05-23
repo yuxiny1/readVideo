@@ -72,6 +72,19 @@ class FrontendContractTest(unittest.TestCase):
         self.assertIn('note_style: form.noteStyle', form_service)
         self.assertIn('"detailed" | "commercial"', types)
 
+    def test_copy_buttons_copy_full_markdown_notes(self):
+        latest_template = read_repo_file("frontend/angular/src/app/components/latest-output/latest-output.component.html")
+        workflow = read_repo_file("frontend/angular/src/app/services/task-workflow.service.ts")
+        reader_template = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-page.component.html")
+        reader_component = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-page.component.ts")
+
+        self.assertIn("Copy Full Note", latest_template)
+        self.assertIn("copyLatestOutput", latest_template)
+        self.assertIn("markdownDocument(markdownPath)", workflow)
+        self.assertIn("Full Markdown note copied", workflow)
+        self.assertIn("Copy Full MD", reader_template)
+        self.assertIn("Full Markdown copied", reader_component)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -61,6 +61,7 @@ export class TaskWorkflowService {
   readonly phaseTitle = computed(() => statusLabel(this.latestTask()?.status || "idle"));
   readonly phaseDetail = computed(() => this.describePhase(this.latestTask()));
   readonly logs = computed(() => this.latestTask()?.logs || []);
+  readonly canCopyLatestOutput = computed(() => Boolean(this.latestTask()?.markdown_path || this.latestSummary()));
 
   async initialize(): Promise<void> {
     try {
@@ -302,11 +303,24 @@ export class TaskWorkflowService {
     }
   }
 
-  async copySummary(): Promise<void> {
-    const summary = this.latestSummary();
-    if (!summary) return;
-    await navigator.clipboard.writeText(summary);
-    this.setNotice("Summary copied.", "ok");
+  async copyLatestOutput(): Promise<void> {
+    const task = this.latestTask();
+    const markdownPath = task?.markdown_path;
+    const fallbackSummary = this.latestSummary();
+    if (!markdownPath && !fallbackSummary) return;
+
+    try {
+      if (markdownPath) {
+        const document = await this.api.markdownDocument(markdownPath);
+        await navigator.clipboard.writeText(document.content);
+        this.setNotice("Full Markdown note copied.", "ok");
+        return;
+      }
+      await navigator.clipboard.writeText(fallbackSummary);
+      this.setNotice("Summary copied.", "ok");
+    } catch (error) {
+      this.setNotice(this.errorMessage(error), "error");
+    }
   }
 
   fileHref(kind: "video" | "transcript" | "markdown", task = this.latestTask()): string {
