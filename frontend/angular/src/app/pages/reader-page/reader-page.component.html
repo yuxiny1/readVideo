@@ -13,116 +13,118 @@
   </div>
 </header>
 
-<main class="reader-workspace">
-  <aside class="reader-library">
-    <section class="tool-panel reader-library-panel">
-      <div class="panel-header">
-        <h2>Library</h2>
-        <button class="secondary-button small-button" type="button" (click)="initialize()">Refresh</button>
-      </div>
-
-      @if (error()) {
-        <div class="empty-state">{{ error() }}</div>
-      }
-
-      <section class="reader-section reader-search-section">
-        <label for="reader-search">Search</label>
-        <input
-          id="reader-search"
-          name="reader-search"
-          placeholder="Search titles, summaries, paths..."
-          [ngModel]="searchQuery()"
-          (ngModelChange)="searchQuery.set($event)"
-        >
-        <div class="segmented-control" aria-label="Library view">
-          <button type="button" [ngClass]="libraryMode() === 'all' ? 'active' : ''" (click)="setLibraryMode('all')">All</button>
-          <button type="button" [ngClass]="libraryMode() === 'favorites' ? 'active' : ''" (click)="setLibraryMode('favorites')">Favorites</button>
-          <button type="button" [ngClass]="libraryMode() === 'files' ? 'active' : ''" (click)="setLibraryMode('files')">Files</button>
+<main class="reader-workspace" [class.reader-focus-mode]="focusMode()">
+  @if (!focusMode()) {
+    <aside class="reader-library">
+      <section class="tool-panel reader-library-panel">
+        <div class="panel-header">
+          <h2>Library</h2>
+          <button class="secondary-button small-button" type="button" (click)="initialize()">Refresh</button>
         </div>
-        <div>
-          <label for="reader-sort">Sort</label>
-          <select id="reader-sort" name="reader-sort" [ngModel]="librarySort()" (ngModelChange)="setLibrarySort($event)">
-            <option value="recent">Newest</option>
-            <option value="title">Title</option>
-            <option value="folder">Folder</option>
-            <option value="path">Path</option>
-          </select>
-        </div>
-      </section>
 
-      @if (libraryMode() !== 'files') {
-        <section class="reader-section">
-          <h3>Favorite Folders</h3>
-          <div class="reader-folder-grid">
-            <button class="folder-chip" [ngClass]="activeFolderId() === 'all' ? 'active' : ''" type="button" (click)="activeFolderId.set('all')">
-              <span>All</span><span>{{ folderCount("all") }}</span>
-            </button>
-            <button class="folder-chip" [ngClass]="activeFolderId() === 'unfiled' ? 'active' : ''" type="button" (click)="activeFolderId.set('unfiled')">
-              <span>Unfiled</span><span>{{ folderCount("unfiled") }}</span>
-            </button>
-            @for (folder of folders(); track folder.id) {
-              <button class="folder-chip" [ngClass]="activeFolderId() === folderId(folder) ? 'active' : ''" type="button" (click)="activeFolderId.set(folderId(folder))">
-                <span>{{ folder.name }}</span><span>{{ folderCount(folder.id) }}</span>
+        @if (error()) {
+          <div class="empty-state">{{ error() }}</div>
+        }
+
+        <section class="reader-section reader-search-section">
+          <label for="reader-search">Search</label>
+          <input
+            id="reader-search"
+            name="reader-search"
+            placeholder="Search titles, summaries, paths..."
+            [ngModel]="searchQuery()"
+            (ngModelChange)="searchQuery.set($event)"
+          >
+          <div class="segmented-control" aria-label="Library view">
+            <button type="button" [ngClass]="libraryMode() === 'all' ? 'active' : ''" (click)="setLibraryMode('all')">All</button>
+            <button type="button" [ngClass]="libraryMode() === 'favorites' ? 'active' : ''" (click)="setLibraryMode('favorites')">Favorites</button>
+            <button type="button" [ngClass]="libraryMode() === 'files' ? 'active' : ''" (click)="setLibraryMode('files')">Files</button>
+          </div>
+          <div>
+            <label for="reader-sort">Sort</label>
+            <select id="reader-sort" name="reader-sort" [ngModel]="librarySort()" (ngModelChange)="setLibrarySort($event)">
+              <option value="recent">Newest</option>
+              <option value="title">Title</option>
+              <option value="folder">Folder</option>
+              <option value="path">Path</option>
+            </select>
+          </div>
+        </section>
+
+        @if (libraryMode() !== 'files') {
+          <section class="reader-section">
+            <h3>Favorite Folders</h3>
+            <div class="reader-folder-grid">
+              <button class="folder-chip" [ngClass]="activeFolderId() === 'all' ? 'active' : ''" type="button" (click)="activeFolderId.set('all')">
+                <span>All</span><span>{{ folderCount("all") }}</span>
               </button>
-            }
-          </div>
-        </section>
-
-        <section class="reader-section">
-          <div class="section-heading-row">
-            <h3>Favorite Notes</h3>
-            <span class="caption">{{ visibleFavoriteNotes().length }}/{{ filteredFavorites().length }}</span>
-          </div>
-          <div class="reader-note-list favorite-note-list">
-            @if (!filteredFavorites().length) {
-              <div class="empty-state">No favorites match this folder or search.</div>
-            } @else {
-              @for (item of visibleFavoriteNotes(); track item.id) {
-                <button class="reader-note-item" [ngClass]="isActivePath(item.markdown_path) ? 'active' : ''" type="button" (click)="openFavorite(item)">
-                  <strong>{{ titleFor(item) }}</strong>
-                  <span>{{ item.folder_name || "Unfiled" }}</span>
-                  <code>{{ item.markdown_path || "No Markdown path" }}</code>
+              <button class="folder-chip" [ngClass]="activeFolderId() === 'unfiled' ? 'active' : ''" type="button" (click)="activeFolderId.set('unfiled')">
+                <span>Unfiled</span><span>{{ folderCount("unfiled") }}</span>
+              </button>
+              @for (folder of folders(); track folder.id) {
+                <button class="folder-chip" [ngClass]="activeFolderId() === folderId(folder) ? 'active' : ''" type="button" (click)="activeFolderId.set(folderId(folder))">
+                  <span>{{ folder.name }}</span><span>{{ folderCount(folder.id) }}</span>
                 </button>
               }
-            }
-          </div>
-        </section>
-      }
-
-      @if (libraryMode() !== 'favorites') {
-        <section class="reader-section">
-          <div class="section-heading-row">
-            <h3>Markdown Files</h3>
-            <span class="caption">{{ filteredFiles().length }} shown</span>
-          </div>
-          <form class="stack compact" (ngSubmit)="loadMarkdownFiles(markdownFolder, true)">
-            <div>
-              <label for="reader-md-folder">Folder Path</label>
-              <input id="reader-md-folder" name="reader-md-folder" placeholder="notes" [(ngModel)]="markdownFolder">
             </div>
-            <div class="button-row">
-              <button class="secondary-button" type="submit">Load</button>
-              <button class="secondary-button" type="button" (click)="loadMarkdownFiles(defaultNotesDir(), true)">Default</button>
-            </div>
-          </form>
+          </section>
 
-          <div class="reader-file-list">
-            @if (!filteredFiles().length) {
-              <div class="empty-state">No Markdown files match this folder or search.</div>
-            } @else {
-              @for (file of filteredFiles(); track file.path) {
-                <button class="reader-file-item" [ngClass]="isActivePath(file.path) ? 'active' : ''" type="button" (click)="openFile(file)">
-                  <strong>{{ file.name }}</strong>
-                  <span>{{ formatBytes(file.size_bytes) }} · {{ file.modified_at }}</span>
-                  <code>{{ file.path }}</code>
-                </button>
+          <section class="reader-section">
+            <div class="section-heading-row">
+              <h3>Favorite Notes</h3>
+              <span class="caption">{{ visibleFavoriteNotes().length }}/{{ filteredFavorites().length }}</span>
+            </div>
+            <div class="reader-note-list favorite-note-list">
+              @if (!filteredFavorites().length) {
+                <div class="empty-state">No favorites match this folder or search.</div>
+              } @else {
+                @for (item of visibleFavoriteNotes(); track item.id) {
+                  <button class="reader-note-item" [ngClass]="isActivePath(item.markdown_path) ? 'active' : ''" type="button" (click)="openFavorite(item)">
+                    <strong>{{ titleFor(item) }}</strong>
+                    <span>{{ item.folder_name || "Unfiled" }}</span>
+                    <code>{{ item.markdown_path || "No Markdown path" }}</code>
+                  </button>
+                }
               }
-            }
-          </div>
-        </section>
-      }
-    </section>
-  </aside>
+            </div>
+          </section>
+        }
+
+        @if (libraryMode() !== 'favorites') {
+          <section class="reader-section">
+            <div class="section-heading-row">
+              <h3>Markdown Files</h3>
+              <span class="caption">{{ filteredFiles().length }} shown</span>
+            </div>
+            <form class="stack compact" (ngSubmit)="loadMarkdownFiles(markdownFolder, true)">
+              <div>
+                <label for="reader-md-folder">Folder Path</label>
+                <input id="reader-md-folder" name="reader-md-folder" placeholder="notes" [(ngModel)]="markdownFolder">
+              </div>
+              <div class="button-row">
+                <button class="secondary-button" type="submit">Load</button>
+                <button class="secondary-button" type="button" (click)="loadMarkdownFiles(defaultNotesDir(), true)">Default</button>
+              </div>
+            </form>
+
+            <div class="reader-file-list">
+              @if (!filteredFiles().length) {
+                <div class="empty-state">No Markdown files match this folder or search.</div>
+              } @else {
+                @for (file of filteredFiles(); track file.path) {
+                  <button class="reader-file-item" [ngClass]="isActivePath(file.path) ? 'active' : ''" type="button" (click)="openFile(file)">
+                    <strong>{{ file.name }}</strong>
+                    <span>{{ formatBytes(file.size_bytes) }} · {{ file.modified_at }}</span>
+                    <code>{{ file.path }}</code>
+                  </button>
+                }
+              }
+            </div>
+          </section>
+        }
+      </section>
+    </aside>
+  }
 
   <section class="reader-stage">
     <div class="reader-document-bar">
@@ -134,10 +136,19 @@
         }
       </div>
       <div class="reader-document-actions">
+        <button class="secondary-button small-button focus-mode-button" type="button" [ngClass]="focusMode() ? 'active' : ''" (click)="toggleFocusMode()">
+          {{ focusMode() ? 'Exit Focus' : 'Focus Mode' }}
+        </button>
         <div class="segmented-control compact-segmented" aria-label="Reader view">
           <button type="button" [ngClass]="viewMode() === 'rendered' ? 'active' : ''" (click)="setViewMode('rendered')">Read</button>
           <button type="button" [ngClass]="viewMode() === 'markdown' ? 'active' : ''" (click)="setViewMode('markdown')">MD</button>
         </div>
+        @if (focusMode()) {
+          <div class="segmented-control compact-segmented" aria-label="Focus text size">
+            <button type="button" [ngClass]="readerTextSize() === 'standard' ? 'active' : ''" (click)="setReaderTextSize('standard')">Standard</button>
+            <button type="button" [ngClass]="readerTextSize() === 'large' ? 'active' : ''" (click)="setReaderTextSize('large')">Large</button>
+          </div>
+        }
         @if (path()) {
           <button class="secondary-button small-button" type="button" (click)="copyMarkdown()">Copy MD</button>
           <a class="quiet-link small-link" [href]="downloadHref()">Download MD</a>
@@ -174,92 +185,94 @@
     }
   </section>
 
-  <aside class="reader-inspector">
-    <section class="tool-panel reader-inspector-panel">
-      <div class="panel-header">
-        <h2>Note</h2>
-        <span class="pill muted">{{ headings().length }} sections</span>
-      </div>
+  @if (!focusMode()) {
+    <aside class="reader-inspector">
+      <section class="tool-panel reader-inspector-panel">
+        <div class="panel-header">
+          <h2>Note</h2>
+          <span class="pill muted">{{ headings().length }} sections</span>
+        </div>
 
-      <section class="reader-section">
-        <h3>Reading</h3>
-        <div class="segmented-control" aria-label="Reading width">
-          <button type="button" [ngClass]="readerWidth() === 'focus' ? 'active' : ''" (click)="setReaderWidth('focus')">Focus</button>
-          <button type="button" [ngClass]="readerWidth() === 'wide' ? 'active' : ''" (click)="setReaderWidth('wide')">Wide</button>
-        </div>
-        <div class="segmented-control" aria-label="Text size">
-          <button type="button" [ngClass]="readerTextSize() === 'standard' ? 'active' : ''" (click)="setReaderTextSize('standard')">Standard</button>
-          <button type="button" [ngClass]="readerTextSize() === 'large' ? 'active' : ''" (click)="setReaderTextSize('large')">Large</button>
-        </div>
-      </section>
+        <section class="reader-section">
+          <h3>Reading</h3>
+          <div class="segmented-control" aria-label="Reading width">
+            <button type="button" [ngClass]="readerWidth() === 'standard' ? 'active' : ''" (click)="setReaderWidth('standard')">Standard</button>
+            <button type="button" [ngClass]="readerWidth() === 'wide' ? 'active' : ''" (click)="setReaderWidth('wide')">Wide</button>
+          </div>
+          <div class="segmented-control" aria-label="Text size">
+            <button type="button" [ngClass]="readerTextSize() === 'standard' ? 'active' : ''" (click)="setReaderTextSize('standard')">Standard</button>
+            <button type="button" [ngClass]="readerTextSize() === 'large' ? 'active' : ''" (click)="setReaderTextSize('large')">Large</button>
+          </div>
+        </section>
 
-      <section class="reader-section">
-        <div class="section-heading-row">
-          <h3>Outline</h3>
-          <span class="caption">{{ headings().length }}</span>
-        </div>
-        <div class="reader-outline-list">
-          @if (!headings().length) {
-            <div class="empty-state">No headings in this note.</div>
-          } @else {
-            @for (heading of headings(); track heading.id) {
-              <button
-                class="reader-outline-item"
-                [class.level-2]="heading.level === 2"
-                [class.level-3]="heading.level === 3"
-                type="button"
-                (click)="scrollToHeading(heading.id)"
-              >
-                {{ heading.title }}
-              </button>
+        <section class="reader-section">
+          <div class="section-heading-row">
+            <h3>Outline</h3>
+            <span class="caption">{{ headings().length }}</span>
+          </div>
+          <div class="reader-outline-list">
+            @if (!headings().length) {
+              <div class="empty-state">No headings in this note.</div>
+            } @else {
+              @for (heading of headings(); track heading.id) {
+                <button
+                  class="reader-outline-item"
+                  [class.level-2]="heading.level === 2"
+                  [class.level-3]="heading.level === 3"
+                  type="button"
+                  (click)="scrollToHeading(heading.id)"
+                >
+                  {{ heading.title }}
+                </button>
+              }
             }
-          }
-        </div>
-      </section>
+          </div>
+        </section>
 
-      <section class="reader-section">
-        <h3>Details</h3>
-        <dl class="reader-detail-list">
-          <div>
-            <dt>Path</dt>
-            <dd>
-              @if (path()) {
-                <button class="path-copy-button" type="button" (click)="copyPath()">{{ path() }}</button>
-              } @else {
-                <span>-</span>
-              }
-            </dd>
-          </div>
-          <div>
-            <dt>Source</dt>
-            <dd>
-              @if (sourceUrl()) {
-                @if (sourceUrl().startsWith('http')) {
-                  <a class="path-anchor" [href]="sourceUrl()" target="_blank" rel="noreferrer">{{ sourceUrl() }}</a>
+        <section class="reader-section">
+          <h3>Details</h3>
+          <dl class="reader-detail-list">
+            <div>
+              <dt>Path</dt>
+              <dd>
+                @if (path()) {
+                  <button class="path-copy-button" type="button" (click)="copyPath()">{{ path() }}</button>
                 } @else {
-                  <code>{{ sourceUrl() }}</code>
+                  <span>-</span>
                 }
-              } @else {
-                <span>-</span>
-              }
-            </dd>
-          </div>
-          <div>
-            <dt>Generated</dt>
-            <dd>{{ generatedAt() || "-" }}</dd>
-          </div>
-          <div>
-            <dt>Transcript</dt>
-            <dd>
-              @if (transcriptPath()) {
-                <button class="path-copy-button" type="button" (click)="copyPath(transcriptPath())">{{ transcriptPath() }}</button>
-              } @else {
-                <span>-</span>
-              }
-            </dd>
-          </div>
-        </dl>
+              </dd>
+            </div>
+            <div>
+              <dt>Source</dt>
+              <dd>
+                @if (sourceUrl()) {
+                  @if (sourceUrl().startsWith('http')) {
+                    <a class="path-anchor" [href]="sourceUrl()" target="_blank" rel="noreferrer">{{ sourceUrl() }}</a>
+                  } @else {
+                    <code>{{ sourceUrl() }}</code>
+                  }
+                } @else {
+                  <span>-</span>
+                }
+              </dd>
+            </div>
+            <div>
+              <dt>Generated</dt>
+              <dd>{{ generatedAt() || "-" }}</dd>
+            </div>
+            <div>
+              <dt>Transcript</dt>
+              <dd>
+                @if (transcriptPath()) {
+                  <button class="path-copy-button" type="button" (click)="copyPath(transcriptPath())">{{ transcriptPath() }}</button>
+                } @else {
+                  <span>-</span>
+                }
+              </dd>
+            </div>
+          </dl>
+        </section>
       </section>
-    </section>
-  </aside>
+    </aside>
+  }
 </main>

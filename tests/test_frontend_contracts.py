@@ -21,6 +21,21 @@ class FrontendContractTest(unittest.TestCase):
         self.assertIn("@for (item of visibleFavoriteNotes(); track item.id)", template)
         self.assertIn("favorite-note-list", styles)
 
+    def test_reader_exposes_focus_mode(self):
+        component = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-page.component.ts")
+        template = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-page.component.html")
+        library_styles = read_repo_file("frontend/css/partials/reader-library.css")
+        document_styles = read_repo_file("frontend/css/partials/reader-document.css")
+
+        self.assertIn("focusMode", component)
+        self.assertIn("toggleFocusMode", component)
+        self.assertIn("readvideo.reader.focusMode", component)
+        self.assertIn("reader-focus-mode", template)
+        self.assertIn("Focus Mode", template)
+        self.assertIn("@if (!focusMode())", template)
+        self.assertIn(".reader-workspace.reader-focus-mode", library_styles)
+        self.assertIn(".reader-focus-mode .modern-reader", document_styles)
+
     def test_saved_sources_exposes_compact_actions_menu(self):
         template = read_repo_file("frontend/angular/src/app/components/saved-sources/saved-sources.component.html")
         component = read_repo_file("frontend/angular/src/app/components/saved-sources/saved-sources.component.ts")
@@ -46,6 +61,7 @@ class FrontendContractTest(unittest.TestCase):
 
         self.assertIn('name="note_style"', template)
         self.assertIn("Commercial Editorial", template)
+        self.assertIn("Business Lens", template)
         self.assertIn('note_style: form.noteStyle', form_service)
         self.assertIn('"detailed" | "commercial"', types)
 

@@ -48,6 +48,7 @@ def write_markdown_note(
         summary_items=article_note.summary_items,
         transcript_path=transcript_path,
         summary_paragraphs=article_note.summary_paragraphs,
+        business_items=article_note.business_items,
         editorial_paragraphs=article_note.editorial_paragraphs,
         note_style=note_style,
     )
@@ -83,6 +84,7 @@ def build_article_note(
             summary_items=article_note.summary_items or summarize_transcript(transcript_text),
             sections=article_note.sections or _extractive_sections(transcript_text),
             summary_paragraphs=article_note.summary_paragraphs,
+            business_items=article_note.business_items,
             editorial_paragraphs=article_note.editorial_paragraphs,
         )
 
@@ -96,6 +98,7 @@ def build_article_note(
         summary_items=summary_items,
         sections=_extractive_sections(transcript_text),
         summary_paragraphs=_paragraphs_from_summary_items(summary_items),
+        business_items=[],
         editorial_paragraphs=[],
     )
 
@@ -190,6 +193,7 @@ def render_markdown_note(
     summary_items: Iterable[str],
     transcript_path: Optional[str] = None,
     summary_paragraphs: Optional[Iterable[str]] = None,
+    business_items: Optional[Iterable[str]] = None,
     editorial_paragraphs: Optional[Iterable[str]] = None,
     note_style: str = "detailed",
 ) -> str:
@@ -214,8 +218,20 @@ def render_markdown_note(
         for paragraph in summary_paragraphs:
             lines.extend([paragraph, ""])
 
+    business_items = list(business_items or [])
     editorial_paragraphs = list(editorial_paragraphs or [])
     if note_style == "commercial":
+        business_items = business_items or _fallback_business_lens(
+            video_title,
+            summary_items,
+            summary_paragraphs,
+            article_sections,
+        )
+        if business_items:
+            lines.extend(["", "## Business Lens", ""])
+            lines.extend(f"- {item}" for item in business_items[:8])
+            lines.append("")
+
         editorial_paragraphs = editorial_paragraphs or _fallback_editorial_paragraphs(
             video_title,
             summary_items,
@@ -244,6 +260,10 @@ def render_summary_text(article_note: ArticleNote) -> str:
     parts: list[str] = []
     if article_note.summary_paragraphs:
         parts.extend(article_note.summary_paragraphs)
+    if article_note.business_items:
+        if parts:
+            parts.append("")
+        parts.extend(f"- {item}" for item in article_note.business_items[:5])
     if article_note.summary_items:
         if parts:
             parts.append("")
@@ -259,6 +279,38 @@ def _paragraphs_from_summary_items(summary_items: list[str], max_items: int = 5)
     if not fragments:
         return []
     return ["；".join(fragments).rstrip("；。") + "。"]
+
+
+def _fallback_business_lens(
+    video_title: str,
+    summary_items: Iterable[str],
+    summary_paragraphs: Iterable[str],
+    sections: Iterable[ArticleSection],
+) -> list[str]:
+    items = [item.strip() for item in summary_items if item.strip()]
+    paragraphs = [paragraph.strip() for paragraph in summary_paragraphs if paragraph.strip()]
+    section_list = list(sections)
+    lens: list[str] = []
+
+    if items:
+        lens.append(f"商业核心: {_strip_summary_label(items[0])}")
+    elif paragraphs:
+        lens.append(f"商业核心: {_trim_paragraph(paragraphs[0], max_len=260)}")
+    else:
+        lens.append(f"商业核心: {video_title} 主要提供知识或背景信息，原文没有直接给出商业行动。")
+
+    if len(items) > 1:
+        lens.append(f"为什么重要: {_strip_summary_label(items[1])}")
+    elif section_list:
+        lens.append(f"为什么重要: {section_list[0].title} 是理解后续判断的入口。")
+
+    for label, section in zip(("风险", "机会", "下一步信号"), section_list[:3]):
+        body = re.sub(r"^\s*(?:[-*]|\d+[.)])\s*", "", section.body.strip())
+        body = re.sub(r"\s+", " ", body)
+        if body:
+            lens.append(f"{label}: {_trim_paragraph(body, max_len=260)}")
+
+    return [_trim_paragraph(item, max_len=280) for item in lens if item][:7]
 
 
 def _fallback_editorial_paragraphs(
@@ -294,6 +346,10 @@ def _trim_paragraph(paragraph: str, max_len: int = 720) -> str:
     if len(paragraph) <= max_len:
         return paragraph
     return paragraph[: max_len - 1].rstrip() + "..."
+
+
+def _strip_summary_label(item: str) -> str:
+    return re.sub(r"^[^:：]{2,18}[:：]\s*", "", item).strip()
 
 
 def _coerce_section(section: ArticleSection | str, index: int) -> ArticleSection:

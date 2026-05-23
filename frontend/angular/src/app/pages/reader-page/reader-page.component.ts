@@ -10,9 +10,11 @@ import {FavoriteFolder, FavoriteSummary, MarkdownFile} from "../../types/readvid
 
 type LibraryMode = "all" | "favorites" | "files";
 type LibrarySort = "recent" | "title" | "folder" | "path";
-type ReaderWidth = "focus" | "wide";
+type ReaderWidth = "standard" | "wide";
 type ReaderTextSize = "standard" | "large";
 type ReaderViewMode = "rendered" | "markdown";
+
+const FOCUS_MODE_STORAGE_KEY = "readvideo.reader.focusMode";
 
 interface ReaderHeading {
   id: string;
@@ -56,7 +58,8 @@ export class ReaderPageComponent implements OnInit {
   readonly documentQuery = signal("");
   readonly libraryMode = signal<LibraryMode>("all");
   readonly librarySort = signal<LibrarySort>("recent");
-  readonly readerWidth = signal<ReaderWidth>("focus");
+  readonly focusMode = signal(readFocusModeDefault());
+  readonly readerWidth = signal<ReaderWidth>("standard");
   readonly readerTextSize = signal<ReaderTextSize>("standard");
   readonly viewMode = signal<ReaderViewMode>("rendered");
   markdownFolder = "notes";
@@ -257,6 +260,15 @@ export class ReaderPageComponent implements OnInit {
 
   setReaderTextSize(size: ReaderTextSize): void {
     this.readerTextSize.set(size);
+  }
+
+  toggleFocusMode(): void {
+    this.setFocusMode(!this.focusMode());
+  }
+
+  setFocusMode(enabled: boolean): void {
+    this.focusMode.set(enabled);
+    persistFocusModeDefault(enabled);
   }
 
   setViewMode(mode: ReaderViewMode): void {
@@ -548,5 +560,23 @@ export class ReaderPageComponent implements OnInit {
 
   private message(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
+  }
+}
+
+
+function readFocusModeDefault(): boolean {
+  try {
+    return localStorage.getItem(FOCUS_MODE_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+
+function persistFocusModeDefault(enabled: boolean): void {
+  try {
+    localStorage.setItem(FOCUS_MODE_STORAGE_KEY, enabled ? "true" : "false");
+  } catch {
+    // Ignore private browsing or storage-disabled environments.
   }
 }

@@ -56,6 +56,10 @@
   background: rgba(247, 251, 255, 0.7);
 }
 
+.reader-focus-mode .reader-findbar {
+  background: rgba(255, 255, 255, 0.86);
+}
+
 .markdown-reader {
   max-height: 620px;
   overflow: auto;
@@ -74,6 +78,19 @@
   color: #1d1d1f;
   font-size: 16px;
   line-height: 1.76;
+}
+
+.reader-focus-mode .modern-reader {
+  min-height: calc(100vh - 214px);
+  padding: clamp(34px, 6vw, 76px);
+}
+
+.reader-focus-mode .modern-reader p,
+.reader-focus-mode .modern-reader ul,
+.reader-focus-mode .modern-reader ol,
+.reader-focus-mode .modern-reader blockquote,
+.reader-focus-mode .modern-reader hr {
+  max-width: 76ch;
 }
 
 .modern-reader.reader-copy-wide p,

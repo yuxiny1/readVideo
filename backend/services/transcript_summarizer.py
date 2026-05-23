@@ -24,6 +24,7 @@ class ArticleNote:
     summary_items: list[str]
     sections: list[ArticleSection]
     summary_paragraphs: list[str] = field(default_factory=list)
+    business_items: list[str] = field(default_factory=list)
     editorial_paragraphs: list[str] = field(default_factory=list)
 
 
@@ -186,6 +187,7 @@ def build_article_note_with_ollama(
         summary_items=fallback_summary,
         sections=[],
         summary_paragraphs=_paragraphs_from_summary_items(fallback_summary),
+        business_items=[],
         editorial_paragraphs=[],
     )
 
@@ -270,13 +272,20 @@ def _article_note_prompt(material: str, max_summary_items: int, max_sections: in
     commercial_instruction = ""
     if note_style == "commercial":
         commercial_instruction = (
+            "\n## Business Lens\n"
+            "先写 4 到 7 条 Markdown bullet，专门提炼商业读者最关心的判断。"
+            "每条必须是「主题: 具体判断/事实/风险/机会/指标」，优先使用这些主题："
+            "商业核心、为什么重要、风险、机会、关键指标、下一步信号、可执行判断。"
+            "必须保留输入里真实出现的公司、产品、市场、数字、时间、人物、因果和不确定性。"
+            "如果原文没有商业含义，不要硬编；可以写「商业核心: 原文主要是知识讲解，未直接给出商业行动」。\n\n"
             "\n## Editorial Article\n"
-            "在 Summary 和 Sections 之间，额外写一个 5 到 8 段的商业新闻分析式文章摘要。"
-            "这一部分面向忙碌的商业读者：第一段要有有力的 lede，第二段交代为什么重要，"
-            "后续段落按事实、背景、冲突、影响和下一步组织。"
-            "语言要克制、清晰、具备报道感和分析感，像严肃商业媒体的 briefing，"
+            "再写一个 5 到 8 段的商业新闻分析式文章摘要。"
+            "这一部分面向忙碌的商业读者：第一段要有清楚的 lede，第二段交代 why it matters，"
+            "后续段落按事实、背景、商业模式/市场结构、风险、机会、影响和下一步信号组织。"
+            "要把观点翻译成业务语境：谁受影响、钱/资源/注意力如何流动、哪些假设需要验证、哪些指标值得追踪。"
+            "语言要克制、清晰、具备报道感和分析感，像严肃商业 briefing，"
             "但不要模仿或复制任何特定媒体的固定表达。"
-            "不要使用 bullet，不要写标题解释，不要泛泛鸡汤，不要编造。\n"
+            "不要使用 bullet，不要写标题解释，不要泛泛鸡汤，不要投资建议，不要编造。\n"
         )
     return (
         "你是一个中文长文编辑，要把视频转录整理成一篇清晰、可阅读、信息覆盖充分的文章式笔记。"
@@ -307,6 +316,7 @@ def _parse_article_note(text: str, max_summary_items: int = 7, max_sections: int
     summary_items: list[str] = []
     summary_paragraphs: list[str] = []
     summary_paragraph_lines: list[str] = []
+    business_items: list[str] = []
     editorial_paragraphs: list[str] = []
     editorial_lines: list[str] = []
     sections: list[ArticleSection] = []
@@ -361,6 +371,12 @@ def _parse_article_note(text: str, max_summary_items: int = 7, max_sections: int
                 flush_section()
                 mode = "summary"
                 continue
+            if any(word in heading_lower for word in ("business lens", "business takeaways", "business brief", "商业视角", "商業視角", "商业判断", "商業判斷", "商业要点", "商業要點")):
+                flush_summary_paragraph()
+                flush_editorial_paragraph()
+                flush_section()
+                mode = "business"
+                continue
             if any(word in heading_lower for word in ("editorial", "commercial article", "商业文章", "商業文章", "商业新闻", "商業新聞")):
                 flush_summary_paragraph()
                 flush_editorial_paragraph()
@@ -372,6 +388,8 @@ def _parse_article_note(text: str, max_summary_items: int = 7, max_sections: int
                 continue
             if mode == "editorial" and _is_editorial_label(heading_text):
                 flush_editorial_paragraph()
+                continue
+            if mode == "business" and heading_match.group(1) in {"###", "####"}:
                 continue
             if any(word in heading_lower for word in ("section", "sections", "章节", "章節", "分段", "正文", "笔记", "筆記")) and heading_match.group(1) in {"#", "##"}:
                 flush_summary_paragraph()
@@ -396,6 +414,12 @@ def _parse_article_note(text: str, max_summary_items: int = 7, max_sections: int
                 summary_paragraph_lines.append(stripped)
             continue
 
+        if mode == "business":
+            item = _parse_business_line(stripped)
+            if item:
+                business_items.append(item)
+            continue
+
         if mode == "editorial":
             if not _is_editorial_label(stripped):
                 editorial_lines.append(stripped)
@@ -417,11 +441,13 @@ def _parse_article_note(text: str, max_summary_items: int = 7, max_sections: int
 
     summary_items = _dedupe_items(summary_items)[:max_summary_items]
     summary_paragraphs = _dedupe_paragraphs(summary_paragraphs) or _paragraphs_from_summary_items(summary_items)
+    business_items = _dedupe_items(business_items)[:8]
     editorial_paragraphs = _dedupe_paragraphs(editorial_paragraphs)
     return ArticleNote(
         summary_items=summary_items,
         sections=sections[:max_sections],
         summary_paragraphs=summary_paragraphs[:2],
+        business_items=business_items,
         editorial_paragraphs=editorial_paragraphs[:8],
     )
 
@@ -435,6 +461,19 @@ def _parse_summary_line(line: str) -> str:
     if not has_marker and ":" not in item and "：" not in item:
         return ""
     return _trim_sentence(item, max_len=240)
+
+
+def _parse_business_line(line: str) -> str:
+    if _is_business_label(line):
+        return ""
+    has_marker = re.match(r"^\s*(?:[-*]|\d+[.)])\s+", line)
+    item = re.sub(r"^\s*(?:[-*]|\d+[.)])\s*", "", line).strip()
+    item = item.strip("-* ")
+    if not item or _is_promotional(item):
+        return ""
+    if not has_marker and ":" not in item and "：" not in item:
+        return ""
+    return _trim_sentence(item, max_len=280)
 
 
 def _is_summary_label(line: str) -> bool:
@@ -453,6 +492,24 @@ def _is_summary_label(line: str) -> bool:
         "關鍵要點",
         "正文摘要",
         "段落摘要",
+    }
+
+
+def _is_business_label(line: str) -> bool:
+    normalized = line.strip().strip(":：").lower()
+    return normalized in {
+        "business lens",
+        "business takeaways",
+        "business brief",
+        "business implications",
+        "商业视角",
+        "商業視角",
+        "商业判断",
+        "商業判斷",
+        "商业要点",
+        "商業要點",
+        "商业启示",
+        "商業啟示",
     }
 
 
