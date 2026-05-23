@@ -203,8 +203,30 @@
   padding-right: 2px;
 }
 
-.reader-document-tags {
+.reader-tags-section {
+  padding: 12px;
+  border: 1px solid rgba(10, 132, 255, 0.14);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(241, 248, 255, 0.76));
+}
+
+.reader-document-tags-row {
   margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.reader-document-tags {
+  display: inline-flex;
+}
+
+.reader-tags-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
 }
 
 .reader-note-item,

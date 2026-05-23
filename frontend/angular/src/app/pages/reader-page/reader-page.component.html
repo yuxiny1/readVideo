@@ -4,7 +4,7 @@
   [class.reader-focus-dark]="focusMode() && focusTheme() === 'dark'"
 >
   <div>
-    <h1>readVideo Reader</h1>
+    <h1>Reader</h1>
     <div class="meta-row">
       <span class="pill" [ngClass]="status() === 'Open' ? 'ok' : status() === 'Error' ? 'error' : 'muted'">{{ status() }}</span>
       <span class="pill muted">{{ libraryCount() }}</span>
@@ -26,7 +26,7 @@
     <aside class="reader-library">
       <section class="tool-panel reader-library-panel">
         <div class="panel-header">
-          <h2>Library</h2>
+          <h2>Notes</h2>
           <button class="secondary-button small-button" type="button" (click)="initialize()">Refresh</button>
         </div>
 
@@ -60,24 +60,7 @@
         </section>
 
         @if (libraryMode() !== 'files') {
-          <section class="reader-section">
-            <h3>Favorite Folders</h3>
-            <div class="reader-folder-grid">
-              <button class="folder-chip" [ngClass]="activeFolderId() === 'all' ? 'active' : ''" type="button" (click)="activeFolderId.set('all')">
-                <span>All</span><span>{{ folderCount("all") }}</span>
-              </button>
-              <button class="folder-chip" [ngClass]="activeFolderId() === 'unfiled' ? 'active' : ''" type="button" (click)="activeFolderId.set('unfiled')">
-                <span>Unfiled</span><span>{{ folderCount("unfiled") }}</span>
-              </button>
-              @for (folder of folders(); track folder.id) {
-                <button class="folder-chip" [ngClass]="activeFolderId() === folderId(folder) ? 'active' : ''" type="button" (click)="activeFolderId.set(folderId(folder))">
-                  <span>{{ folder.name }}</span><span>{{ folderCount(folder.id) }}</span>
-                </button>
-              }
-            </div>
-          </section>
-
-          <section class="reader-section">
+          <section class="reader-section reader-tags-section">
             <div class="section-heading-row">
               <h3>Tags</h3>
               <span class="caption">{{ tags().length }}</span>
@@ -94,6 +77,23 @@
                     #{{ tag.name }} <span>{{ tag.task_count }}</span>
                   </button>
                 }
+              }
+            </div>
+          </section>
+
+          <section class="reader-section">
+            <h3>Favorite Folders</h3>
+            <div class="reader-folder-grid">
+              <button class="folder-chip" [ngClass]="activeFolderId() === 'all' ? 'active' : ''" type="button" (click)="activeFolderId.set('all')">
+                <span>All</span><span>{{ folderCount("all") }}</span>
+              </button>
+              <button class="folder-chip" [ngClass]="activeFolderId() === 'unfiled' ? 'active' : ''" type="button" (click)="activeFolderId.set('unfiled')">
+                <span>Unfiled</span><span>{{ folderCount("unfiled") }}</span>
+              </button>
+              @for (folder of folders(); track folder.id) {
+                <button class="folder-chip" [ngClass]="activeFolderId() === folderId(folder) ? 'active' : ''" type="button" (click)="activeFolderId.set(folderId(folder))">
+                  <span>{{ folder.name }}</span><span>{{ folderCount(folder.id) }}</span>
+                </button>
               }
             </div>
           </section>
@@ -166,13 +166,18 @@
         @if (path()) {
           <p class="reader-meta-line">{{ documentMeta() }}</p>
         }
-        @if (activeDocumentTags().length) {
-          <div class="tag-strip reader-document-tags">
-            @for (tag of activeDocumentTags(); track tag) {
-              <button class="tag-chip" type="button" (click)="setActiveTag(tag)">#{{ tag }}</button>
-            }
-          </div>
-        }
+        <div class="reader-document-tags-row">
+          <span class="reader-tags-label">Tags</span>
+          @if (activeDocumentTags().length) {
+            <div class="tag-strip reader-document-tags">
+              @for (tag of activeDocumentTags(); track tag) {
+                <button class="tag-chip" type="button" (click)="setActiveTag(tag)">#{{ tag }}</button>
+              }
+            </div>
+          } @else {
+            <span class="tag-chip muted">No tags</span>
+          }
+        </div>
       </div>
       <div class="reader-document-actions">
         <button class="secondary-button small-button focus-mode-button" type="button" [ngClass]="focusMode() ? 'active' : ''" (click)="toggleFocusMode()">

@@ -1,6 +1,6 @@
 <header class="topbar">
   <div>
-    <h1>Notebook Favorites</h1>
+    <h1>Favorites</h1>
     <div class="meta-row">
       <span class="pill muted">{{ favoritesCount() }}</span>
       <span class="pill muted">{{ folders().length }} folders</span>
@@ -13,8 +13,7 @@
   <section class="tool-panel favorites-panel notebook-notes-panel">
     <div class="panel-header">
       <div>
-        <h2>Saved Notes</h2>
-        <p class="panel-subtitle">Organized summaries, source links, Markdown files, and reusable tags.</p>
+        <h2>Notes</h2>
       </div>
       <button class="secondary-button small-button" type="button" (click)="initialize()">Refresh</button>
     </div>
@@ -49,8 +48,8 @@
 
     <section class="favorite-tag-filter-card">
       <div class="section-heading-row">
-        <h3>Tag Filters</h3>
-        <span class="caption">Use tags in Favorites, Reader, and History</span>
+        <h3>Tags</h3>
+        <span class="caption">Filter</span>
       </div>
       <div class="tag-strip compact-tag-strip" aria-label="Favorite tag filters">
         <button class="tag-chip" [ngClass]="activeTag() === 'all' ? 'active' : ''" type="button" (click)="setActiveTag('all')">
@@ -58,7 +57,7 @@
         </button>
         @if (!tags().length) {
           <span class="tag-chip muted">No tags yet</span>
-          <span class="caption">Add tags on a saved note below.</span>
+          <span class="caption">Add tags from a note card.</span>
         } @else {
           @for (tag of tags(); track tag.id) {
             <button class="tag-chip" [ngClass]="activeTag() === tag.name ? 'active' : ''" type="button" (click)="setActiveTag(tag.name)">
@@ -89,15 +88,31 @@
               <span class="pill ok">{{ item.folder_name || "Unfiled" }}</span>
             </div>
 
-            <div class="tag-strip note-tag-strip">
-              @if (!tagsFor(item).length) {
-                <span class="tag-chip muted">No tags</span>
-              } @else {
-                @for (tag of tagsFor(item); track tag) {
-                  <button class="tag-chip" type="button" (click)="setActiveTag(tag)">#{{ tag }}</button>
+            <section class="note-tag-manager">
+              <div class="section-heading-row">
+                <h3>Tags</h3>
+                @if (!tagsFor(item).length) {
+                  <span class="tag-chip muted">No tags</span>
                 }
+              </div>
+              @if (tagsFor(item).length) {
+                <div class="tag-strip note-tag-strip">
+                  @for (tag of tagsFor(item); track tag) {
+                    <button class="tag-chip" type="button" (click)="setActiveTag(tag)">#{{ tag }}</button>
+                  }
+                </div>
               }
-            </div>
+              <div class="tag-input-row">
+                <input
+                  [id]="'favorite-tags-' + item.id"
+                  [name]="'favorite-tags-' + item.id"
+                  placeholder="course, ai, finance"
+                  [ngModel]="tagDraft(item)"
+                  (ngModelChange)="setTagDraft(item, $event)"
+                >
+                <button class="secondary-button small-button" type="button" (click)="saveTags(item)">Save Tags</button>
+              </div>
+            </section>
 
             <section class="favorite-detail">
               <h3>Summary</h3>
@@ -120,20 +135,6 @@
                   }
                 </select>
               </div>
-
-              <div class="tag-editor">
-                <label [for]="'favorite-tags-' + item.id">Note Tags</label>
-                <div class="tag-input-row">
-                  <input
-                    [id]="'favorite-tags-' + item.id"
-                    [name]="'favorite-tags-' + item.id"
-                    placeholder="course, ai, finance"
-                    [ngModel]="tagDraft(item)"
-                    (ngModelChange)="setTagDraft(item, $event)"
-                  >
-                  <button class="secondary-button small-button" type="button" (click)="saveTags(item)">Save</button>
-                </div>
-              </div>
             </div>
 
             <div class="card-actions">
@@ -153,6 +154,29 @@
   </section>
 
   <aside class="favorites-side notebook-sidebar">
+    <section class="tool-panel tag-panel notebook-tag-panel priority-tag-panel">
+      <div class="panel-header">
+        <div>
+          <h2>Tags</h2>
+        </div>
+      </div>
+      <div class="tag-strip tag-management-list">
+        <button class="tag-chip" [ngClass]="activeTag() === 'all' ? 'active' : ''" type="button" (click)="setActiveTag('all')">
+          All <span>{{ tagCount("all") }}</span>
+        </button>
+        @if (!tags().length) {
+          <span class="tag-chip muted">No tags yet</span>
+          <span class="caption">Save tags on a note card first.</span>
+        } @else {
+          @for (tag of tags(); track tag.id) {
+            <button class="tag-chip" [ngClass]="activeTag() === tag.name ? 'active' : ''" type="button" (click)="setActiveTag(tag.name)">
+              #{{ tag.name }} <span>{{ tag.task_count }}</span>
+            </button>
+          }
+        }
+      </div>
+    </section>
+
     <section class="tool-panel folder-panel notebook-folder-panel">
       <div class="panel-header">
         <div>
@@ -261,27 +285,5 @@
       </form>
     </section>
 
-    <section class="tool-panel tag-panel notebook-tag-panel">
-      <div class="panel-header">
-        <div>
-          <h2>Tags</h2>
-          <p class="panel-subtitle">Shared across Favorites, Reader, and History.</p>
-        </div>
-      </div>
-      <div class="tag-strip tag-management-list">
-        <button class="tag-chip" [ngClass]="activeTag() === 'all' ? 'active' : ''" type="button" (click)="setActiveTag('all')">
-          All <span>{{ tagCount("all") }}</span>
-        </button>
-        @if (!tags().length) {
-          <span class="tag-chip muted">No tags yet</span>
-        } @else {
-          @for (tag of tags(); track tag.id) {
-            <button class="tag-chip" [ngClass]="activeTag() === tag.name ? 'active' : ''" type="button" (click)="setActiveTag(tag.name)">
-              #{{ tag.name }} <span>{{ tag.task_count }}</span>
-            </button>
-          }
-        }
-      </div>
-    </section>
   </aside>
 </main>

@@ -38,6 +38,15 @@
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(241, 248, 255, 0.78));
 }
 
+.note-tag-manager {
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid rgba(10, 132, 255, 0.16);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(242, 249, 255, 0.78));
+}
+
 .history-card-header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -107,7 +116,7 @@
 
 .favorite-management-grid {
   display: grid;
-  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+  grid-template-columns: minmax(180px, 280px);
   gap: 10px;
   align-items: end;
 }
@@ -247,6 +256,13 @@
 .notebook-tag-panel {
   display: grid;
   gap: 12px;
+}
+
+.priority-tag-panel {
+  border-color: rgba(10, 132, 255, 0.2);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(241, 248, 255, 0.86)),
+    linear-gradient(90deg, rgba(10, 132, 255, 0.1), transparent 52%);
 }
 
 .tag-management-list {
