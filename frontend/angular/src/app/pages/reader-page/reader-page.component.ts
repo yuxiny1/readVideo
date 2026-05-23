@@ -6,7 +6,7 @@ import {DomSanitizer, SafeHtml} from "@angular/platform-browser";
 
 import {ReadvideoApiService} from "../../services/readvideo-api.service";
 import {formatBytes} from "../../shared/format";
-import {FavoriteFolder, FavoriteSummary, MarkdownFile} from "../../types/readvideo.types";
+import {FavoriteFolder, FavoriteSummary, MarkdownFile, TagSummary} from "../../types/readvideo.types";
 
 type LibraryMode = "all" | "favorites" | "files";
 type LibrarySort = "recent" | "title" | "folder" | "path";
@@ -51,7 +51,9 @@ export class ReaderPageComponent implements OnInit {
   readonly emptyMessage = signal("Pick a note to start reading.");
   readonly favorites = signal<FavoriteSummary[]>([]);
   readonly folders = signal<FavoriteFolder[]>([]);
+  readonly tags = signal<TagSummary[]>([]);
   readonly activeFolderId = signal("all");
+  readonly activeTag = signal("all");
   readonly files = signal<MarkdownFile[]>([]);
   readonly fileCount = signal("0 files");
   readonly defaultNotesDir = signal("notes");
@@ -69,14 +71,17 @@ export class ReaderPageComponent implements OnInit {
 
   readonly filteredFavorites = computed(() => {
     const active = this.activeFolderId();
+    const activeTag = this.activeTag();
     const query = this.searchQuery().trim().toLowerCase();
     const matches = this.favorites().filter((item) => {
       const inFolder = active === "all"
         || (active === "unfiled" && !item.folder_id)
         || String(item.folder_id) === active;
       if (!inFolder) return false;
+      const tags = this.tagsFor(item);
+      if (activeTag !== "all" && !this.hasTag(tags, activeTag)) return false;
       if (!query) return true;
-      return [item.title, item.url, item.summary, item.markdown_path, item.folder_name]
+      return [item.title, item.url, item.summary, item.markdown_path, item.folder_name, tags.join(" ")]
         .join(" ")
         .toLowerCase()
         .includes(query);
@@ -118,6 +123,12 @@ export class ReaderPageComponent implements OnInit {
   });
 
   readonly libraryCount = computed(() => `${this.filteredFavorites().length} favorites · ${this.fileCount()}`);
+  readonly activeFavorite = computed(() => {
+    const path = this.path();
+    if (!path) return null;
+    return this.favorites().find((item) => item.markdown_path === path) || null;
+  });
+  readonly activeDocumentTags = computed(() => this.activeFavorite()?.tags || []);
   readonly headings = computed(() => this.extractHeadings(this.rawContent()));
   readonly sourceUrl = computed(() => this.extractMetadata("Source"));
   readonly generatedAt = computed(() => this.extractMetadata("Generated"));
@@ -142,7 +153,7 @@ export class ReaderPageComponent implements OnInit {
 
   async initialize(): Promise<void> {
     await this.loadConfig();
-    await Promise.all([this.loadFolders(), this.loadFavorites()]);
+    await Promise.all([this.loadFolders(), this.loadFavorites(), this.loadTags()]);
     const folder = this.route.snapshot.queryParamMap.get("folder") || this.markdownFolder;
     await this.loadMarkdownFiles(folder);
     const path = this.route.snapshot.queryParamMap.get("path");
@@ -172,6 +183,14 @@ export class ReaderPageComponent implements OnInit {
   async loadFolders(): Promise<void> {
     try {
       this.folders.set(await this.api.favoriteFolders());
+    } catch (error) {
+      this.error.set(this.message(error));
+    }
+  }
+
+  async loadTags(): Promise<void> {
+    try {
+      this.tags.set(await this.api.tags());
     } catch (error) {
       this.error.set(this.message(error));
     }
@@ -251,6 +270,10 @@ export class ReaderPageComponent implements OnInit {
     this.libraryMode.set(mode);
   }
 
+  setActiveTag(tag: string): void {
+    this.activeTag.set(tag);
+  }
+
   setLibrarySort(sort: string): void {
     if (["recent", "title", "folder", "path"].includes(sort)) {
       this.librarySort.set(sort as LibrarySort);
@@ -328,12 +351,21 @@ export class ReaderPageComponent implements OnInit {
     return this.favorites().filter((item) => item.folder_id === Number(id)).length;
   }
 
+  tagCount(tag: string): number {
+    if (tag === "all") return this.favorites().length;
+    return this.favorites().filter((item) => this.hasTag(this.tagsFor(item), tag)).length;
+  }
+
   folderId(folder: FavoriteFolder): string {
     return String(folder.id);
   }
 
   titleFor(item: FavoriteSummary): string {
     return item.title || item.url || item.task_id;
+  }
+
+  tagsFor(item: FavoriteSummary): string[] {
+    return item.tags || [];
   }
 
   isActivePath(path: string): boolean {
@@ -378,6 +410,11 @@ export class ReaderPageComponent implements OnInit {
 
   private compareText(first: string, second: string): number {
     return first.localeCompare(second, undefined, {numeric: true, sensitivity: "base"});
+  }
+
+  private hasTag(tags: string[], tag: string): boolean {
+    const needle = tag.toLowerCase();
+    return tags.some((item) => item.toLowerCase() === needle);
   }
 
   private dateValue(value: string): number {

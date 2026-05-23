@@ -313,6 +313,45 @@ class MainAppTest(unittest.TestCase):
         self.assertEqual(response.json()["notes_dir"], "notes")
         self.assertEqual(list_response.json()[0]["task_id"], "favorite-task")
 
+    def test_tag_endpoints_share_tags_between_history_and_favorites(self):
+        with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
+            "os.environ",
+            {"READVIDEO_DATABASE_PATH": str(Path(tmpdir) / "history.sqlite3")},
+            clear=True,
+        ):
+            set_task_status(
+                "tag-task",
+                "completed",
+                url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                title="Tagged video",
+                markdown_path="notes/tagged-video.md",
+                summary="- useful",
+            )
+            from backend.storage.history import HistoryStore
+
+            HistoryStore(str(Path(tmpdir) / "history.sqlite3")).upsert_task(TASKS["tag-task"])
+            client = TestClient(app)
+            history_tags = client.patch(
+                "/api/history/tag-task/tags",
+                json={"tags": ["AI", " course ", "AI"]},
+            )
+            favorite = client.post("/api/favorites", json={"task_id": "tag-task"}).json()
+            favorite_tags = client.patch(
+                f"/api/favorites/{favorite['id']}/tags",
+                json={"tags": ["reader", "course"]},
+            )
+            history_list = client.get("/api/history")
+            favorites_list = client.get("/api/favorites")
+            tags_list = client.get("/api/tags")
+
+        self.assertEqual(history_tags.status_code, 200)
+        self.assertEqual(history_tags.json()["tags"], ["AI", "course"])
+        self.assertEqual(favorite_tags.status_code, 200)
+        self.assertEqual(favorite_tags.json()["tags"], ["reader", "course"])
+        self.assertEqual(history_list.json()[0]["tags"], ["course", "reader"])
+        self.assertEqual(favorites_list.json()[0]["tags"], ["course", "reader"])
+        self.assertEqual({tag["name"]: tag["task_count"] for tag in tags_list.json()}, {"course": 1, "reader": 1})
+
     def test_favorite_folders_endpoint_assigns_favorite(self):
         with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
             "os.environ",

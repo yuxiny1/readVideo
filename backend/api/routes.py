@@ -10,6 +10,7 @@ from backend.api.schemas import (
     FavoriteRequest,
     OllamaPullRequest,
     ProcessVideoRequest,
+    TagAssignmentRequest,
     WatchItemRequest,
     WatchItemUpdateRequest,
     WatchlistReorderRequest,
@@ -35,6 +36,7 @@ from backend.services.whisper_models import (
 )
 from backend.storage.favorites import FavoriteStore
 from backend.storage.history import HistoryStore
+from backend.storage.tags import TagStore
 from backend.storage.watchlist import WatchlistStore
 
 
@@ -59,6 +61,10 @@ def get_favorite_store() -> FavoriteStore:
     return FavoriteStore(load_settings().database_path)
 
 
+def get_tag_store() -> TagStore:
+    return TagStore(load_settings().database_path)
+
+
 def resolve_history_file(path: str) -> Path:
     file_path = Path(path).expanduser()
     if not file_path.is_absolute():
@@ -66,6 +72,14 @@ def resolve_history_file(path: str) -> Path:
     if not file_path.exists() or not file_path.is_file():
         raise FileNotFoundError(f"File does not exist: {path}")
     return file_path
+
+
+def _history_record_dict(record, tags: list[str]) -> dict:
+    return {**record.__dict__, "tags": tags}
+
+
+def _favorite_dict(item, tags: list[str]) -> dict:
+    return {**item.__dict__, "tags": tags}
 
 
 @router.post("/process_video/")
@@ -137,7 +151,9 @@ async def get_tasks():
 
 @router.get("/api/history")
 async def list_history():
-    return [record.__dict__ for record in get_history_store().list_records()]
+    records = get_history_store().list_records()
+    tags_by_task = get_tag_store().tags_for_tasks([record.task_id for record in records])
+    return [_history_record_dict(record, tags_by_task.get(record.task_id, [])) for record in records]
 
 
 @router.get("/api/history/lookup")
@@ -154,7 +170,7 @@ async def lookup_history(url: str):
         "video_exists": candidate.video_exists,
         "transcript_exists": candidate.transcript_exists,
         "markdown_exists": candidate.markdown_exists,
-        "record": record.__dict__,
+        "record": _history_record_dict(record, get_tag_store().tags_for_task(record.task_id)),
         "resolved_paths": {
             "video": str(candidate.video_path) if candidate.video_path else "",
             "transcript": str(candidate.transcript_path) if candidate.transcript_path else "",
@@ -168,7 +184,19 @@ async def get_history(task_id: str):
     record = get_history_store().get_record(task_id)
     if record is None:
         raise HTTPException(status_code=404, detail="History record not found")
-    return record.__dict__
+    return _history_record_dict(record, get_tag_store().tags_for_task(record.task_id))
+
+
+@router.patch("/api/history/{task_id}/tags")
+async def update_history_tags(task_id: str, request: TagAssignmentRequest):
+    record = get_history_store().get_record(task_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="History record not found")
+    try:
+        tags = get_tag_store().set_task_tags(task_id, request.tags)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return _history_record_dict(record, tags)
 
 
 @router.get("/api/history/{task_id}/files/{file_kind}")
@@ -199,7 +227,9 @@ async def download_history_file(task_id: str, file_kind: str):
 
 @router.get("/api/favorites")
 async def list_favorites():
-    return [item.__dict__ for item in get_favorite_store().list_items()]
+    items = get_favorite_store().list_items()
+    tags_by_task = get_tag_store().tags_for_tasks([item.task_id for item in items])
+    return [_favorite_dict(item, tags_by_task.get(item.task_id, [])) for item in items]
 
 
 @router.get("/api/favorites/folders")
@@ -233,7 +263,7 @@ async def add_favorite(request: FavoriteRequest):
         raise HTTPException(status_code=400, detail="This task has no summary or Markdown note yet.")
 
     item = get_favorite_store().add_from_history(record, request.folder_id)
-    return item.__dict__
+    return _favorite_dict(item, get_tag_store().tags_for_task(item.task_id))
 
 
 @router.get("/api/favorites/{item_id}/markdown")
@@ -256,7 +286,19 @@ async def assign_favorite_folder(item_id: int, request: FavoriteFolderAssignment
         item = get_favorite_store().assign_folder(item_id, request.folder_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return item.__dict__
+    return _favorite_dict(item, get_tag_store().tags_for_task(item.task_id))
+
+
+@router.patch("/api/favorites/{item_id}/tags")
+async def update_favorite_tags(item_id: int, request: TagAssignmentRequest):
+    item = get_favorite_store().get_item(item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Favorite not found")
+    try:
+        tags = get_tag_store().set_task_tags(item.task_id, request.tags)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return _favorite_dict(item, tags)
 
 
 @router.delete("/api/favorites/{item_id}")
@@ -298,6 +340,11 @@ async def read_markdown_file_endpoint(path: str):
     except (FileNotFoundError, ValueError, UnicodeDecodeError) as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return document.__dict__
+
+
+@router.get("/api/tags")
+async def list_tags():
+    return [tag.__dict__ for tag in get_tag_store().list_tags()]
 
 
 @router.get("/watchlist")

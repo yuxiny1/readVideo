@@ -2,25 +2,59 @@
   <div>
     <h1>readVideo History</h1>
     <div class="meta-row">
-      <span class="pill muted">{{ countLabel() }}</span>
+      <span class="pill muted">{{ visibleCountLabel() }}</span>
+      <span class="pill muted">{{ tags().length }} tags</span>
     </div>
   </div>
 </header>
 
 <main class="history-workspace">
-  <section class="tool-panel">
+  <section class="tool-panel history-panel">
     <div class="panel-header">
-      <h2>Downloaded And Transcribed Videos</h2>
-      <button class="secondary-button small-button" type="button" (click)="loadHistory()">Refresh</button>
+      <div>
+        <h2>Downloaded And Transcribed Videos</h2>
+        <p class="panel-subtitle">A searchable local record of every processed video, output path, and note tag.</p>
+      </div>
+      <button class="secondary-button small-button" type="button" (click)="initialize()">Refresh</button>
     </div>
+
+    <div class="filter-toolbar history-filter-toolbar">
+      <div class="search-field">
+        <label for="history-search">Search</label>
+        <input
+          id="history-search"
+          name="history-search"
+          placeholder="Search title, source, summary, paths, tags..."
+          [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)"
+        >
+      </div>
+    </div>
+
+    <div class="tag-strip compact-tag-strip" aria-label="History tag filters">
+      <button class="tag-chip" [ngClass]="activeTag() === 'all' ? 'active' : ''" type="button" (click)="setActiveTag('all')">
+        All <span>{{ tagCount("all") }}</span>
+      </button>
+      @for (tag of tags(); track tag.id) {
+        <button class="tag-chip" [ngClass]="activeTag() === tag.name ? 'active' : ''" type="button" (click)="setActiveTag(tag.name)">
+          #{{ tag.name }} <span>{{ tag.task_count }}</span>
+        </button>
+      }
+    </div>
+
+    @if (notice()) {
+      <div class="notice ok">{{ notice() }}</div>
+    }
 
     <div class="history-list">
       @if (error()) {
         <div class="empty-state">{{ error() }}</div>
       } @else if (!records().length) {
         <div class="empty-state">No processed videos yet.</div>
+      } @else if (!filteredRecords().length) {
+        <div class="empty-state">No history records match this filter.</div>
       } @else {
-        @for (record of records(); track record.task_id) {
+        @for (record of filteredRecords(); track record.task_id) {
           <article class="history-card">
             <div class="history-card-header">
               <div>
@@ -28,6 +62,16 @@
                 <a class="watch-url" [href]="record.url || '#'" target="_blank" rel="noreferrer">{{ record.url || "No URL" }}</a>
               </div>
               <span class="pill" [ngClass]="statusClass(record)">{{ record.status }}</span>
+            </div>
+
+            <div class="tag-strip note-tag-strip">
+              @if (!tagsFor(record).length) {
+                <span class="tag-chip muted">No tags</span>
+              } @else {
+                @for (tag of tagsFor(record); track tag) {
+                  <button class="tag-chip" type="button" (click)="setActiveTag(tag)">#{{ tag }}</button>
+                }
+              }
             </div>
 
             <dl class="path-list">
@@ -42,6 +86,20 @@
               <span>Elapsed: {{ elapsed(record) }}</span>
               <span>Transcription: {{ record.transcription_backend || "-" }}</span>
               <span>Summary: {{ record.summary_backend || "-" }}</span>
+            </div>
+
+            <div class="tag-editor history-tag-editor">
+              <label [for]="'history-tags-' + record.task_id">Tags</label>
+              <div class="tag-input-row">
+                <input
+                  [id]="'history-tags-' + record.task_id"
+                  [name]="'history-tags-' + record.task_id"
+                  placeholder="course, ai, finance"
+                  [ngModel]="tagDraft(record)"
+                  (ngModelChange)="setTagDraft(record, $event)"
+                >
+                <button class="secondary-button small-button" type="button" (click)="saveTags(record)">Save</button>
+              </div>
             </div>
 
             <div class="card-actions">

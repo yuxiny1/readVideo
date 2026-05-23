@@ -77,6 +77,9 @@
 
   .form-grid,
   .input-action-row,
+  .filter-toolbar,
+  .favorite-management-grid,
+  .tag-input-row,
   .output-list div,
   .path-list div {
     grid-template-columns: 1fr;

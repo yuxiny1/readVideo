@@ -56,3 +56,7 @@ class FavoriteFolderRequest(BaseModel):
 
 class FavoriteFolderAssignmentRequest(BaseModel):
     folder_id: Optional[int] = None
+
+
+class TagAssignmentRequest(BaseModel):
+    tags: list[str] = Field(default_factory=list)

@@ -11,6 +11,7 @@ import {
   OllamaModelsResponse,
   ProcessPayload,
   SourceUpdatesResponse,
+  TagSummary,
   TaskRecord,
   TranscriptionModelsResponse,
   WatchItem,
@@ -65,6 +66,17 @@ export class ReadvideoApiService {
     return this.request<TaskRecord[]>("/api/history");
   }
 
+  async tags(): Promise<TagSummary[]> {
+    return this.request<TagSummary[]>("/api/tags");
+  }
+
+  async updateHistoryTags(taskId: string, tags: string[]): Promise<TaskRecord> {
+    return this.request<TaskRecord>(`/api/history/${encodeURIComponent(taskId)}/tags`, {
+      method: "PATCH",
+      body: JSON.stringify({tags}),
+    });
+  }
+
   async favoriteTask(taskId: string): Promise<unknown> {
     return this.request("/api/favorites", {
       method: "POST",
@@ -95,6 +107,13 @@ export class ReadvideoApiService {
     return this.request<FavoriteSummary>(`/api/favorites/${encodeURIComponent(itemId)}/folder`, {
       method: "PATCH",
       body: JSON.stringify({folder_id: folderId}),
+    });
+  }
+
+  async updateFavoriteTags(itemId: number, tags: string[]): Promise<FavoriteSummary> {
+    return this.request<FavoriteSummary>(`/api/favorites/${encodeURIComponent(itemId)}/tags`, {
+      method: "PATCH",
+      body: JSON.stringify({tags}),
     });
   }
 
