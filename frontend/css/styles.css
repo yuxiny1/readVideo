@@ -1,6 +1,7 @@
 @import "./partials/foundation.css";
 @import "./partials/layout.css";
 @import "./partials/forms-actions.css";
+@import "./partials/tags.css";
 @import "./partials/process-output.css";
 @import "./partials/saved-sources.css";
 @import "./partials/history-favorites.css";

@@ -197,6 +197,16 @@
   max-height: 238px;
 }
 
+.reader-tag-filter {
+  max-height: 120px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.reader-document-tags {
+  margin-top: 8px;
+}
+
 .reader-note-item,
 .reader-file-item {
   width: 100%;
@@ -240,6 +250,16 @@
   color: var(--muted);
   font-size: 12px;
   font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-note-item small {
+  display: block;
+  overflow: hidden;
+  color: #4d5f73;
+  font-size: 11px;
+  font-weight: 760;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

@@ -4,7 +4,7 @@ import {FormsModule} from "@angular/forms";
 import {Router} from "@angular/router";
 
 import {ReadvideoApiService} from "../../services/readvideo-api.service";
-import {FavoriteFolder, FavoriteSummary} from "../../types/readvideo.types";
+import {FavoriteFolder, FavoriteSummary, TagSummary} from "../../types/readvideo.types";
 
 @Component({
   selector: "rv-favorites-page",
@@ -18,16 +18,40 @@ export class FavoritesPageComponent implements OnInit {
 
   readonly favorites = signal<FavoriteSummary[]>([]);
   readonly folders = signal<FavoriteFolder[]>([]);
+  readonly tags = signal<TagSummary[]>([]);
   readonly activeFolderId = signal("all");
+  readonly activeTag = signal("all");
+  readonly searchQuery = signal("");
   readonly error = signal("");
+  readonly notice = signal("");
+  readonly tagDrafts: Record<number, string> = {};
   folderName = "";
   folderNotes = "";
 
   readonly filteredFavorites = computed(() => {
     const active = this.activeFolderId();
-    if (active === "all") return this.favorites();
-    if (active === "unfiled") return this.favorites().filter((item) => !item.folder_id);
-    return this.favorites().filter((item) => String(item.folder_id) === active);
+    const activeTag = this.activeTag();
+    const query = this.searchQuery().trim().toLowerCase();
+    return this.favorites().filter((item) => {
+      const inFolder = active === "all"
+        || (active === "unfiled" && !item.folder_id)
+        || String(item.folder_id) === active;
+      if (!inFolder) return false;
+
+      const tags = this.tagsFor(item);
+      if (activeTag !== "all" && !this.hasTag(tags, activeTag)) return false;
+      if (!query) return true;
+
+      return [
+        this.title(item),
+        item.url,
+        item.summary,
+        item.markdown_path,
+        item.notes_dir,
+        item.folder_name,
+        tags.join(" "),
+      ].join(" ").toLowerCase().includes(query);
+    });
   });
 
   readonly favoritesCount = computed(() => `${this.filteredFavorites().length} shown / ${this.favorites().length} saved`);
@@ -37,13 +61,15 @@ export class FavoritesPageComponent implements OnInit {
   }
 
   async initialize(): Promise<void> {
-    await Promise.all([this.loadFolders(), this.loadFavorites()]);
+    await Promise.all([this.loadFolders(), this.loadFavorites(), this.loadTags()]);
   }
 
   async loadFavorites(): Promise<void> {
     try {
       this.error.set("");
-      this.favorites.set(await this.api.favorites());
+      const favorites = await this.api.favorites();
+      this.favorites.set(favorites);
+      this.syncTagDrafts(favorites);
     } catch (error) {
       this.error.set(this.message(error));
     }
@@ -53,10 +79,27 @@ export class FavoritesPageComponent implements OnInit {
     this.folders.set(await this.api.favoriteFolders());
   }
 
+  async loadTags(): Promise<void> {
+    this.tags.set(await this.api.tags());
+  }
+
+  setActiveFolder(id: string): void {
+    this.activeFolderId.set(id);
+  }
+
+  setActiveTag(tag: string): void {
+    this.activeTag.set(tag);
+  }
+
   folderCount(id: string | number): number {
     if (id === "all") return this.favorites().length;
     if (id === "unfiled") return this.favorites().filter((item) => !item.folder_id).length;
     return this.favorites().filter((item) => item.folder_id === Number(id)).length;
+  }
+
+  tagCount(tag: string): number {
+    if (tag === "all") return this.favorites().length;
+    return this.favorites().filter((item) => this.hasTag(this.tagsFor(item), tag)).length;
   }
 
   folderId(folder: FavoriteFolder): string {
@@ -64,10 +107,15 @@ export class FavoritesPageComponent implements OnInit {
   }
 
   async createFolder(): Promise<void> {
-    await this.api.addFavoriteFolder(this.folderName.trim(), this.folderNotes.trim());
-    this.folderName = "";
-    this.folderNotes = "";
-    await this.loadFolders();
+    try {
+      await this.api.addFavoriteFolder(this.folderName.trim(), this.folderNotes.trim());
+      this.folderName = "";
+      this.folderNotes = "";
+      this.notice.set("Folder created");
+      await this.loadFolders();
+    } catch (error) {
+      this.error.set(this.message(error));
+    }
   }
 
   async deleteFolder(folder: FavoriteFolder): Promise<void> {
@@ -77,13 +125,46 @@ export class FavoritesPageComponent implements OnInit {
   }
 
   async assignFolder(item: FavoriteSummary, value: string): Promise<void> {
-    await this.api.assignFavoriteFolder(item.id, value ? Number(value) : null);
-    await Promise.all([this.loadFolders(), this.loadFavorites()]);
+    try {
+      const updated = await this.api.assignFavoriteFolder(item.id, value ? Number(value) : null);
+      this.replaceFavorite(updated);
+      await this.loadFolders();
+    } catch (error) {
+      this.error.set(this.message(error));
+    }
   }
 
   async deleteFavorite(item: FavoriteSummary): Promise<void> {
     await this.api.deleteFavorite(item.id);
-    await Promise.all([this.loadFolders(), this.loadFavorites()]);
+    delete this.tagDrafts[item.id];
+    await Promise.all([this.loadFolders(), this.loadFavorites(), this.loadTags()]);
+  }
+
+  tagsFor(item: FavoriteSummary): string[] {
+    return item.tags || [];
+  }
+
+  tagDraft(item: FavoriteSummary): string {
+    if (!(item.id in this.tagDrafts)) {
+      this.tagDrafts[item.id] = this.tagsFor(item).join(", ");
+    }
+    return this.tagDrafts[item.id];
+  }
+
+  setTagDraft(item: FavoriteSummary, value: string): void {
+    this.tagDrafts[item.id] = value;
+  }
+
+  async saveTags(item: FavoriteSummary): Promise<void> {
+    try {
+      const updated = await this.api.updateFavoriteTags(item.id, this.parseTags(this.tagDraft(item)));
+      this.replaceFavorite(updated);
+      this.tagDrafts[item.id] = this.tagsFor(updated).join(", ");
+      this.notice.set("Tags saved");
+      await this.loadTags();
+    } catch (error) {
+      this.error.set(this.message(error));
+    }
   }
 
   async readFavorite(item: FavoriteSummary): Promise<void> {
@@ -114,6 +195,37 @@ export class FavoritesPageComponent implements OnInit {
 
   downloadHref(path: string): string {
     return `/api/markdown_files/download?path=${encodeURIComponent(path)}`;
+  }
+
+  private replaceFavorite(updated: FavoriteSummary): void {
+    this.favorites.update((items) => items.map((item) => item.id === updated.id ? updated : item));
+  }
+
+  private syncTagDrafts(items: FavoriteSummary[]): void {
+    const ids = new Set(items.map((item) => item.id));
+    for (const item of items) {
+      if (!(item.id in this.tagDrafts)) {
+        this.tagDrafts[item.id] = this.tagsFor(item).join(", ");
+      }
+    }
+    for (const key of Object.keys(this.tagDrafts)) {
+      if (!ids.has(Number(key))) {
+        delete this.tagDrafts[Number(key)];
+      }
+    }
+  }
+
+  private parseTags(value: string): string[] {
+    return value
+      .replace(/(^|\s)#/g, "$1,")
+      .split(/[,;\n]+/)
+      .map((tag) => tag.trim().replace(/^#/, ""))
+      .filter(Boolean);
+  }
+
+  private hasTag(tags: string[], tag: string): boolean {
+    const needle = tag.toLowerCase();
+    return tags.some((item) => item.toLowerCase() === needle);
   }
 
   private message(error: unknown): string {

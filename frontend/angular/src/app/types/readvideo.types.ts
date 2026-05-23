@@ -103,6 +103,7 @@ export interface TaskRecord {
   delete_video_after_completion?: boolean;
   video_deleted_after_completion?: boolean;
   video_delete_error?: string;
+  tags?: string[];
 }
 
 export interface ProcessPayload {
@@ -175,6 +176,15 @@ export interface FavoriteSummary {
   summary: string;
   markdown_path: string;
   notes_dir: string;
+  created_at: string;
+  updated_at: string;
+  tags?: string[];
+}
+
+export interface TagSummary {
+  id: number;
+  name: string;
+  task_count: number;
   created_at: string;
   updated_at: string;
 }

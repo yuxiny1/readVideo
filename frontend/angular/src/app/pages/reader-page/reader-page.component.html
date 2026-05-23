@@ -79,6 +79,27 @@
 
           <section class="reader-section">
             <div class="section-heading-row">
+              <h3>Tags</h3>
+              <span class="caption">{{ tags().length }}</span>
+            </div>
+            <div class="tag-strip reader-tag-filter">
+              <button class="tag-chip" [ngClass]="activeTag() === 'all' ? 'active' : ''" type="button" (click)="setActiveTag('all')">
+                All <span>{{ tagCount("all") }}</span>
+              </button>
+              @if (!tags().length) {
+                <span class="tag-chip muted">No tags yet</span>
+              } @else {
+                @for (tag of tags(); track tag.id) {
+                  <button class="tag-chip" [ngClass]="activeTag() === tag.name ? 'active' : ''" type="button" (click)="setActiveTag(tag.name)">
+                    #{{ tag.name }} <span>{{ tag.task_count }}</span>
+                  </button>
+                }
+              }
+            </div>
+          </section>
+
+          <section class="reader-section">
+            <div class="section-heading-row">
               <h3>Favorite Notes</h3>
               <span class="caption">{{ visibleFavoriteNotes().length }}/{{ filteredFavorites().length }}</span>
             </div>
@@ -90,6 +111,9 @@
                   <button class="reader-note-item" [ngClass]="isActivePath(item.markdown_path) ? 'active' : ''" type="button" (click)="openFavorite(item)">
                     <strong>{{ titleFor(item) }}</strong>
                     <span>{{ item.folder_name || "Unfiled" }}</span>
+                    @if (tagsFor(item).length) {
+                      <small>#{{ tagsFor(item).join(" #") }}</small>
+                    }
                     <code>{{ item.markdown_path || "No Markdown path" }}</code>
                   </button>
                 }
@@ -141,6 +165,13 @@
         <p class="reader-path">{{ path() || documentMeta() }}</p>
         @if (path()) {
           <p class="reader-meta-line">{{ documentMeta() }}</p>
+        }
+        @if (activeDocumentTags().length) {
+          <div class="tag-strip reader-document-tags">
+            @for (tag of activeDocumentTags(); track tag) {
+              <button class="tag-chip" type="button" (click)="setActiveTag(tag)">#{{ tag }}</button>
+            }
+          </div>
         }
       </div>
       <div class="reader-document-actions">
@@ -271,6 +302,16 @@
             <div>
               <dt>Generated</dt>
               <dd>{{ generatedAt() || "-" }}</dd>
+            </div>
+            <div>
+              <dt>Tags</dt>
+              <dd>
+                @if (activeDocumentTags().length) {
+                  <span>{{ activeDocumentTags().join(", ") }}</span>
+                } @else {
+                  <span>-</span>
+                }
+              </dd>
             </div>
             <div>
               <dt>Transcript</dt>

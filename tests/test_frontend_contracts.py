@@ -85,6 +85,30 @@ class FrontendContractTest(unittest.TestCase):
         self.assertIn("Copy Full MD", reader_template)
         self.assertIn("Full Markdown copied", reader_component)
 
+    def test_tags_are_shared_across_favorites_reader_and_history(self):
+        api = read_repo_file("frontend/angular/src/app/services/readvideo-api.service.ts")
+        types = read_repo_file("frontend/angular/src/app/types/readvideo.types.ts")
+        favorites_component = read_repo_file("frontend/angular/src/app/pages/favorites-page/favorites-page.component.ts")
+        favorites_template = read_repo_file("frontend/angular/src/app/pages/favorites-page/favorites-page.component.html")
+        reader_component = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-page.component.ts")
+        reader_template = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-page.component.html")
+        history_component = read_repo_file("frontend/angular/src/app/pages/history-page/history-page.component.ts")
+        history_template = read_repo_file("frontend/angular/src/app/pages/history-page/history-page.component.html")
+
+        self.assertIn("TagSummary", types)
+        self.assertIn("tags?: string[]", types)
+        self.assertIn("updateFavoriteTags", api)
+        self.assertIn("updateHistoryTags", api)
+        self.assertIn("/api/tags", api)
+        self.assertIn("Notebook Folders", favorites_template)
+        self.assertIn("tagDrafts", favorites_component)
+        self.assertIn("saveTags(item)", favorites_template)
+        self.assertIn("activeTag", reader_component)
+        self.assertIn("reader-tag-filter", reader_template)
+        self.assertIn("activeDocumentTags", reader_template)
+        self.assertIn("filteredRecords", history_component)
+        self.assertIn("saveTags(record)", history_template)
+
 
 if __name__ == "__main__":
     unittest.main()
