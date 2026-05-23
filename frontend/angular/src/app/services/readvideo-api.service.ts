@@ -99,6 +99,13 @@ export class ReadvideoApiService {
     });
   }
 
+  async updateFavoriteFolder(folderId: number, name: string, notes: string): Promise<FavoriteFolder> {
+    return this.request<FavoriteFolder>(`/api/favorites/folders/${encodeURIComponent(folderId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({name, notes}),
+    });
+  }
+
   async deleteFavoriteFolder(folderId: number): Promise<unknown> {
     return this.request(`/api/favorites/folders/${encodeURIComponent(folderId)}`, {method: "DELETE"});
   }

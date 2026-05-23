@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse
 from backend.api.schemas import (
     FavoriteFolderAssignmentRequest,
     FavoriteFolderRequest,
+    FavoriteFolderUpdateRequest,
     FavoriteRequest,
     OllamaPullRequest,
     ProcessVideoRequest,
@@ -243,6 +244,17 @@ async def add_favorite_folder(request: FavoriteFolderRequest):
         folder = get_favorite_store().add_folder(request.name, request.notes)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return folder.__dict__
+
+
+@router.patch("/api/favorites/folders/{folder_id}")
+async def update_favorite_folder(folder_id: int, request: FavoriteFolderUpdateRequest):
+    try:
+        folder = get_favorite_store().update_folder(folder_id, request.name, request.notes)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if folder is None:
+        raise HTTPException(status_code=404, detail="Favorite folder not found")
     return folder.__dict__
 
 

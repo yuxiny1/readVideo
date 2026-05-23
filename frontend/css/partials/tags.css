@@ -74,6 +74,12 @@ button.tag-chip {
   background: rgba(255, 255, 255, 0.55);
 }
 
+.tag-chip.mini {
+  min-height: 24px;
+  padding: 3px 7px;
+  font-size: 11px;
+}
+
 .tag-editor {
   min-width: 0;
 }
