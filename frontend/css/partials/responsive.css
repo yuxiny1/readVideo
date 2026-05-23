@@ -80,6 +80,7 @@
   .filter-toolbar,
   .favorite-management-grid,
   .tag-input-row,
+  .reader-tag-edit-row,
   .output-list div,
   .path-list div {
     grid-template-columns: 1fr;
