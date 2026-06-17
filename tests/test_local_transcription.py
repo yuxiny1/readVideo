@@ -11,6 +11,7 @@ from backend.services.local_transcription import (
     _run_command,
     _resolve_transcript_path,
     _supported_whisper_flags,
+    read_transcript_text,
 )
 
 
@@ -24,6 +25,21 @@ class LocalTranscriptionTest(unittest.TestCase):
         text = _normalize_whisper_text("repeat\n repeat \nnext\nrepeat\n")
 
         self.assertEqual(text, "repeat\nnext\nrepeat\n")
+
+    def test_read_transcript_text_recovers_invalid_utf8_bytes(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            transcript = Path(tmpdir) / "video_transcription.txt"
+            transcript.write_bytes("hello 中文 ".encode("utf-8") + b"\xe4\xff" + " still readable".encode("utf-8"))
+
+            result = read_transcript_text(transcript)
+
+        self.assertTrue(result.recovered_encoding)
+        self.assertIn("hello 中文", result.text)
+        self.assertIn("still readable", result.text)
+        self.assertIn("\ufffd", result.text)
+        self.assertIn("invalid", result.decode_error)
 
     def test_build_ffmpeg_command_applies_speech_filter(self):
         command = _build_ffmpeg_command(
@@ -119,6 +135,12 @@ class LocalTranscriptionTest(unittest.TestCase):
         with patch("backend.services.local_transcription.subprocess.run", return_value=result):
             with self.assertRaisesRegex(RuntimeError, "Command failed: ffmpeg"):
                 _run_command(["ffmpeg", "-version"])
+
+    def test_run_command_decodes_invalid_process_output_for_errors(self):
+        result = CompletedProcess(args=["whisper-cli"], returncode=1, stdout=b"", stderr=b"bad output \xe4\xff")
+        with patch("backend.services.local_transcription.subprocess.run", return_value=result):
+            with self.assertRaisesRegex(RuntimeError, "bad output"):
+                _run_command(["whisper-cli", "-m"])
 
     def test_validate_reports_missing_dependencies_and_model(self):
         service = LocalWhisperTranscription(whisper_cli="whisper-cli", model_path="missing.bin")
