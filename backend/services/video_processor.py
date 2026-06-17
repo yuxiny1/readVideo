@@ -9,7 +9,7 @@ from backend.core.config import Settings, load_openai_api_key, load_settings
 from backend.core.task_state import append_task_log, get_task, set_task_status, update_task_details
 from backend.services.downloader import download_video
 from backend.services.history_reuse import find_history_reuse_candidate, resolve_existing_path
-from backend.services.local_transcription import LocalWhisperTranscription
+from backend.services.local_transcription import LocalWhisperTranscription, read_transcript_text
 from backend.services.notes import write_markdown_note
 from backend.services.openai_transcription import AudioTranscription
 from backend.storage.history import HistoryStore
@@ -23,6 +23,8 @@ class ExistingTranscriptionResult:
     text: str
     transcription_path: str
     chunk_count: Optional[int] = None
+    recovered_encoding: bool = False
+    decode_error: str = ""
 
 
 def transcribe_video(video_path: str, settings: Settings):
@@ -149,8 +151,15 @@ async def process_video(
             persist_task_history(settings.database_path, task_id)
 
         if candidate is not None and candidate.video_path is not None and candidate.transcript_path is not None:
-            transcript_text = candidate.transcript_path.read_text(encoding="utf-8")
-            result = ExistingTranscriptionResult(text=transcript_text, transcription_path=str(candidate.transcript_path))
+            transcript = read_transcript_text(candidate.transcript_path)
+            if transcript.recovered_encoding:
+                candidate.transcript_path.write_text(transcript.text, encoding="utf-8")
+            result = ExistingTranscriptionResult(
+                text=transcript.text,
+                transcription_path=str(candidate.transcript_path),
+                recovered_encoding=transcript.recovered_encoding,
+                decode_error=transcript.decode_error,
+            )
             resolved_transcription_backend = "reused"
             set_task_status(
                 task_id,
@@ -162,6 +171,7 @@ async def process_video(
                 transcription_backend="reused",
                 log_message=f"Using existing transcript: {result.transcription_path}",
             )
+            append_transcript_recovery_log(task_id, result)
             persist_task_history(settings.database_path, task_id)
         else:
             append_task_log(task_id, f"Transcribing with {settings.transcription_backend}.", status="transcribing")
@@ -178,6 +188,7 @@ async def process_video(
                 chunk_count=getattr(result, "chunk_count", None),
                 log_message=f"Transcript saved to {result.transcription_path}",
             )
+            append_transcript_recovery_log(task_id, result)
             persist_task_history(settings.database_path, task_id)
 
         if resolved_notes_backend == "ollama":
@@ -264,6 +275,20 @@ def delete_downloaded_video_after_completion(task_id: str, video_path: str, down
     )
     append_task_log(task_id, f"Deleted local video after completion: {path}", status="completed")
     return True
+
+
+def append_transcript_recovery_log(task_id: str, result):
+    if not getattr(result, "recovered_encoding", False):
+        return
+    append_task_log(
+        task_id,
+        (
+            "Transcript contained invalid UTF-8 bytes; recovered the readable text, "
+            f"rewrote it as UTF-8, and continued: {result.transcription_path}"
+        ),
+        level="warning",
+        status="organizing_notes",
+    )
 
 
 def resolve_notes_backend(request_backend: Optional[str], default_backend: str) -> str:

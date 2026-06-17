@@ -16,6 +16,15 @@ class LocalTranscriptionResult:
     text: str
     transcription_path: str
     model_path: str
+    recovered_encoding: bool = False
+    decode_error: str = ""
+
+
+@dataclass(frozen=True)
+class TranscriptTextResult:
+    text: str
+    recovered_encoding: bool = False
+    decode_error: str = ""
 
 
 class LocalWhisperTranscription:
@@ -74,17 +83,28 @@ class LocalWhisperTranscription:
             )
 
             transcript_path = _resolve_transcript_path(transcript_path, output_base, audio_path, video_path)
-            text = transcript_path.read_text(encoding="utf-8")
-            text = _normalize_whisper_text(text)
+            transcript = read_transcript_text(transcript_path)
+            text = _normalize_whisper_text(transcript.text)
             transcript_path.write_text(text, encoding="utf-8")
             return LocalTranscriptionResult(
                 text=text,
                 transcription_path=str(transcript_path),
                 model_path=self.model_path,
+                recovered_encoding=transcript.recovered_encoding,
+                decode_error=transcript.decode_error,
             )
         finally:
             if audio_path.exists():
                 audio_path.unlink()
+
+
+def read_transcript_text(transcript_path: str | Path) -> TranscriptTextResult:
+    path = Path(transcript_path)
+    try:
+        return TranscriptTextResult(text=path.read_text(encoding="utf-8"))
+    except UnicodeDecodeError as exc:
+        text = path.read_bytes().decode("utf-8", errors="replace")
+        return TranscriptTextResult(text=text, recovered_encoding=True, decode_error=str(exc))
 
 
 def _normalize_whisper_text(text: str) -> str:
@@ -224,9 +244,17 @@ def _supported_whisper_flags(whisper_cli: str) -> set[str]:
 
 
 def _run_command(command: list[str]):
-    result = subprocess.run(command, capture_output=True, text=True, check=False)
+    result = subprocess.run(command, capture_output=True, check=False)
     if result.returncode != 0:
-        output = (result.stderr or result.stdout or "").strip()
+        output = _decode_process_output(result.stderr or result.stdout).strip()
         if len(output) > 2000:
             output = output[-2000:]
         raise RuntimeError(f"Command failed: {' '.join(command[:2])}\n{output}")
+
+
+def _decode_process_output(output) -> str:
+    if output is None:
+        return ""
+    if isinstance(output, bytes):
+        return output.decode("utf-8", errors="replace")
+    return str(output)
