@@ -1,17 +1,30 @@
 import {CommonModule} from "@angular/common";
-import {Component, inject} from "@angular/core";
+import {ChangeDetectionStrategy, Component, input, output} from "@angular/core";
 
-import {TaskWorkflowService} from "../../services/task-workflow.service";
+import {formatElapsed, statusLabel} from "../../shared/format";
 import {TaskRecord} from "../../types/readvideo.types";
+
+export interface LatestOutputViewModel {
+  task: TaskRecord | null;
+  summary: string;
+  recentTasks: TaskRecord[];
+  canCopy: boolean;
+}
 
 @Component({
   selector: "rv-latest-output",
   standalone: true,
   imports: [CommonModule],
   templateUrl: "./latest-output.component.html",
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LatestOutputComponent {
-  readonly workflow = inject(TaskWorkflowService);
+  readonly vm = input.required<LatestOutputViewModel>();
+  readonly favoriteRequested = output<void>();
+  readonly copyRequested = output<void>();
+  readonly refreshRequested = output<void>();
+  readonly taskOpened = output<string>();
+  readonly readerOpened = output<string>();
 
   canFavorite(task: TaskRecord | null): boolean {
     return Boolean(task?.task_id && (task.summary || task.markdown_path));
@@ -22,15 +35,22 @@ export class LatestOutputComponent {
   }
 
   readSummary(task: TaskRecord | null): void {
-    if (!this.canRead(task) || !task?.markdown_path) return;
-    window.location.href = `/reader?path=${encodeURIComponent(task.markdown_path)}`;
+    if (this.canRead(task) && task?.markdown_path) this.readerOpened.emit(task.markdown_path);
   }
 
   taskPath(task: TaskRecord | null, key: "video_path" | "transcription_path" | "markdown_path"): string {
     return task?.[key] || "-";
   }
 
-  async openTask(taskId: string): Promise<void> {
-    await this.workflow.openRecentTask(taskId);
+  fileHref(kind: "video" | "transcript" | "markdown", task: TaskRecord | null): string {
+    return task?.task_id ? `/api/history/${encodeURIComponent(task.task_id)}/files/${kind}` : "";
+  }
+
+  statusLabel(status: string): string {
+    return statusLabel(status);
+  }
+
+  formatElapsed(task: Partial<TaskRecord> | null | undefined): string {
+    return formatElapsed(task);
   }
 }

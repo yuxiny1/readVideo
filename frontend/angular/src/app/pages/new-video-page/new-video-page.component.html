@@ -11,7 +11,21 @@
 </header>
 
 <main class="workspace">
-  <rv-process-panel />
-  <rv-latest-output />
+  <rv-process-panel
+    [vm]="processPanelVm()"
+    (formPatched)="patchForm($event)"
+    (submitRequested)="workflow.startFromForm()"
+    (whisperDownloadRequested)="models.downloadSelectedWhisperModel($event)"
+    (strongestModelRequested)="models.loadOllamaModels(true)"
+    (duplicateAction)="handleDuplicateAction($event)"
+  />
+  <rv-latest-output
+    [vm]="latestOutputVm()"
+    (favoriteRequested)="workflow.favoriteLatestSummary()"
+    (copyRequested)="workflow.copyLatestOutput()"
+    (refreshRequested)="workflow.loadRecentTasks()"
+    (taskOpened)="workflow.openRecentTask($event)"
+    (readerOpened)="openReader($event)"
+  />
   <rv-saved-sources />
 </main>

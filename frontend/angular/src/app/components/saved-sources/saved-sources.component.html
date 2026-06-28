@@ -1,32 +1,32 @@
 <aside class="tool-panel watch-panel">
   <div class="panel-header">
     <h2>Saved Sources</h2>
-    <span class="caption">{{ items().length }} saved</span>
+    <span class="caption">{{ sources.items().length }} saved</span>
   </div>
 
-  <form class="stack compact" (ngSubmit)="addWatchItem()">
+  <form class="stack compact" (ngSubmit)="sources.addWatchItem()">
     <div>
       <label for="watch-name">Name</label>
-      <input id="watch-name" name="watch-name" required placeholder="Channel or playlist name" [(ngModel)]="newItem.name">
+      <input id="watch-name" name="watch-name" required placeholder="Channel or playlist name" [(ngModel)]="sources.newItem.name">
     </div>
     <div>
       <label for="watch-url">URL</label>
-      <input id="watch-url" name="watch-url" required placeholder="https://www.youtube.com/@..." [(ngModel)]="newItem.url">
+      <input id="watch-url" name="watch-url" required placeholder="https://www.youtube.com/@..." [(ngModel)]="sources.newItem.url">
     </div>
     <div>
       <label for="watch-notes">Notes</label>
-      <textarea id="watch-notes" name="watch-notes" placeholder="Topic, cadence, or priority" [(ngModel)]="newItem.notes"></textarea>
+      <textarea id="watch-notes" name="watch-notes" placeholder="Topic, cadence, or priority" [(ngModel)]="sources.newItem.notes"></textarea>
     </div>
     <button class="secondary-button full" type="submit">Save Source</button>
   </form>
 
   <div class="watchlist">
-    @if (errors().list) {
-      <div class="empty-state">{{ errors().list }}</div>
-    } @else if (!items().length) {
+    @if (sources.errors().list) {
+      <div class="empty-state">{{ sources.errors().list }}</div>
+    } @else if (!sources.items().length) {
       <div class="empty-state">No saved sources yet.</div>
     } @else {
-      @for (item of items(); track item.id) {
+      @for (item of sources.items(); track item.id) {
         <article
           class="watch-item"
           draggable="true"
@@ -42,7 +42,7 @@
             class="drag-handle"
             type="button"
             draggable="true"
-            [disabled]="orderSaving()"
+            [disabled]="sources.orderSaving()"
             title="Drag to reorder"
             [attr.aria-label]="'Drag ' + item.name + ' to reorder'"
           >
@@ -71,8 +71,8 @@
                 @if (openActionsId() === item.id) {
                   <div class="action-menu-panel">
                     <button type="button" (click)="useUrl(item.url); closeActions()">Use</button>
-                    <button type="button" (click)="loadUpdates(item); closeActions()">Updates</button>
-                    <button class="danger-menu-item" type="button" (click)="deleteItem(item); closeActions()">Delete</button>
+                    <button type="button" (click)="sources.loadUpdates(item); closeActions()">Updates</button>
+                    <button class="danger-menu-item" type="button" (click)="sources.deleteItem(item); closeActions()">Delete</button>
                   </div>
                 }
               </div>
@@ -81,12 +81,12 @@
               <p class="watch-notes">{{ item.notes }}</p>
             }
             <div class="source-updates">
-              @if (errors()[item.id]) {
-                <div class="empty-state">{{ errors()[item.id] }}</div>
+              @if (sources.errors()[item.id]) {
+                <div class="empty-state">{{ sources.errors()[item.id] }}</div>
               }
-              @if (updates()[item.id]?.length) {
+              @if (sources.updates()[item.id]?.length) {
                 <div class="source-update-list">
-                  @for (update of updates()[item.id]; track update.url) {
+                  @for (update of sources.updates()[item.id]; track update.url) {
                     <div class="source-update">
                       <div>
                         <p class="watch-title">{{ update.title }}</p>

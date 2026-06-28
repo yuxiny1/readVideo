@@ -1,10 +1,11 @@
+@let vm = favoritesPage;
 <header class="topbar">
   <div>
     <h1>Favorites</h1>
     <div class="meta-row">
-      <span class="pill muted">{{ favoritesCount() }}</span>
-      <span class="pill muted">{{ folders().length }} folders</span>
-      <span class="pill muted">{{ tags().length }} tags</span>
+      <span class="pill muted">{{ vm.favoritesCount() }}</span>
+      <span class="pill muted">{{ vm.folders().length }} folders</span>
+      <span class="pill muted">{{ vm.tags().length }} tags</span>
     </div>
   </div>
 </header>
@@ -15,7 +16,7 @@
       <div>
         <h2>Notes</h2>
       </div>
-      <button class="secondary-button small-button" type="button" (click)="initialize()">Refresh</button>
+      <button class="secondary-button small-button" type="button" (click)="vm.initialize()">Refresh</button>
     </div>
 
     <div class="filter-toolbar">
@@ -25,8 +26,8 @@
           id="favorite-search"
           name="favorite-search"
           placeholder="Search title, source, summary, path, tags..."
-          [ngModel]="searchQuery()"
-          (ngModelChange)="searchQuery.set($event)"
+          [ngModel]="vm.searchQuery()"
+          (ngModelChange)="vm.searchQuery.set($event)"
         >
       </div>
       <div>
@@ -34,12 +35,12 @@
         <select
           id="favorite-folder-filter"
           name="favorite-folder-filter"
-          [ngModel]="activeFolderId()"
-          (ngModelChange)="setActiveFolder($event)"
+          [ngModel]="vm.activeFolderId()"
+          (ngModelChange)="vm.setActiveFolder($event)"
         >
           <option value="all">All folders</option>
           <option value="unfiled">Unfiled</option>
-          @for (folder of folders(); track folder.id) {
+          @for (folder of vm.folders(); track folder.id) {
             <option [value]="folder.id">{{ folder.name }}</option>
           }
         </select>
@@ -52,15 +53,15 @@
         <span class="caption">Filter</span>
       </div>
       <div class="tag-strip compact-tag-strip" aria-label="Favorite tag filters">
-        <button class="tag-chip" [ngClass]="activeTag() === 'all' ? 'active' : ''" type="button" (click)="setActiveTag('all')">
-          All <span>{{ tagCount("all") }}</span>
+        <button class="tag-chip" [ngClass]="vm.activeTag() === 'all' ? 'active' : ''" type="button" (click)="vm.setActiveTag('all')">
+          All <span>{{ vm.tagCount("all") }}</span>
         </button>
-        @if (!tags().length) {
+        @if (!vm.tags().length) {
           <span class="tag-chip muted">No tags yet</span>
           <span class="caption">Add tags from a note card.</span>
         } @else {
-          @for (tag of tags(); track tag.id) {
-            <button class="tag-chip" [ngClass]="activeTag() === tag.name ? 'active' : ''" type="button" (click)="setActiveTag(tag.name)">
+          @for (tag of vm.tags(); track tag.id) {
+            <button class="tag-chip" [ngClass]="vm.activeTag() === tag.name ? 'active' : ''" type="button" (click)="vm.setActiveTag(tag.name)">
               #{{ tag.name }} <span>{{ tag.task_count }}</span>
             </button>
           }
@@ -68,21 +69,21 @@
       </div>
     </section>
 
-    @if (notice()) {
-      <div class="notice ok">{{ notice() }}</div>
+    @if (vm.notice()) {
+      <div class="notice ok">{{ vm.notice() }}</div>
     }
 
     <div class="favorite-list notebook-list">
-      @if (error()) {
-        <div class="empty-state">{{ error() }}</div>
-      } @else if (!filteredFavorites().length) {
+      @if (vm.error()) {
+        <div class="empty-state">{{ vm.error() }}</div>
+      } @else if (!vm.filteredFavorites().length) {
         <div class="empty-state">No saved notes match this notebook view.</div>
       } @else {
-        @for (item of filteredFavorites(); track item.id) {
+        @for (item of vm.filteredFavorites(); track item.id) {
           <article class="favorite-card notebook-note-card">
             <div class="history-card-header">
               <div>
-                <h2>{{ title(item) }}</h2>
+                <h2>{{ vm.title(item) }}</h2>
                 <a class="watch-url" [href]="item.url || '#'" target="_blank" rel="noreferrer">{{ item.url || "No URL" }}</a>
               </div>
               <span class="pill ok">{{ item.folder_name || "Unfiled" }}</span>
@@ -91,14 +92,14 @@
             <section class="note-tag-manager">
               <div class="section-heading-row">
                 <h3>Tags</h3>
-                @if (!tagsFor(item).length) {
+                @if (!vm.tagsFor(item).length) {
                   <span class="tag-chip muted">No tags</span>
                 }
               </div>
-              @if (tagsFor(item).length) {
+              @if (vm.tagsFor(item).length) {
                 <div class="tag-strip note-tag-strip">
-                  @for (tag of tagsFor(item); track tag) {
-                    <button class="tag-chip" type="button" (click)="setActiveTag(tag)">#{{ tag }}</button>
+                  @for (tag of vm.tagsFor(item); track tag) {
+                    <button class="tag-chip" type="button" (click)="vm.setActiveTag(tag)">#{{ tag }}</button>
                   }
                 </div>
               }
@@ -107,10 +108,10 @@
                   [id]="'favorite-tags-' + item.id"
                   [name]="'favorite-tags-' + item.id"
                   placeholder="course, ai, finance"
-                  [ngModel]="tagDraft(item)"
-                  (ngModelChange)="setTagDraft(item, $event)"
+                  [ngModel]="vm.tagDraft(item)"
+                  (ngModelChange)="vm.setTagDraft(item, $event)"
                 >
-                <button class="secondary-button small-button" type="button" (click)="saveTags(item)">Save Tags</button>
+                <button class="secondary-button small-button" type="button" (click)="vm.saveTags(item)">Save Tags</button>
               </div>
             </section>
 
@@ -128,9 +129,9 @@
             <div class="favorite-management-grid">
               <div class="folder-picker">
                 <label [for]="'favorite-folder-' + item.id">Notebook Folder</label>
-                <select [id]="'favorite-folder-' + item.id" [ngModel]="item.folder_id || ''" (ngModelChange)="assignFolder(item, $event)">
+                <select [id]="'favorite-folder-' + item.id" [ngModel]="item.folder_id || ''" (ngModelChange)="vm.assignFolder(item, $event)">
                   <option value="">Unfiled</option>
-                  @for (folder of folders(); track folder.id) {
+                  @for (folder of vm.folders(); track folder.id) {
                     <option [value]="folder.id">{{ folder.name }}</option>
                   }
                 </select>
@@ -139,13 +140,13 @@
 
             <div class="card-actions">
               @if (item.markdown_path) {
-                <button class="secondary-button small-button" type="button" (click)="readFavorite(item)">Open Reader</button>
-                <a class="quiet-link small-link" [href]="downloadHref(item.markdown_path)">Download MD</a>
+                <button class="secondary-button small-button" type="button" (click)="vm.readFavorite(item)">Open Reader</button>
+                <a class="quiet-link small-link" [href]="vm.downloadHref(item.markdown_path)">Download MD</a>
               }
               @if (item.notes_dir) {
-                <button class="secondary-button small-button" type="button" (click)="browseFolder(item)">Browse Folder</button>
+                <button class="secondary-button small-button" type="button" (click)="vm.browseFolder(item)">Browse Folder</button>
               }
-              <button class="danger-button small-button" type="button" (click)="deleteFavorite(item)">Remove</button>
+              <button class="danger-button small-button" type="button" (click)="vm.deleteFavorite(item)">Remove</button>
             </div>
           </article>
         }
@@ -161,15 +162,15 @@
         </div>
       </div>
       <div class="tag-strip tag-management-list">
-        <button class="tag-chip" [ngClass]="activeTag() === 'all' ? 'active' : ''" type="button" (click)="setActiveTag('all')">
-          All <span>{{ tagCount("all") }}</span>
+        <button class="tag-chip" [ngClass]="vm.activeTag() === 'all' ? 'active' : ''" type="button" (click)="vm.setActiveTag('all')">
+          All <span>{{ vm.tagCount("all") }}</span>
         </button>
-        @if (!tags().length) {
+        @if (!vm.tags().length) {
           <span class="tag-chip muted">No tags yet</span>
           <span class="caption">Save tags on a note card first.</span>
         } @else {
-          @for (tag of tags(); track tag.id) {
-            <button class="tag-chip" [ngClass]="activeTag() === tag.name ? 'active' : ''" type="button" (click)="setActiveTag(tag.name)">
+          @for (tag of vm.tags(); track tag.id) {
+            <button class="tag-chip" [ngClass]="vm.activeTag() === tag.name ? 'active' : ''" type="button" (click)="vm.setActiveTag(tag.name)">
               #{{ tag.name }} <span>{{ tag.task_count }}</span>
             </button>
           }
@@ -183,74 +184,74 @@
           <h2>Notebook Folders</h2>
           <p class="panel-subtitle">Create a stable reading structure without moving Markdown files.</p>
         </div>
-        <span class="caption">{{ folders().length }} folders</span>
+        <span class="caption">{{ vm.folders().length }} folders</span>
       </div>
 
       <div class="folder-board">
-        <article class="folder-visual-card" [ngClass]="activeFolderId() === 'all' ? 'active' : ''">
-          <button class="folder-visual-main" type="button" (click)="setActiveFolder('all')">
+        <article class="folder-visual-card" [ngClass]="vm.activeFolderId() === 'all' ? 'active' : ''">
+          <button class="folder-visual-main" type="button" (click)="vm.setActiveFolder('all')">
             <span class="folder-glyph all-glyph">All</span>
             <span>
               <strong>All Notes</strong>
-              <small>{{ folderCount("all") }} saved notes</small>
+              <small>{{ vm.folderCount("all") }} saved notes</small>
             </span>
           </button>
           <div class="folder-action-row">
-            <button class="secondary-button small-button" type="button" (click)="setActiveFolder('all')">View</button>
-            <button class="secondary-button small-button" type="button" (click)="openFolderInReader('all')">Reader</button>
+            <button class="secondary-button small-button" type="button" (click)="vm.setActiveFolder('all')">View</button>
+            <button class="secondary-button small-button" type="button" (click)="vm.openFolderInReader('all')">Reader</button>
           </div>
         </article>
 
-        <article class="folder-visual-card" [ngClass]="activeFolderId() === 'unfiled' ? 'active' : ''">
-          <button class="folder-visual-main" type="button" (click)="setActiveFolder('unfiled')">
+        <article class="folder-visual-card" [ngClass]="vm.activeFolderId() === 'unfiled' ? 'active' : ''">
+          <button class="folder-visual-main" type="button" (click)="vm.setActiveFolder('unfiled')">
             <span class="folder-glyph unfiled-glyph">UF</span>
             <span>
               <strong>Unfiled</strong>
-              <small>{{ folderCount("unfiled") }} notes need a folder</small>
+              <small>{{ vm.folderCount("unfiled") }} notes need a folder</small>
             </span>
           </button>
           <div class="folder-action-row">
-            <button class="secondary-button small-button" type="button" (click)="setActiveFolder('unfiled')">View</button>
-            <button class="secondary-button small-button" type="button" (click)="openFolderInReader('unfiled')">Reader</button>
+            <button class="secondary-button small-button" type="button" (click)="vm.setActiveFolder('unfiled')">View</button>
+            <button class="secondary-button small-button" type="button" (click)="vm.openFolderInReader('unfiled')">Reader</button>
           </div>
         </article>
 
-        @for (folder of folders(); track folder.id) {
-          <article class="folder-visual-card" [ngClass]="activeFolderId() === folderId(folder) ? 'active' : ''">
-            <button class="folder-visual-main" type="button" (click)="setActiveFolder(folderId(folder))">
-              <span class="folder-glyph">{{ folderInitial(folder) }}</span>
+        @for (folder of vm.folders(); track folder.id) {
+          <article class="folder-visual-card" [ngClass]="vm.activeFolderId() === vm.folderId(folder) ? 'active' : ''">
+            <button class="folder-visual-main" type="button" (click)="vm.setActiveFolder(vm.folderId(folder))">
+              <span class="folder-glyph">{{ vm.folderInitial(folder) }}</span>
               <span>
                 <strong>{{ folder.name }}</strong>
-                <small>{{ folderCount(folder.id) }} notes · updated {{ folder.updated_at || "-" }}</small>
+                <small>{{ vm.folderCount(folder.id) }} notes · updated {{ folder.updated_at || "-" }}</small>
               </span>
             </button>
             @if (folder.notes) {
               <p>{{ folder.notes }}</p>
             }
-            @if (folderTags(folder.id).length) {
+            @if (vm.folderTags(folder.id).length) {
               <div class="tag-strip folder-mini-tags">
-                @for (tag of folderTags(folder.id); track tag) {
-                  <button class="tag-chip mini" type="button" (click)="setActiveTag(tag)">#{{ tag }}</button>
+                @for (tag of vm.folderTags(folder.id); track tag) {
+                  <button class="tag-chip mini" type="button" (click)="vm.setActiveTag(tag)">#{{ tag }}</button>
                 }
               </div>
             }
             <div class="folder-action-row">
-              <button class="secondary-button small-button" type="button" (click)="setActiveFolder(folderId(folder))">View</button>
-              <button class="secondary-button small-button" type="button" (click)="openFolderInReader(folder.id)">Reader</button>
-              <button class="secondary-button small-button" type="button" (click)="beginEditFolder(folder)">Edit</button>
-              <button class="secondary-button small-button" type="button" (click)="copyFolderLabel(folder)">Copy</button>
+              <button class="secondary-button small-button" type="button" (click)="vm.setActiveFolder(vm.folderId(folder))">View</button>
+              <button class="secondary-button small-button" type="button" (click)="vm.openFolderInReader(folder.id)">Reader</button>
+              <button class="secondary-button small-button" type="button" (click)="vm.beginEditFolder(folder)">Edit</button>
+              <button class="secondary-button small-button" type="button" (click)="vm.copyFolderLabel(folder)">Copy</button>
             </div>
 
-            @if (editingFolderId() === folder.id) {
-              <form class="folder-edit-form" (ngSubmit)="saveFolder(folder)">
+            @if (vm.editingFolderId() === folder.id) {
+              <form class="folder-edit-form" (ngSubmit)="vm.saveFolder(folder)">
                 <div>
                   <label [for]="'folder-name-' + folder.id">Folder Name</label>
                   <input
                     [id]="'folder-name-' + folder.id"
                     [name]="'folder-name-' + folder.id"
                     required
-                    [ngModel]="folderDraftName(folder)"
-                    (ngModelChange)="setFolderDraftName(folder, $event)"
+                    [ngModel]="vm.folderDraftName(folder)"
+                    (ngModelChange)="vm.setFolderDraftName(folder, $event)"
                   >
                 </div>
                 <div>
@@ -258,13 +259,13 @@
                   <textarea
                     [id]="'folder-notes-' + folder.id"
                     [name]="'folder-notes-' + folder.id"
-                    [ngModel]="folderDraftNotes(folder)"
-                    (ngModelChange)="setFolderDraftNotes(folder, $event)"
+                    [ngModel]="vm.folderDraftNotes(folder)"
+                    (ngModelChange)="vm.setFolderDraftNotes(folder, $event)"
                   ></textarea>
                 </div>
                 <div class="folder-action-row">
                   <button class="secondary-button small-button" type="submit">Save</button>
-                  <button class="secondary-button small-button" type="button" (click)="cancelEditFolder()">Cancel</button>
+                  <button class="secondary-button small-button" type="button" (click)="vm.cancelEditFolder()">Cancel</button>
                 </div>
               </form>
             }
@@ -272,14 +273,14 @@
         }
       </div>
 
-      <form class="stack compact folder-create-form" (ngSubmit)="createFolder()">
+      <form class="stack compact folder-create-form" (ngSubmit)="vm.createFolder()">
         <div>
           <label for="favorite-folder-name">New Folder</label>
-          <input id="favorite-folder-name" name="favorite-folder-name" required placeholder="Course Notes, Product, Research..." [(ngModel)]="folderName">
+          <input id="favorite-folder-name" name="favorite-folder-name" required placeholder="Course Notes, Product, Research..." [(ngModel)]="vm.folderName">
         </div>
         <div>
           <label for="favorite-folder-notes">Folder Notes</label>
-          <textarea id="favorite-folder-notes" name="favorite-folder-notes" placeholder="What belongs here" [(ngModel)]="folderNotes"></textarea>
+          <textarea id="favorite-folder-notes" name="favorite-folder-notes" placeholder="What belongs here" [(ngModel)]="vm.folderNotes"></textarea>
         </div>
         <button class="secondary-button full" type="submit">Create Folder</button>
       </form>

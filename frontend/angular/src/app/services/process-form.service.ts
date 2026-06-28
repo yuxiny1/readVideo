@@ -17,7 +17,7 @@ export interface ProcessFormState {
   deleteVideoAfterCompletion: boolean;
 }
 
-@Injectable({providedIn: "root"})
+@Injectable()
 export class ProcessFormService {
   readonly form = signal<ProcessFormState>({
     url: "",

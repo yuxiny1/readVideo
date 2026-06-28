@@ -12,31 +12,32 @@ def read_repo_file(relative_path: str) -> str:
 
 class FrontendContractTest(unittest.TestCase):
     def test_reader_limits_favorite_notes_to_three_visible_items(self):
-        component = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-page.component.ts")
+        facade = read_repo_file("frontend/angular/src/app/pages/reader-page/reader.facade.ts")
         template = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-page.component.html")
         styles = read_repo_file("frontend/css/partials/reader-library.css")
 
-        self.assertIn("visibleFavoriteNotes", component)
-        self.assertIn(".slice(0, 3)", component)
-        self.assertIn("@for (item of visibleFavoriteNotes(); track item.id)", template)
+        self.assertIn("visibleFavoriteNotes", facade)
+        self.assertIn(".slice(0, 3)", facade)
+        self.assertIn("@for (item of vm.visibleFavoriteNotes(); track item.id)", template)
         self.assertIn("favorite-note-list", styles)
 
     def test_reader_exposes_focus_mode(self):
-        component = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-page.component.ts")
+        document_store = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-document.store.ts")
+        preferences = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-preferences.ts")
         template = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-page.component.html")
         library_styles = read_repo_file("frontend/css/partials/reader-library.css")
         document_styles = read_repo_file("frontend/css/partials/reader-document.css")
 
-        self.assertIn("focusMode", component)
-        self.assertIn("toggleFocusMode", component)
-        self.assertIn("readvideo.reader.focusMode", component)
-        self.assertIn("focusTheme", component)
-        self.assertIn("readvideo.reader.focusTheme", component)
+        self.assertIn("focusMode", document_store)
+        self.assertIn("toggleFocusMode", document_store)
+        self.assertIn("readvideo.reader.focusMode", preferences)
+        self.assertIn("focusTheme", document_store)
+        self.assertIn("readvideo.reader.focusTheme", preferences)
         self.assertIn("reader-focus-mode", template)
         self.assertIn("reader-focus-dark", template)
         self.assertIn("Focus Mode", template)
         self.assertIn("Dark", template)
-        self.assertIn("@if (!focusMode())", template)
+        self.assertIn("@if (!vm.document.focusMode())", template)
         self.assertIn(".reader-workspace.reader-focus-mode", library_styles)
         self.assertIn(".reader-workspace.reader-focus-dark", library_styles)
         self.assertIn(".app-layout:has(.reader-workspace.reader-focus-mode)", library_styles)
@@ -76,23 +77,23 @@ class FrontendContractTest(unittest.TestCase):
         latest_template = read_repo_file("frontend/angular/src/app/components/latest-output/latest-output.component.html")
         workflow = read_repo_file("frontend/angular/src/app/services/task-workflow.service.ts")
         reader_template = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-page.component.html")
-        reader_component = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-page.component.ts")
+        reader_document = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-document.store.ts")
 
         self.assertIn("Copy Full Note", latest_template)
-        self.assertIn("copyLatestOutput", latest_template)
+        self.assertIn("copyRequested.emit()", latest_template)
         self.assertIn("markdownDocument(markdownPath)", workflow)
         self.assertIn("Full Markdown note copied", workflow)
         self.assertIn("Copy Full MD", reader_template)
-        self.assertIn("Full Markdown copied", reader_component)
+        self.assertIn("Full Markdown copied", reader_document)
 
     def test_tags_are_shared_across_favorites_reader_and_history(self):
         api = read_repo_file("frontend/angular/src/app/services/readvideo-api.service.ts")
         types = read_repo_file("frontend/angular/src/app/types/readvideo.types.ts")
-        favorites_component = read_repo_file("frontend/angular/src/app/pages/favorites-page/favorites-page.component.ts")
+        favorites_facade = read_repo_file("frontend/angular/src/app/pages/favorites-page/favorites.facade.ts")
         favorites_template = read_repo_file("frontend/angular/src/app/pages/favorites-page/favorites-page.component.html")
-        reader_component = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-page.component.ts")
+        reader_facade = read_repo_file("frontend/angular/src/app/pages/reader-page/reader.facade.ts")
         reader_template = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-page.component.html")
-        history_component = read_repo_file("frontend/angular/src/app/pages/history-page/history-page.component.ts")
+        history_facade = read_repo_file("frontend/angular/src/app/pages/history-page/history.facade.ts")
         history_template = read_repo_file("frontend/angular/src/app/pages/history-page/history-page.component.html")
 
         self.assertIn("TagSummary", types)
@@ -101,27 +102,67 @@ class FrontendContractTest(unittest.TestCase):
         self.assertIn("updateHistoryTags", api)
         self.assertIn("/api/tags", api)
         self.assertIn("Notebook Folders", favorites_template)
-        self.assertIn("tagDrafts", favorites_component)
+        self.assertIn("tagDrafts", favorites_facade)
         self.assertIn("folder-visual-card", favorites_template)
         self.assertIn("note-tag-manager", favorites_template)
         self.assertIn("Save Tags", favorites_template)
-        self.assertIn("openFolderInReader", favorites_component)
+        self.assertIn("openFolderInReader", favorites_facade)
         self.assertIn("updateFavoriteFolder", api)
         self.assertNotIn('(click)="deleteFolder(folder)"', favorites_template)
         self.assertIn("saveTags(item)", favorites_template)
-        self.assertIn("favoriteFolderId", reader_component)
-        self.assertIn("setActiveFavoriteFolder", reader_component)
-        self.assertIn("activeTag", reader_component)
-        self.assertIn("saveActiveTags", reader_component)
-        self.assertIn("updateFavoriteTags", reader_component)
+        self.assertIn("favoriteFolderId", reader_facade)
+        self.assertIn("setActiveFavoriteFolder", reader_facade)
+        self.assertIn("activeTag", reader_facade)
+        self.assertIn("saveActiveTags", reader_facade)
+        self.assertIn("updateFavoriteTags", reader_facade)
         self.assertIn("reader-document-tags-row", reader_template)
         self.assertIn("reader-tag-edit-row", reader_template)
         self.assertIn("Save Tags", reader_template)
         self.assertIn("No tags", reader_template)
         self.assertIn("reader-tag-filter", reader_template)
         self.assertIn("activeDocumentTags", reader_template)
-        self.assertIn("filteredRecords", history_component)
-        self.assertIn("saveTags(record)", history_template)
+        self.assertIn("filteredRecords", history_facade)
+        self.assertIn("vm.saveTags(record)", history_template)
+
+    def test_angular_architecture_uses_scoped_signals_and_observable_boundaries(self):
+        app_root = PROJECT_ROOT / "frontend/angular/src/app"
+        api = read_repo_file("frontend/angular/src/app/services/readvideo-api.service.ts")
+        routes = read_repo_file("frontend/angular/src/app/app.routes.ts")
+        new_video = read_repo_file("frontend/angular/src/app/pages/new-video-page/new-video-page.component.ts")
+
+        self.assertIn("HttpClient", api)
+        self.assertIn("Observable<", api)
+        self.assertNotIn("fetch(", api)
+        self.assertNotIn("Promise<", api)
+        self.assertIn("loadComponent", routes)
+        self.assertIn("providers: [ProcessFormService, LocalModelsService, TaskWorkflowService]", new_video)
+
+        for component in app_root.rglob("*.component.ts"):
+            source = component.read_text(encoding="utf-8")
+            self.assertIn(
+                "ChangeDetectionStrategy.OnPush",
+                source,
+                f"{component.relative_to(PROJECT_ROOT)} must use OnPush",
+            )
+
+        for relative_path in [
+            "frontend/angular/src/app/components/process-panel/process-panel.component.ts",
+            "frontend/angular/src/app/components/latest-output/latest-output.component.ts",
+        ]:
+            source = read_repo_file(relative_path)
+            self.assertIn("input.required", source)
+            self.assertIn("output<", source)
+            self.assertNotIn("inject(", source)
+
+    def test_frontend_typescript_modules_stay_focused(self):
+        app_root = PROJECT_ROOT / "frontend/angular/src/app"
+        for module in app_root.rglob("*.ts"):
+            line_count = len(module.read_text(encoding="utf-8").splitlines())
+            self.assertLessEqual(
+                line_count,
+                350,
+                f"{module.relative_to(PROJECT_ROOT)} has {line_count} lines; split its responsibilities",
+            )
 
 
 if __name__ == "__main__":
