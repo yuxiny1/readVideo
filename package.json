@@ -12,8 +12,10 @@
     "start": ".venv/bin/python main.py",
     "build": "npm run build:frontend",
     "build:frontend": "ng build",
-    "check": "npm run check:frontend && npm run test:coverage",
+    "check": "npm run check:frontend && npm run test:frontend:coverage && npm run test:coverage",
     "check:frontend": "ng build --configuration development",
+    "test:frontend": "ng test --watch=false",
+    "test:frontend:coverage": "ng test --watch=false --coverage",
     "test": ".venv/bin/python -m unittest -v",
     "test:coverage": ".venv/bin/python -m coverage run -m unittest discover -v && .venv/bin/python -m coverage report --fail-under=80"
   },
@@ -34,6 +36,9 @@
     "@angular/build": "21.2.11",
     "@angular/cli": "21.2.11",
     "@angular/compiler-cli": "21.2.13",
-    "typescript": "~5.9.3"
+    "@vitest/coverage-v8": "^4.1.9",
+    "jsdom": "^29.1.1",
+    "typescript": "~5.9.3",
+    "vitest": "^4.1.9"
   }
 }
