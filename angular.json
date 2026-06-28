@@ -36,6 +36,31 @@
             }
           },
           "defaultConfiguration": "production"
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "runner": "vitest",
+            "tsConfig": "tsconfig.spec.json",
+            "buildTarget": "readvideo:build:development",
+            "coverageInclude": [
+              "frontend/angular/src/**/*.ts"
+            ],
+            "coverageExclude": [
+              "frontend/angular/src/**/*.spec.ts"
+            ],
+            "coverageReporters": [
+              "text",
+              "html",
+              "lcov"
+            ],
+            "coverageThresholds": {
+              "statements": 80,
+              "branches": 60,
+              "functions": 80,
+              "lines": 80
+            }
+          }
         }
       }
     }

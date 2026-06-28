@@ -59,8 +59,38 @@ class FrontendContractTest(unittest.TestCase):
     def test_check_script_runs_frontend_build_and_backend_coverage(self):
         package = json.loads(read_repo_file("package.json"))
 
-        self.assertEqual(package["scripts"]["check"], "npm run check:frontend && npm run test:coverage")
+        self.assertEqual(
+            package["scripts"]["check"],
+            "npm run check:frontend && npm run test:frontend:coverage && npm run test:coverage",
+        )
+        self.assertEqual(package["scripts"]["test:frontend"], "ng test --watch=false")
+        self.assertEqual(package["scripts"]["test:frontend:coverage"], "ng test --watch=false --coverage")
         self.assertIn("coverage report --fail-under=80", package["scripts"]["test:coverage"])
+
+    def test_every_frontend_typescript_module_has_a_colocated_spec(self):
+        source_root = PROJECT_ROOT / "frontend" / "angular" / "src"
+        production_files = sorted(
+            path for path in source_root.rglob("*.ts")
+            if not path.name.endswith(".spec.ts")
+        )
+        missing_specs = [
+            path.relative_to(PROJECT_ROOT).as_posix()
+            for path in production_files
+            if not path.with_name(f"{path.stem}.spec.ts").is_file()
+        ]
+
+        self.assertEqual(missing_specs, [], f"Missing frontend specs: {missing_specs}")
+
+    def test_angular_vitest_runner_enforces_frontend_coverage(self):
+        workspace = json.loads(read_repo_file("angular.json"))
+        test_options = workspace["projects"]["readvideo"]["architect"]["test"]
+
+        self.assertEqual(test_options["builder"], "@angular/build:unit-test")
+        self.assertEqual(test_options["options"]["runner"], "vitest")
+        self.assertEqual(
+            test_options["options"]["coverageThresholds"],
+            {"statements": 80, "branches": 60, "functions": 80, "lines": 80},
+        )
 
     def test_new_video_exposes_commercial_editorial_note_style(self):
         template = read_repo_file("frontend/angular/src/app/components/process-panel/process-panel.component.html")

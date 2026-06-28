@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/spec",
+    "types": ["vitest/globals"]
+  },
+  "include": [
+    "frontend/angular/src/**/*.spec.ts",
+    "frontend/angular/src/**/*.d.ts"
+  ]
+}

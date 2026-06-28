@@ -52,3 +52,14 @@ without keeping route-scoped UI state alive after navigation.
 - Errors are handled inside the stream.
 - New routes use lazy `loadComponent` loading.
 - TypeScript modules stay below the repository's 350-line architecture guard.
+
+## Unit Tests
+
+- Angular unit tests use the Angular CLI `@angular/build:unit-test` builder with Vitest and jsdom.
+- Every production `.ts` file under `frontend/angular/src` has a colocated `.spec.ts` file.
+- Pure selectors and formatters test input/output behavior directly.
+- Services test observable orchestration and HTTP method, URL, body, success, and failure contracts.
+- SignalStores test state transitions, computed selectors, immutable updates, and request errors.
+- Facades test user workflows with controlled API and router dependencies.
+- Standalone components test inputs, outputs, initialization, and delegation without repeating facade tests.
+- `npm run test:frontend:coverage` enforces 80% statements, 60% branches, 80% functions, and 80% lines globally.
