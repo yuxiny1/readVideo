@@ -1,38 +1,52 @@
-import {Injectable, computed, inject, signal} from "@angular/core";
-
-import {formatBytes, formatElapsed, formatEta, formatSpeed, statusLabel} from "../shared/format";
+import {DestroyRef, Injectable, computed, inject, signal} from "@angular/core";
+import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 import {
-  AppConfig,
-  DuplicateLookup,
-  NoticeKind,
-  NoticeState,
-  OllamaModel,
-  TaskLog,
-  TaskRecord,
-  TranscriptionLanguageOption,
-  WhisperModelOption,
-} from "../types/readvideo.types";
+  EMPTY,
+  Observable,
+  Subject,
+  catchError,
+  defer,
+  filter,
+  forkJoin,
+  map,
+  of,
+  switchMap,
+  take,
+  takeWhile,
+  tap,
+  timer,
+} from "rxjs";
+
+import {errorMessage} from "../shared/errors";
+import {statusLabel} from "../shared/format";
+import {DuplicateLookup, NoticeKind, NoticeState, ProcessPayload, TaskRecord} from "../types/readvideo.types";
+import {LocalModelsService} from "./local-models.service";
 import {ProcessFormService} from "./process-form.service";
 import {ReadvideoApiService} from "./readvideo-api.service";
+import {
+  TERMINAL_TASK_STATUSES,
+  describeTaskPhase,
+  localTaskLog,
+  taskNotice,
+  taskProgressPercent,
+} from "./task-presenter";
 
-@Injectable({providedIn: "root"})
+export interface StartProcessingOptions {
+  skipDuplicateCheck?: boolean;
+  reuseTaskId?: string;
+  forceDownload?: boolean;
+}
+
+@Injectable()
 export class TaskWorkflowService {
   private readonly api = inject(ReadvideoApiService);
   private readonly processForm = inject(ProcessFormService);
-  private pollTimer: number | null = null;
+  private readonly models = inject(LocalModelsService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly pollRequests = new Subject<string>();
 
-  readonly config = signal<AppConfig | null>(null);
+  readonly config = this.models.config;
   readonly health = signal<"Checking" | "Online" | "Offline">("Checking");
-  readonly ollamaModels = signal<OllamaModel[]>([]);
-  readonly ollamaModelOptions = computed(() => [...this.ollamaModels()].sort((first, second) => {
-    const sizeDelta = Number(second.size || 0) - Number(first.size || 0);
-    return sizeDelta || first.name.localeCompare(second.name);
-  }));
-  readonly ollamaAvailable = signal(false);
-  readonly ollamaStatus = signal<NoticeState>({text: "Checking Ollama models...", kind: "muted"});
-  readonly whisperModels = signal<WhisperModelOption[]>([]);
-  readonly transcriptionLanguages = signal<TranscriptionLanguageOption[]>([]);
-  readonly whisperStatus = signal<NoticeState>({text: "Checking local Whisper models...", kind: "muted"});
   readonly latestTask = signal<TaskRecord | null>(null);
   readonly latestSummary = signal("");
   readonly notice = signal<NoticeState>({text: "Idle", kind: "muted"});
@@ -44,415 +58,225 @@ export class TaskWorkflowService {
     const config = this.config();
     return config ? `${config.transcription_backend} / Better Local AI Notes` : "Backend";
   });
-
   readonly taskIdLabel = computed(() => {
     const taskId = this.latestTask()?.task_id;
     return taskId ? `Task ${taskId}` : "";
   });
-
-  readonly progressPercent = computed(() => {
-    const task = this.latestTask();
-    if (!task) return 0;
-    if (task.status === "completed") return 100;
-    const percent = Number(task.download_percent);
-    return Number.isFinite(percent) ? Math.max(0, Math.min(100, percent)) : 0;
-  });
-
+  readonly progressPercent = computed(() => taskProgressPercent(this.latestTask()));
   readonly phaseTitle = computed(() => statusLabel(this.latestTask()?.status || "idle"));
-  readonly phaseDetail = computed(() => this.describePhase(this.latestTask()));
-  readonly logs = computed(() => this.latestTask()?.logs || []);
+  readonly phaseDetail = computed(() => describeTaskPhase(this.latestTask()));
+  readonly logs = computed(() => this.latestTask()?.logs ?? []);
   readonly canCopyLatestOutput = computed(() => Boolean(this.latestTask()?.markdown_path || this.latestSummary()));
 
-  async initialize(): Promise<void> {
-    try {
-      const [health, config] = await Promise.all([this.api.health(), this.api.appConfig()]);
-      this.health.set(health.status === "ok" ? "Online" : "Offline");
-      this.config.set(config);
-      this.processForm.patch({
-        transcriptionBackend: config.transcription_backend || "local",
-        localWhisperModel: config.local_whisper_model || "models/ggml-large-v3-turbo.bin",
-        localWhisperLanguage: config.local_whisper_language || "auto",
-        notesBackend: "ollama",
-        noteStyle: config.note_style || "detailed",
-        ollamaModel: config.ollama_model || "qwen2.5:32b",
-      });
-      await Promise.all([this.loadOllamaModels(true), this.loadTranscriptionModels(true), this.loadRecentTasks()]);
-    } catch (error) {
-      this.health.set("Offline");
-      this.setNotice(this.errorMessage(error), "error");
-    }
+  constructor() {
+    this.pollRequests.pipe(
+      switchMap((taskId) => timer(0, 1800).pipe(
+        switchMap(() => this.api.taskStatus(taskId)),
+        takeWhile((task) => !TERMINAL_TASK_STATUSES.has(task.status), true),
+        catchError((error) => {
+          this.setNotice(errorMessage(error), "error");
+          return EMPTY;
+        }),
+      )),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe((task) => this.renderTask(task));
   }
 
-  async loadOllamaModels(preferStrongest = false): Promise<void> {
-    try {
-      const result = await this.api.ollamaModels();
-      this.ollamaAvailable.set(result.status === "ok");
-      this.ollamaModels.set(result.models || []);
-      if (result.status !== "ok") {
-        this.ollamaStatus.set({text: result.error || "Ollama is not reachable.", kind: "error"});
-        return;
-      }
-      this.selectDefaultOllamaModel(preferStrongest);
-      this.validateOllamaSelection();
-    } catch (error) {
-      this.ollamaAvailable.set(false);
-      this.ollamaModels.set([]);
-      this.ollamaStatus.set({text: this.errorMessage(error), kind: "error"});
-    }
-  }
-
-  async loadTranscriptionModels(preferStrongest = false): Promise<void> {
-    try {
-      const result = await this.api.transcriptionModels();
-      this.whisperModels.set(result.whisper || []);
-      this.transcriptionLanguages.set(result.languages || []);
-      const recommended = this.recommendedWhisperModel();
-      if (recommended && (preferStrongest || !this.processForm.form().localWhisperModel.trim())) {
-        this.processForm.patch({localWhisperModel: recommended.path});
-      }
-      this.validateWhisperSelection();
-    } catch (error) {
-      this.whisperModels.set([]);
-      this.transcriptionLanguages.set([]);
-      this.whisperStatus.set({text: this.errorMessage(error), kind: "error"});
-    }
-  }
-
-  async downloadSelectedWhisperModel(modelPath = this.processForm.form().localWhisperModel): Promise<void> {
-    const model = this.resolveWhisperModel(modelPath) || this.recommendedWhisperModel();
-    if (!model) {
-      this.whisperStatus.set({text: "Choose a recommended Whisper model before downloading.", kind: "error"});
-      return;
-    }
-
-    this.whisperStatus.set({text: `Downloading ${model.label} (${model.size})...`, kind: "pending"});
-    try {
-      const result = await this.api.downloadTranscriptionModel(model.name);
-      this.processForm.patch({localWhisperModel: result.path});
-      await this.loadTranscriptionModels();
-      this.whisperStatus.set({
-        text: result.downloaded ? `Ready: downloaded ${model.label}.` : `Ready: ${model.label} was already installed.`,
-        kind: "ok",
-      });
-    } catch (error) {
-      this.whisperStatus.set({text: this.errorMessage(error), kind: "error"});
-    }
-  }
-
-  validateWhisperSelection(): boolean {
-    const selection = this.processForm.form().localWhisperModel.trim() || this.config()?.local_whisper_model || "";
-    const model = this.resolveWhisperModel(selection);
-    if (model?.installed) {
-      this.whisperStatus.set({
-        text: model.recommended
-          ? `Ready: ${model.label} is installed. Recommended for reducing repeated transcript text.`
-          : `Ready: ${model.label} is installed. Large v3 Turbo is stronger if repeats continue.`,
-        kind: model.recommended ? "ok" : "pending",
-      });
-      return true;
-    }
-    if (model) {
-      this.whisperStatus.set({
-        text: `Not installed: ${model.label} (${model.size}). Use Download, or run: curl -L -o ${model.path} ${model.url}`,
-        kind: "error",
-      });
-      return false;
-    }
-    this.whisperStatus.set({
-      text: selection ? `Custom model path: ${selection}` : "Choose a local Whisper model.",
-      kind: selection ? "muted" : "error",
+  initialize(): void {
+    forkJoin({health: this.api.health(), config: this.api.appConfig()}).pipe(
+      take(1),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: ({health, config}) => {
+        this.health.set(health.status === "ok" ? "Online" : "Offline");
+        this.models.initialize(config);
+        this.loadRecentTasks();
+      },
+      error: (error) => {
+        this.health.set("Offline");
+        this.setNotice(errorMessage(error), "error");
+      },
     });
-    return Boolean(selection);
   }
 
-  recommendedWhisperModel(): WhisperModelOption | null {
-    return this.whisperModels().find((model) => model.recommended) || this.whisperModels()[0] || null;
-  }
-
-  resolveWhisperModel(pathOrName: string): WhisperModelOption | null {
-    const value = pathOrName.trim();
-    if (!value) return null;
-    return this.whisperModels().find((model) => model.path === value || model.name === value) || null;
-  }
-
-  validateOllamaSelection(): boolean {
-    const form = this.processForm.form();
-    const model = form.ollamaModel.trim() || this.config()?.ollama_model || "qwen2.5:32b";
-    if (!this.ollamaAvailable()) {
-      this.ollamaStatus.set({text: "Ollama is not reachable.", kind: "error"});
-      return false;
-    }
-    if (!this.isInstalledOllamaModel(model)) {
-      this.ollamaStatus.set({text: `Missing: ${model}. Run: ollama pull ${model}`, kind: "error"});
-      return false;
-    }
-    const selected = this.resolveOllamaModel(model);
-    const size = selected?.size_label ? ` (${selected.size_label})` : "";
-    this.ollamaStatus.set({text: `Ready: ${model}${size} is installed locally.`, kind: "ok"});
-    return true;
-  }
-
-  async startFromForm(options: {skipDuplicateCheck?: boolean; reuseTaskId?: string; forceDownload?: boolean} = {}): Promise<void> {
+  startFromForm(options: StartProcessingOptions = {}): void {
     const url = this.processForm.form().url.trim();
-    if (!url) return;
-    await this.startProcessingUrl(url, options);
+    if (url) this.startProcessingUrl(url, options);
   }
 
-  async startProcessingUrl(url: string, options: {skipDuplicateCheck?: boolean; reuseTaskId?: string; forceDownload?: boolean} = {}): Promise<void> {
-    this.clearPoll();
-    if (!options.skipDuplicateCheck && await this.maybeShowDuplicatePanel(url)) {
-      return;
-    }
+  startProcessingUrl(url: string, options: StartProcessingOptions = {}): void {
+    const normalizedUrl = url.trim();
+    if (!normalizedUrl) return;
+    const ready$ = options.skipDuplicateCheck
+      ? of(true)
+      : this.checkDuplicate(normalizedUrl);
 
-    const payload = this.processForm.payload(url, options);
-    const selectedModel = payload.ollama_model || this.config()?.ollama_model || "qwen2.5:32b";
-    if (payload.transcription_backend === "local" && !this.validateWhisperSelection()) {
-      this.setNotice(this.whisperStatus().text, "error");
-      this.latestTask.set({
-        task_id: "local-check",
-        status: "failed",
-        error: this.whisperStatus().text,
-        logs: [this.localLog("failed", this.whisperStatus().text, "error")],
-      });
-      return;
-    }
-    if (payload.notes_backend === "ollama" && !this.isInstalledOllamaModel(selectedModel)) {
-      this.setNotice(`Ollama model "${selectedModel}" is not installed.\nRun: ollama pull ${selectedModel}`, "error");
-      this.latestTask.set({
-        task_id: "local-check",
-        status: "failed",
-        error: `Missing Ollama model: ${selectedModel}`,
-        logs: [this.localLog("failed", `Ollama has ${this.installedModels().join(", ") || "no visible models"}. Missing: ${selectedModel}.`, "error")],
-      });
-      return;
-    }
-
-    this.hideDuplicatePanel();
-    this.processForm.patch({url});
-    this.latestSummary.set("");
-    this.latestTask.set({
-      task_id: "queued",
-      status: "queued",
-      logs: [this.localLog("queued", `Queued ${url}`)],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+    ready$.pipe(
+      filter(Boolean),
+      map(() => this.processForm.payload(normalizedUrl, options)),
+      filter((payload) => this.validatePayload(payload)),
+      tap(() => this.queueTask(normalizedUrl)),
+      switchMap((payload) => this.api.processVideo(payload)),
+      take(1),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: (task) => {
+        this.renderTask(task);
+        this.pollRequests.next(task.task_id);
+      },
+      error: (error) => this.setNotice(errorMessage(error), "error"),
     });
-    this.setNotice("Queued", "pending");
-
-    try {
-      const task = await this.api.processVideo(payload);
-      this.renderTask(task);
-      await this.pollTask(task.task_id);
-    } catch (error) {
-      this.setNotice(this.errorMessage(error), "error");
-    }
   }
 
   useExistingDuplicateOutput(): void {
-    const duplicate = this.duplicate();
-    const record = duplicate?.record;
+    const record = this.duplicate()?.record;
     if (!record) return;
     this.hideDuplicatePanel();
     this.renderTask({
       ...record,
       status: "completed",
       completed_at: record.completed_at || record.updated_at,
-      logs: [this.localLog("completed", `Using existing output from task ${record.task_id}.`)],
+      logs: [localTaskLog("completed", `Using existing output from task ${record.task_id}.`)],
     });
   }
 
-  async regenerateDuplicateSummary(): Promise<void> {
+  regenerateDuplicateSummary(): void {
     const record = this.duplicate()?.record;
     const url = this.duplicateUrl();
     if (!record || !url) return;
     this.hideDuplicatePanel();
-    await this.startProcessingUrl(url, {skipDuplicateCheck: true, reuseTaskId: record.task_id});
+    this.startProcessingUrl(url, {skipDuplicateCheck: true, reuseTaskId: record.task_id});
   }
 
-  async forceDuplicateRedownload(): Promise<void> {
+  forceDuplicateRedownload(): void {
     const url = this.duplicateUrl();
     if (!url) return;
     this.hideDuplicatePanel();
-    await this.startProcessingUrl(url, {skipDuplicateCheck: true, forceDownload: true});
+    this.startProcessingUrl(url, {skipDuplicateCheck: true, forceDownload: true});
   }
 
-  async loadRecentTasks(): Promise<void> {
-    try {
-      this.recentTasks.set((await this.api.tasks()).slice(0, 6));
-    } catch (error) {
-      this.setNotice(this.errorMessage(error), "error");
-    }
+  loadRecentTasks(): void {
+    this.runOnce(
+      this.api.tasks().pipe(map((tasks) => tasks.slice(0, 6))),
+      (tasks) => this.recentTasks.set(tasks),
+    );
   }
 
-  async openRecentTask(taskId: string): Promise<void> {
-    const task = await this.api.taskStatus(taskId);
-    this.renderTask(task);
-    if (!["completed", "failed"].includes(task.status)) {
-      await this.pollTask(task.task_id);
-    }
+  openRecentTask(taskId: string): void {
+    this.runOnce(this.api.taskStatus(taskId), (task) => {
+      this.renderTask(task);
+      if (!TERMINAL_TASK_STATUSES.has(task.status)) this.pollRequests.next(task.task_id);
+    });
   }
 
-  async favoriteLatestSummary(): Promise<void> {
+  favoriteLatestSummary(): void {
     const taskId = this.latestTask()?.task_id;
     if (!taskId) return;
-    try {
-      await this.api.favoriteTask(taskId);
-      this.setNotice("Summary saved to Favorites.", "ok");
-    } catch (error) {
-      this.setNotice(this.errorMessage(error), "error");
-    }
+    this.runOnce(
+      this.api.favoriteTask(taskId),
+      () => this.setNotice("Summary saved to Favorites.", "ok"),
+    );
   }
 
-  async copyLatestOutput(): Promise<void> {
+  copyLatestOutput(): void {
     const task = this.latestTask();
     const markdownPath = task?.markdown_path;
     const fallbackSummary = this.latestSummary();
     if (!markdownPath && !fallbackSummary) return;
 
-    try {
-      if (markdownPath) {
-        const document = await this.api.markdownDocument(markdownPath);
-        await navigator.clipboard.writeText(document.content);
-        this.setNotice("Full Markdown note copied.", "ok");
-        return;
-      }
-      await navigator.clipboard.writeText(fallbackSummary);
-      this.setNotice("Summary copied.", "ok");
-    } catch (error) {
-      this.setNotice(this.errorMessage(error), "error");
-    }
+    const content$ = markdownPath
+      ? this.api.markdownDocument(markdownPath).pipe(
+        map((document) => ({content: document.content, notice: "Full Markdown note copied."})),
+      )
+      : of({content: fallbackSummary, notice: "Summary copied."});
+
+    this.runOnce(
+      content$.pipe(
+        switchMap(({content, notice}) => defer(() => navigator.clipboard.writeText(content)).pipe(
+          map(() => notice),
+        )),
+      ),
+      (notice) => this.setNotice(notice, "ok"),
+    );
   }
 
-  fileHref(kind: "video" | "transcript" | "markdown", task = this.latestTask()): string {
-    return task?.task_id ? `/api/history/${encodeURIComponent(task.task_id)}/files/${kind}` : "";
-  }
-
-  statusLabel(status = ""): string {
-    return statusLabel(status);
-  }
-
-  formatElapsed(task: Partial<TaskRecord> | null | undefined): string {
-    return formatElapsed(task);
-  }
-
-  private async maybeShowDuplicatePanel(url: string): Promise<boolean> {
-    try {
-      const duplicate = await this.api.lookupHistory(url);
-      if (!duplicate.found) {
+  private checkDuplicate(url: string): Observable<boolean> {
+    return this.api.lookupHistory(url).pipe(
+      map((duplicate) => this.applyDuplicateLookup(url, duplicate)),
+      catchError((error) => {
         this.hideDuplicatePanel();
-        return false;
-      }
-      if (!duplicate.can_reuse) {
-        this.hideDuplicatePanel();
-        this.setNotice("Found this URL in history, but the saved video file is missing. Downloading again.", "pending");
-        return false;
-      }
-      this.duplicate.set(duplicate);
-      this.duplicateUrl.set(url);
-      this.setNotice("This video was already downloaded. Choose whether to reuse it or regenerate notes.", "pending");
-      return true;
-    } catch (error) {
+        this.setNotice(`History check failed; continuing normally.\n${errorMessage(error)}`, "pending");
+        return of(true);
+      }),
+    );
+  }
+
+  private applyDuplicateLookup(url: string, duplicate: DuplicateLookup): boolean {
+    if (!duplicate.found) {
       this.hideDuplicatePanel();
-      this.setNotice(`History check failed; continuing normally.\n${this.errorMessage(error)}`, "pending");
+      return true;
+    }
+    if (!duplicate.can_reuse) {
+      this.hideDuplicatePanel();
+      this.setNotice(
+        "Found this URL in history, but the saved video file is missing. Downloading again.",
+        "pending",
+      );
+      return true;
+    }
+    this.duplicate.set(duplicate);
+    this.duplicateUrl.set(url);
+    this.setNotice(
+      "This video was already downloaded. Choose whether to reuse it or regenerate notes.",
+      "pending",
+    );
+    return false;
+  }
+
+  private validatePayload(payload: ProcessPayload): boolean {
+    if (payload.transcription_backend === "local" && !this.models.validateWhisperSelection()) {
+      this.failLocalValidation(this.models.whisperStatus().text);
       return false;
     }
+    const selectedModel = payload.ollama_model || this.config()?.ollama_model || "qwen2.5:32b";
+    if (!this.models.isInstalledOllamaModel(selectedModel)) {
+      const details = `Ollama has ${this.models.installedModels().join(", ") || "no visible models"}. Missing: ${selectedModel}.`;
+      this.failLocalValidation(`Missing Ollama model: ${selectedModel}`, details);
+      return false;
+    }
+    return true;
   }
 
-  private async pollTask(taskId: string): Promise<void> {
-    this.clearPoll();
-    try {
-      const task = await this.api.taskStatus(taskId);
-      this.renderTask(task);
-      if (!["completed", "failed"].includes(task.status)) {
-        this.pollTimer = window.setTimeout(() => void this.pollTask(taskId), 1800);
-      }
-    } catch (error) {
-      this.setNotice(this.errorMessage(error), "error");
-    }
+  private failLocalValidation(message: string, logMessage = message): void {
+    this.setNotice(message, "error");
+    this.latestTask.set({
+      task_id: "local-check",
+      status: "failed",
+      error: message,
+      logs: [localTaskLog("failed", logMessage, "error")],
+    });
+  }
+
+  private queueTask(url: string): void {
+    this.hideDuplicatePanel();
+    this.processForm.patch({url});
+    this.latestSummary.set("");
+    const now = new Date().toISOString();
+    this.latestTask.set({
+      task_id: "queued",
+      status: "queued",
+      logs: [localTaskLog("queued", `Queued ${url}`)],
+      created_at: now,
+      updated_at: now,
+    });
+    this.setNotice("Queued", "pending");
   }
 
   private renderTask(task: TaskRecord): void {
     this.latestTask.set(task);
-    if (task.summary) {
-      this.latestSummary.set(task.summary);
-    } else if (task.task_id) {
-      this.latestSummary.set("");
-    }
-
-    const elapsed = formatElapsed(task);
-    if (task.status === "completed") {
-      const cleanupLine = this.videoCleanupLine(task);
-      this.setNotice(`Completed in ${elapsed}\nMarkdown: ${task.markdown_path || "-"}${cleanupLine}`, task.video_delete_error ? "error" : "ok");
-      void this.loadRecentTasks();
-      return;
-    }
-    if (task.status === "failed") {
-      this.setNotice(`Failed after ${elapsed}\n${task.error || "Unknown error"}`, "error");
-      void this.loadRecentTasks();
-      return;
-    }
-    this.setNotice(`Working: ${statusLabel(task.status)}\nElapsed: ${elapsed}`, "pending");
-  }
-
-  private describePhase(task: TaskRecord | null): string {
-    if (!task) return "No active task.";
-    if (task.status === "downloading") {
-      const parts = [
-        task.download_filename || task.url || "video",
-        Number.isFinite(Number(task.download_percent)) ? `${Number(task.download_percent).toFixed(1)}%` : "",
-        `${formatBytes(task.downloaded_bytes)} / ${formatBytes(task.download_total_bytes)}`,
-        formatSpeed(task.download_speed),
-        formatEta(task.download_eta) ? `ETA ${formatEta(task.download_eta)}` : "",
-      ].filter(Boolean);
-      return parts.join(" · ");
-    }
-    if (task.status === "transcribing") {
-      return task.video_path ? `Video saved: ${task.video_path}` : "Preparing transcript.";
-    }
-    if (task.status === "organizing_notes") {
-      const backend = task.summary_backend || task.notes_backend || "ollama";
-      const model = task.ollama_model ? ` · ${task.ollama_model}` : "";
-      const label = backend === "ollama" ? `Better Local AI Notes${model}` : "Better Local AI Notes";
-      return `Writing detailed paragraph summary and segmented notes with ${label}.`;
-    }
-    if (task.status === "completed") {
-      if (task.video_deleted_after_completion) {
-        return task.markdown_path
-          ? `Markdown ready: ${task.markdown_path}. Local video deleted after completion.`
-          : "Task completed. Local video deleted after completion.";
-      }
-      if (task.video_delete_error) {
-        return `Video cleanup failed: ${task.video_delete_error}`;
-      }
-      return task.markdown_path ? `Markdown ready: ${task.markdown_path}` : "Task completed.";
-    }
-    if (task.status === "failed") {
-      return task.error || "Unknown error.";
-    }
-    return `Elapsed: ${formatElapsed(task)}`;
-  }
-
-  private installedModels(): string[] {
-    return this.ollamaModels().map((model) => model.name).filter(Boolean);
-  }
-
-  resolveOllamaModel(name: string): OllamaModel | null {
-    const value = name.trim();
-    if (!value) return null;
-    return this.ollamaModels().find((model) => model.name === value) || null;
-  }
-
-  private isInstalledOllamaModel(model: string): boolean {
-    return !model || this.installedModels().includes(model);
-  }
-
-  private selectDefaultOllamaModel(preferStrongest: boolean): void {
-    const strongest = this.ollamaModelOptions()[0];
-    if (!strongest) return;
-    const current = this.processForm.form().ollamaModel.trim();
-    if (preferStrongest || !current || !this.isInstalledOllamaModel(current)) {
-      this.processForm.patch({ollamaModel: strongest.name});
-    }
+    this.latestSummary.set(task.summary ?? "");
+    this.notice.set(taskNotice(task));
+    if (TERMINAL_TASK_STATUSES.has(task.status)) this.loadRecentTasks();
   }
 
   private hideDuplicatePanel(): void {
@@ -464,33 +288,13 @@ export class TaskWorkflowService {
     this.notice.set({text, kind});
   }
 
-  private videoCleanupLine(task: TaskRecord): string {
-    if (task.video_deleted_after_completion) {
-      return "\nVideo: deleted after completion";
-    }
-    if (task.video_delete_error) {
-      return `\nVideo cleanup failed: ${task.video_delete_error}`;
-    }
-    return "";
-  }
-
-  private localLog(status: string, message: string, level: TaskLog["level"] = "info"): TaskLog {
-    return {
-      time: new Date().toISOString().slice(0, 19),
-      level,
-      status,
-      message,
-    };
-  }
-
-  private clearPoll(): void {
-    if (this.pollTimer !== null) {
-      window.clearTimeout(this.pollTimer);
-      this.pollTimer = null;
-    }
-  }
-
-  private errorMessage(error: unknown): string {
-    return error instanceof Error ? error.message : String(error);
+  private runOnce<T>(source$: Observable<T>, next: (value: T) => void): void {
+    source$.pipe(
+      take(1),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next,
+      error: (error) => this.setNotice(errorMessage(error), "error"),
+    });
   }
 }

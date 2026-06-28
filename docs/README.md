@@ -112,7 +112,7 @@ Starting readVideo on http://127.0.0.1:8000
 
 If port `8000` is already in use, it automatically falls back to the next available port.
 
-The frontend is an Angular TypeScript app under `frontend/angular/`. This repo pins Node 24 through `.nvmrc`, `.node-version`, and `package.json` engines; use that version for local servers, web app builds, command-line tools, and npm scripts. FastAPI serves the built app and the frontend calls the same FastAPI process for task status, history, favorites, Markdown output, and saved YouTube sources. Main navigation lives in the left sidebar.
+The frontend is an Angular TypeScript app under `frontend/angular/`. This repo pins Node 24 through `.nvmrc`, `.node-version`, and `package.json` engines; use that version for local servers, web app builds, command-line tools, and npm scripts. FastAPI serves the built app and the frontend calls the same FastAPI process for task status, history, favorites, Markdown output, and saved YouTube sources. Main navigation lives in the left sidebar. See [Frontend Architecture](frontend-architecture.md) for the Signals, RxJS, facade, and SOLID boundaries used by the app.
 Open `/history` to review previously downloaded/transcribed videos and their saved file paths.
 Open `/favorites` to review favorite summaries and organize them into note folders.
 Open `/reader` to switch between favorite folders, browse local Markdown folders, read `.md` files, and download notes. Reader Focus Mode hides the library, inspector, and global sidebar for a single-column reading view; inside Focus Mode you can switch between Light and Dark themes.

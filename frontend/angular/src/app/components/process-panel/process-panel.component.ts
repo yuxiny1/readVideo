@@ -1,28 +1,58 @@
 import {CommonModule} from "@angular/common";
-import {Component, inject} from "@angular/core";
+import {ChangeDetectionStrategy, Component, input, output} from "@angular/core";
 import {FormsModule} from "@angular/forms";
 
-import {ProcessFormService} from "../../services/process-form.service";
-import {TaskWorkflowService} from "../../services/task-workflow.service";
-import {OllamaModel, WhisperModelOption} from "../../types/readvideo.types";
+import {ProcessFormState} from "../../services/process-form.service";
+import {statusLabel} from "../../shared/format";
+import {
+  AppConfig,
+  DuplicateLookup,
+  NoticeState,
+  OllamaModel,
+  TaskLog,
+  TaskRecord,
+  TranscriptionLanguageOption,
+  WhisperModelOption,
+} from "../../types/readvideo.types";
+
+export interface ProcessPanelViewModel {
+  form: ProcessFormState;
+  taskIdLabel: string;
+  config: AppConfig | null;
+  whisperModels: WhisperModelOption[];
+  transcriptionLanguages: TranscriptionLanguageOption[];
+  whisperStatus: NoticeState;
+  ollamaModels: OllamaModel[];
+  ollamaStatus: NoticeState;
+  notice: NoticeState;
+  duplicate: DuplicateLookup | null;
+  latestTask: TaskRecord | null;
+  phaseTitle: string;
+  phaseDetail: string;
+  progressPercent: number;
+  logs: TaskLog[];
+}
+
+export type DuplicateAction = "use" | "regenerate" | "redownload";
 
 @Component({
   selector: "rv-process-panel",
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: "./process-panel.component.html",
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProcessPanelComponent {
-  readonly form = inject(ProcessFormService);
-  readonly workflow = inject(TaskWorkflowService);
+  readonly vm = input.required<ProcessPanelViewModel>();
+  readonly formPatched = output<Partial<ProcessFormState>>();
+  readonly submitRequested = output<void>();
+  readonly whisperDownloadRequested = output<string>();
+  readonly strongestModelRequested = output<void>();
+  readonly duplicateAction = output<DuplicateAction>();
   readonly steps = ["queued", "downloading", "transcribing", "organizing_notes", "completed"];
 
-  submit(): void {
-    void this.workflow.startFromForm();
-  }
-
   stepClass(step: string): string {
-    const status = this.workflow.latestTask()?.status || "";
+    const status = this.vm().latestTask?.status || "";
     const currentIndex = this.steps.indexOf(status);
     const stepIndex = this.steps.indexOf(step);
     if (status === "failed") return "failed";
@@ -32,42 +62,18 @@ export class ProcessPanelComponent {
     return "";
   }
 
-  setUrl(url: string): void {
-    this.form.patch({url});
+  patchForm(update: Partial<ProcessFormState>): void {
+    this.formPatched.emit(update);
   }
 
-  setNotesDir(notesDir: string): void {
-    this.form.patch({notesDir});
+  resolveWhisperModel(pathOrName: string): WhisperModelOption | null {
+    return this.vm().whisperModels.find((model) => (
+      model.path === pathOrName || model.name === pathOrName
+    )) ?? null;
   }
 
-  setTranscriptionBackend(transcriptionBackend: "local" | "openai"): void {
-    this.form.patch({transcriptionBackend});
-  }
-
-  setTranscriptionModel(transcriptionModel: string): void {
-    this.form.patch({transcriptionModel});
-  }
-
-  setLocalWhisperModel(localWhisperModel: string): void {
-    this.form.patch({localWhisperModel});
-    this.workflow.validateWhisperSelection();
-  }
-
-  setLocalWhisperLanguage(localWhisperLanguage: string): void {
-    this.form.patch({localWhisperLanguage});
-  }
-
-  setNoteStyle(noteStyle: "detailed" | "commercial"): void {
-    this.form.patch({noteStyle});
-  }
-
-  setOllamaModel(ollamaModel: string): void {
-    this.form.patch({ollamaModel});
-    this.workflow.validateOllamaSelection();
-  }
-
-  setDeleteVideoAfterCompletion(deleteVideoAfterCompletion: boolean): void {
-    this.form.patch({deleteVideoAfterCompletion});
+  resolveOllamaModel(name: string): OllamaModel | null {
+    return this.vm().ollamaModels.find((model) => model.name === name) ?? null;
   }
 
   modelLabel(model: OllamaModel): string {
@@ -82,7 +88,7 @@ export class ProcessPanelComponent {
     ].filter(Boolean).join(" · ");
   }
 
-  downloadWhisperModel(): void {
-    void this.workflow.downloadSelectedWhisperModel(this.form.form().localWhisperModel);
+  statusLabel(status: string): string {
+    return statusLabel(status);
   }
 }

@@ -1,10 +1,10 @@
 <section class="tool-panel process-panel">
   <div class="panel-header">
     <h2>New Video</h2>
-    <span class="caption">{{ workflow.taskIdLabel() }}</span>
+    <span class="caption">{{ vm().taskIdLabel }}</span>
   </div>
 
-  <form class="stack" (ngSubmit)="submit()">
+  <form class="stack" (ngSubmit)="submitRequested.emit()">
     <div>
       <label for="video-url">YouTube URL</label>
       <input
@@ -12,8 +12,8 @@
         name="url"
         required
         placeholder="https://www.youtube.com/watch?v=..."
-        [ngModel]="form.form().url"
-        (ngModelChange)="setUrl($event)"
+        [ngModel]="vm().form.url"
+        (ngModelChange)="patchForm({url: $event})"
       >
     </div>
 
@@ -22,9 +22,9 @@
       <input
         id="notes-dir"
         name="notes_dir"
-        [placeholder]="workflow.config()?.notes_dir || 'notes'"
-        [ngModel]="form.form().notesDir"
-        (ngModelChange)="setNotesDir($event)"
+        [placeholder]="vm().config?.notes_dir || 'notes'"
+        [ngModel]="vm().form.notesDir"
+        (ngModelChange)="patchForm({notesDir: $event})"
       >
     </div>
 
@@ -34,8 +34,8 @@
         <select
           id="transcription-backend"
           name="transcription_backend"
-          [ngModel]="form.form().transcriptionBackend"
-          (ngModelChange)="setTranscriptionBackend($event)"
+          [ngModel]="vm().form.transcriptionBackend"
+          (ngModelChange)="patchForm({transcriptionBackend: $event})"
         >
           <option value="local">Local Whisper</option>
           <option value="openai">OpenAI Transcription</option>
@@ -48,19 +48,19 @@
           <select
             id="local-whisper-model"
             name="local_whisper_model"
-            [ngModel]="form.form().localWhisperModel"
-            (ngModelChange)="setLocalWhisperModel($event)"
+            [ngModel]="vm().form.localWhisperModel"
+            (ngModelChange)="patchForm({localWhisperModel: $event})"
           >
-            @if (form.form().localWhisperModel && !workflow.resolveWhisperModel(form.form().localWhisperModel)) {
-              <option [value]="form.form().localWhisperModel">Custom: {{ form.form().localWhisperModel }}</option>
+            @if (vm().form.localWhisperModel && !resolveWhisperModel(vm().form.localWhisperModel)) {
+              <option [value]="vm().form.localWhisperModel">Custom: {{ vm().form.localWhisperModel }}</option>
             }
-            @for (model of workflow.whisperModels(); track model.name) {
+            @for (model of vm().whisperModels; track model.name) {
               <option [value]="model.path">{{ model.label }} · {{ whisperModelLabel(model) }}</option>
             }
           </select>
-          <button class="secondary-button small-button" type="button" (click)="downloadWhisperModel()">Download</button>
+          <button class="secondary-button small-button" type="button" (click)="whisperDownloadRequested.emit(vm().form.localWhisperModel)">Download</button>
         </div>
-        <p class="field-status" [ngClass]="workflow.whisperStatus().kind">{{ workflow.whisperStatus().text }}</p>
+        <p class="field-status" [ngClass]="vm().whisperStatus.kind">{{ vm().whisperStatus.text }}</p>
       </div>
     </div>
 
@@ -71,12 +71,12 @@
           id="local-whisper-language"
           name="local_whisper_language"
           list="whisper-languages"
-          [placeholder]="workflow.config()?.local_whisper_language || 'auto'"
-          [ngModel]="form.form().localWhisperLanguage"
-          (ngModelChange)="setLocalWhisperLanguage($event)"
+          [placeholder]="vm().config?.local_whisper_language || 'auto'"
+          [ngModel]="vm().form.localWhisperLanguage"
+          (ngModelChange)="patchForm({localWhisperLanguage: $event})"
         >
         <datalist id="whisper-languages">
-          @for (language of workflow.transcriptionLanguages(); track language.code) {
+          @for (language of vm().transcriptionLanguages; track language.code) {
             <option [value]="language.code" [label]="language.label"></option>
           }
         </datalist>
@@ -87,9 +87,9 @@
         <input
           id="transcription-model"
           name="transcription_model"
-          [placeholder]="workflow.config()?.transcription_model || 'gpt-4o-mini-transcribe'"
-          [ngModel]="form.form().transcriptionModel"
-          (ngModelChange)="setTranscriptionModel($event)"
+          [placeholder]="vm().config?.transcription_model || 'gpt-4o-mini-transcribe'"
+          [ngModel]="vm().form.transcriptionModel"
+          (ngModelChange)="patchForm({transcriptionModel: $event})"
         >
       </div>
     </div>
@@ -100,8 +100,8 @@
         <select
           id="note-style"
           name="note_style"
-          [ngModel]="form.form().noteStyle"
-          (ngModelChange)="setNoteStyle($event)"
+          [ngModel]="vm().form.noteStyle"
+          (ngModelChange)="patchForm({noteStyle: $event})"
         >
           <option value="detailed">Detailed Notes</option>
           <option value="commercial">Commercial Editorial</option>
@@ -116,19 +116,19 @@
           <select
             id="ollama-model"
             name="ollama_model"
-            [ngModel]="form.form().ollamaModel"
-            (ngModelChange)="setOllamaModel($event)"
+            [ngModel]="vm().form.ollamaModel"
+            (ngModelChange)="patchForm({ollamaModel: $event})"
           >
-            @if (form.form().ollamaModel && !workflow.resolveOllamaModel(form.form().ollamaModel)) {
-              <option [value]="form.form().ollamaModel">Configured: {{ form.form().ollamaModel }}</option>
+            @if (vm().form.ollamaModel && !resolveOllamaModel(vm().form.ollamaModel)) {
+              <option [value]="vm().form.ollamaModel">Configured: {{ vm().form.ollamaModel }}</option>
             }
-            @for (model of workflow.ollamaModelOptions(); track model.name) {
+            @for (model of vm().ollamaModels; track model.name) {
               <option [value]="model.name">{{ model.name }} · {{ modelLabel(model) }}</option>
             }
           </select>
-          <button class="secondary-button small-button" type="button" (click)="workflow.loadOllamaModels(true)">Use Strongest</button>
+          <button class="secondary-button small-button" type="button" (click)="strongestModelRequested.emit()">Use Strongest</button>
         </div>
-        <p class="field-status" [ngClass]="workflow.ollamaStatus().kind">{{ workflow.ollamaStatus().text }}</p>
+        <p class="field-status" [ngClass]="vm().ollamaStatus.kind">{{ vm().ollamaStatus.text }}</p>
       </div>
     </div>
 
@@ -137,8 +137,8 @@
         id="delete-video-after-completion"
         name="delete_video_after_completion"
         type="checkbox"
-        [ngModel]="form.form().deleteVideoAfterCompletion"
-        (ngModelChange)="setDeleteVideoAfterCompletion($event)"
+        [ngModel]="vm().form.deleteVideoAfterCompletion"
+        (ngModelChange)="patchForm({deleteVideoAfterCompletion: $event})"
       >
       <div>
         <label for="delete-video-after-completion">Delete local video after completion</label>
@@ -151,13 +151,13 @@
 
   <div class="progress-strip" aria-label="Task progress">
     @for (step of steps; track step) {
-      <span class="step" [ngClass]="stepClass(step)">{{ workflow.statusLabel(step) }}</span>
+      <span class="step" [ngClass]="stepClass(step)">{{ statusLabel(step) }}</span>
     }
   </div>
 
-  <div class="notice" [ngClass]="workflow.notice().kind">{{ workflow.notice().text }}</div>
+  <div class="notice" [ngClass]="vm().notice.kind">{{ vm().notice.text }}</div>
 
-  @if (workflow.duplicate(); as duplicate) {
+  @if (vm().duplicate; as duplicate) {
     <div class="duplicate-panel">
       <div>
         <h2>Already Downloaded</h2>
@@ -180,34 +180,34 @@
         </div>
       </dl>
       <div class="button-row duplicate-actions">
-        <button class="secondary-button" type="button" [disabled]="!(duplicate.record?.summary || duplicate.markdown_exists)" (click)="workflow.useExistingDuplicateOutput()">
+        <button class="secondary-button" type="button" [disabled]="!(duplicate.record?.summary || duplicate.markdown_exists)" (click)="duplicateAction.emit('use')">
           {{ duplicate.record?.summary || duplicate.markdown_exists ? 'Use Existing Output' : 'No Existing Summary' }}
         </button>
-        <button class="primary-button" type="button" (click)="workflow.regenerateDuplicateSummary()">Regenerate Summary</button>
-        <button class="danger-button" type="button" (click)="workflow.forceDuplicateRedownload()">Re-download</button>
+        <button class="primary-button" type="button" (click)="duplicateAction.emit('regenerate')">Regenerate Summary</button>
+        <button class="danger-button" type="button" (click)="duplicateAction.emit('redownload')">Re-download</button>
       </div>
     </div>
   }
 
   <div class="task-meter" aria-label="Download progress">
-    <div class="task-phase-title">{{ workflow.phaseTitle() }}</div>
-    <div class="task-phase-detail">{{ workflow.phaseDetail() }}</div>
+    <div class="task-phase-title">{{ vm().phaseTitle }}</div>
+    <div class="task-phase-detail">{{ vm().phaseDetail }}</div>
     <div class="meter-track">
-      <div class="meter-fill" [style.width.%]="workflow.progressPercent()"></div>
+      <div class="meter-fill" [style.width.%]="vm().progressPercent"></div>
     </div>
   </div>
 
   <div class="run-log-block">
     <div class="panel-header compact-header">
       <h2>Run Log</h2>
-      <span class="caption">{{ workflow.logs().length }} events</span>
+      <span class="caption">{{ vm().logs.length }} events</span>
     </div>
     <ol class="task-log">
-      @if (workflow.logs().length) {
-        @for (entry of workflow.logs(); track entry.time + entry.message) {
+      @if (vm().logs.length) {
+        @for (entry of vm().logs; track entry.time + entry.message) {
           <li [ngClass]="entry.level">
             <time>{{ entry.time }}</time>
-            <span>{{ workflow.statusLabel(entry.status) }}</span>
+            <span>{{ statusLabel(entry.status) }}</span>
             <p>{{ entry.message }}</p>
           </li>
         }

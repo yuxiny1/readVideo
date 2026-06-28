@@ -1,4 +1,6 @@
-import {Injectable} from "@angular/core";
+import {HttpClient, HttpErrorResponse} from "@angular/common/http";
+import {Injectable, inject} from "@angular/core";
+import {Observable, catchError, throwError} from "rxjs";
 
 import {
   AppConfig,
@@ -18,164 +20,158 @@ import {
   WhisperModelDownloadResponse,
 } from "../types/readvideo.types";
 
+interface ApiErrorPayload {
+  detail?: string;
+  error?: string;
+}
+
 @Injectable({providedIn: "root"})
 export class ReadvideoApiService {
-  async health(): Promise<HealthResponse> {
-    return this.request<HealthResponse>("/health");
+  private readonly http = inject(HttpClient);
+
+  health(): Observable<HealthResponse> {
+    return this.get<HealthResponse>("/health");
   }
 
-  async appConfig(): Promise<AppConfig> {
-    return this.request<AppConfig>("/app_config");
+  appConfig(): Observable<AppConfig> {
+    return this.get<AppConfig>("/app_config");
   }
 
-  async ollamaModels(): Promise<OllamaModelsResponse> {
-    return this.request<OllamaModelsResponse>("/api/ollama/models");
+  ollamaModels(): Observable<OllamaModelsResponse> {
+    return this.get<OllamaModelsResponse>("/api/ollama/models");
   }
 
-  async transcriptionModels(): Promise<TranscriptionModelsResponse> {
-    return this.request<TranscriptionModelsResponse>("/api/transcription/models");
+  transcriptionModels(): Observable<TranscriptionModelsResponse> {
+    return this.get<TranscriptionModelsResponse>("/api/transcription/models");
   }
 
-  async downloadTranscriptionModel(model: string): Promise<WhisperModelDownloadResponse> {
-    return this.request<WhisperModelDownloadResponse>("/api/transcription/models/download", {
-      method: "POST",
-      body: JSON.stringify({model}),
-    });
+  downloadTranscriptionModel(model: string): Observable<WhisperModelDownloadResponse> {
+    return this.post<WhisperModelDownloadResponse>("/api/transcription/models/download", {model});
   }
 
-  async lookupHistory(url: string): Promise<DuplicateLookup> {
-    return this.request<DuplicateLookup>(`/api/history/lookup?url=${encodeURIComponent(url)}`);
+  lookupHistory(url: string): Observable<DuplicateLookup> {
+    return this.get<DuplicateLookup>(`/api/history/lookup?url=${encodeURIComponent(url)}`);
   }
 
-  async processVideo(payload: ProcessPayload): Promise<TaskRecord> {
-    return this.request<TaskRecord>("/process_video/", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+  processVideo(payload: ProcessPayload): Observable<TaskRecord> {
+    return this.post<TaskRecord>("/process_video/", payload);
   }
 
-  async taskStatus(taskId: string): Promise<TaskRecord> {
-    return this.request<TaskRecord>(`/task_status/${encodeURIComponent(taskId)}`);
+  taskStatus(taskId: string): Observable<TaskRecord> {
+    return this.get<TaskRecord>(`/task_status/${encodeURIComponent(taskId)}`);
   }
 
-  async tasks(): Promise<TaskRecord[]> {
-    return this.request<TaskRecord[]>("/tasks");
+  tasks(): Observable<TaskRecord[]> {
+    return this.get<TaskRecord[]>("/tasks");
   }
 
-  async history(): Promise<TaskRecord[]> {
-    return this.request<TaskRecord[]>("/api/history");
+  history(): Observable<TaskRecord[]> {
+    return this.get<TaskRecord[]>("/api/history");
   }
 
-  async tags(): Promise<TagSummary[]> {
-    return this.request<TagSummary[]>("/api/tags");
+  tags(): Observable<TagSummary[]> {
+    return this.get<TagSummary[]>("/api/tags");
   }
 
-  async updateHistoryTags(taskId: string, tags: string[]): Promise<TaskRecord> {
-    return this.request<TaskRecord>(`/api/history/${encodeURIComponent(taskId)}/tags`, {
-      method: "PATCH",
-      body: JSON.stringify({tags}),
-    });
+  updateHistoryTags(taskId: string, tags: string[]): Observable<TaskRecord> {
+    return this.patch<TaskRecord>(`/api/history/${encodeURIComponent(taskId)}/tags`, {tags});
   }
 
-  async favoriteTask(taskId: string): Promise<unknown> {
-    return this.request("/api/favorites", {
-      method: "POST",
-      body: JSON.stringify({task_id: taskId}),
-    });
+  favoriteTask(taskId: string): Observable<unknown> {
+    return this.post<unknown>("/api/favorites", {task_id: taskId});
   }
 
-  async favorites(): Promise<FavoriteSummary[]> {
-    return this.request<FavoriteSummary[]>("/api/favorites");
+  favorites(): Observable<FavoriteSummary[]> {
+    return this.get<FavoriteSummary[]>("/api/favorites");
   }
 
-  async favoriteFolders(): Promise<FavoriteFolder[]> {
-    return this.request<FavoriteFolder[]>("/api/favorites/folders");
+  favoriteFolders(): Observable<FavoriteFolder[]> {
+    return this.get<FavoriteFolder[]>("/api/favorites/folders");
   }
 
-  async addFavoriteFolder(name: string, notes: string): Promise<FavoriteFolder> {
-    return this.request<FavoriteFolder>("/api/favorites/folders", {
-      method: "POST",
-      body: JSON.stringify({name, notes}),
-    });
+  addFavoriteFolder(name: string, notes: string): Observable<FavoriteFolder> {
+    return this.post<FavoriteFolder>("/api/favorites/folders", {name, notes});
   }
 
-  async updateFavoriteFolder(folderId: number, name: string, notes: string): Promise<FavoriteFolder> {
-    return this.request<FavoriteFolder>(`/api/favorites/folders/${encodeURIComponent(folderId)}`, {
-      method: "PATCH",
-      body: JSON.stringify({name, notes}),
-    });
+  updateFavoriteFolder(folderId: number, name: string, notes: string): Observable<FavoriteFolder> {
+    return this.patch<FavoriteFolder>(`/api/favorites/folders/${encodeURIComponent(folderId)}`, {name, notes});
   }
 
-  async deleteFavoriteFolder(folderId: number): Promise<unknown> {
-    return this.request(`/api/favorites/folders/${encodeURIComponent(folderId)}`, {method: "DELETE"});
+  deleteFavoriteFolder(folderId: number): Observable<unknown> {
+    return this.delete<unknown>(`/api/favorites/folders/${encodeURIComponent(folderId)}`);
   }
 
-  async assignFavoriteFolder(itemId: number, folderId: number | null): Promise<FavoriteSummary> {
-    return this.request<FavoriteSummary>(`/api/favorites/${encodeURIComponent(itemId)}/folder`, {
-      method: "PATCH",
-      body: JSON.stringify({folder_id: folderId}),
-    });
+  assignFavoriteFolder(itemId: number, folderId: number | null): Observable<FavoriteSummary> {
+    return this.patch<FavoriteSummary>(`/api/favorites/${encodeURIComponent(itemId)}/folder`, {folder_id: folderId});
   }
 
-  async updateFavoriteTags(itemId: number, tags: string[]): Promise<FavoriteSummary> {
-    return this.request<FavoriteSummary>(`/api/favorites/${encodeURIComponent(itemId)}/tags`, {
-      method: "PATCH",
-      body: JSON.stringify({tags}),
-    });
+  updateFavoriteTags(itemId: number, tags: string[]): Observable<FavoriteSummary> {
+    return this.patch<FavoriteSummary>(`/api/favorites/${encodeURIComponent(itemId)}/tags`, {tags});
   }
 
-  async deleteFavorite(itemId: number): Promise<unknown> {
-    return this.request(`/api/favorites/${encodeURIComponent(itemId)}`, {method: "DELETE"});
+  deleteFavorite(itemId: number): Observable<unknown> {
+    return this.delete<unknown>(`/api/favorites/${encodeURIComponent(itemId)}`);
   }
 
-  async favoriteMarkdown(itemId: number): Promise<MarkdownDocument> {
-    return this.request<MarkdownDocument>(`/api/favorites/${encodeURIComponent(itemId)}/markdown`);
+  favoriteMarkdown(itemId: number): Observable<MarkdownDocument> {
+    return this.get<MarkdownDocument>(`/api/favorites/${encodeURIComponent(itemId)}/markdown`);
   }
 
-  async markdownFiles(directory: string): Promise<MarkdownFile[]> {
-    return this.request<MarkdownFile[]>(`/api/markdown_files?directory=${encodeURIComponent(directory)}`);
+  markdownFiles(directory: string): Observable<MarkdownFile[]> {
+    return this.get<MarkdownFile[]>(`/api/markdown_files?directory=${encodeURIComponent(directory)}`);
   }
 
-  async markdownDocument(path: string): Promise<MarkdownDocument> {
-    return this.request<MarkdownDocument>(`/api/markdown_files/read?path=${encodeURIComponent(path)}`);
+  markdownDocument(path: string): Observable<MarkdownDocument> {
+    return this.get<MarkdownDocument>(`/api/markdown_files/read?path=${encodeURIComponent(path)}`);
   }
 
-  async watchlist(): Promise<WatchItem[]> {
-    return this.request<WatchItem[]>("/watchlist");
+  watchlist(): Observable<WatchItem[]> {
+    return this.get<WatchItem[]>("/watchlist");
   }
 
-  async addWatchItem(item: Pick<WatchItem, "name" | "url" | "notes">): Promise<WatchItem> {
-    return this.request<WatchItem>("/watchlist", {
-      method: "POST",
-      body: JSON.stringify(item),
-    });
+  addWatchItem(item: Pick<WatchItem, "name" | "url" | "notes">): Observable<WatchItem> {
+    return this.post<WatchItem>("/watchlist", item);
   }
 
-  async reorderWatchItems(itemIds: number[]): Promise<WatchItem[]> {
-    return this.request<WatchItem[]>("/watchlist/reorder", {
-      method: "PATCH",
-      body: JSON.stringify({item_ids: itemIds}),
-    });
+  reorderWatchItems(itemIds: number[]): Observable<WatchItem[]> {
+    return this.patch<WatchItem[]>("/watchlist/reorder", {item_ids: itemIds});
   }
 
-  async deleteWatchItem(id: number): Promise<unknown> {
-    return this.request(`/watchlist/${encodeURIComponent(id)}`, {method: "DELETE"});
+  deleteWatchItem(id: number): Observable<unknown> {
+    return this.delete<unknown>(`/watchlist/${encodeURIComponent(id)}`);
   }
 
-  async sourceUpdates(id: number, limit = 8): Promise<SourceUpdatesResponse> {
-    return this.request<SourceUpdatesResponse>(`/watchlist/${encodeURIComponent(id)}/updates?limit=${limit}`);
+  sourceUpdates(id: number, limit = 8): Observable<SourceUpdatesResponse> {
+    return this.get<SourceUpdatesResponse>(`/watchlist/${encodeURIComponent(id)}/updates?limit=${limit}`);
   }
 
-  private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const response = await fetch(path, {
-      headers: {"Content-Type": "application/json", ...(options.headers || {})},
-      ...options,
-    });
-    const text = await response.text();
-    const data = text ? JSON.parse(text) : null;
-    if (!response.ok) {
-      throw new Error(data?.detail || data?.error || response.statusText);
-    }
-    return data as T;
+  private get<T>(path: string): Observable<T> {
+    return this.handle(this.http.get<T>(path));
   }
+
+  private post<T>(path: string, body: unknown): Observable<T> {
+    return this.handle(this.http.post<T>(path, body));
+  }
+
+  private patch<T>(path: string, body: unknown): Observable<T> {
+    return this.handle(this.http.patch<T>(path, body));
+  }
+
+  private delete<T>(path: string): Observable<T> {
+    return this.handle(this.http.delete<T>(path));
+  }
+
+  private handle<T>(request$: Observable<T>): Observable<T> {
+    return request$.pipe(
+      catchError((error: HttpErrorResponse) => throwError(() => new Error(apiErrorMessage(error)))),
+    );
+  }
+}
+
+function apiErrorMessage(error: HttpErrorResponse): string {
+  if (typeof error.error === "string" && error.error.trim()) {
+    return error.error;
+  }
+  const payload = error.error as ApiErrorPayload | null;
+  return payload?.detail || payload?.error || error.message || `Request failed (${error.status})`;
 }

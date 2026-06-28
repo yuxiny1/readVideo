@@ -1,11 +1,11 @@
 import {CommonModule} from "@angular/common";
-import {Component, inject, OnInit, signal} from "@angular/core";
+import {ChangeDetectionStrategy, Component, inject, OnInit, signal} from "@angular/core";
 import {FormsModule} from "@angular/forms";
 
 import {ProcessFormService} from "../../services/process-form.service";
-import {ReadvideoApiService} from "../../services/readvideo-api.service";
 import {TaskWorkflowService} from "../../services/task-workflow.service";
 import {SourceUpdate, WatchItem} from "../../types/readvideo.types";
+import {SavedSourcesFacade} from "./saved-sources.facade";
 
 type DropPosition = "before" | "after";
 
@@ -14,51 +14,30 @@ type DropPosition = "before" | "after";
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: "./saved-sources.component.html",
+  providers: [SavedSourcesFacade],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SavedSourcesComponent implements OnInit {
-  private readonly api = inject(ReadvideoApiService);
   private readonly form = inject(ProcessFormService);
-  readonly workflow = inject(TaskWorkflowService);
+  private readonly workflow = inject(TaskWorkflowService);
+  readonly sources = inject(SavedSourcesFacade);
 
-  readonly items = signal<WatchItem[]>([]);
-  readonly updates = signal<Record<string, SourceUpdate[]>>({});
-  readonly errors = signal<Record<string, string>>({});
   readonly draggedItemId = signal<number | null>(null);
   readonly dropTarget = signal<{id: number; position: DropPosition} | null>(null);
-  readonly orderSaving = signal(false);
   readonly openActionsId = signal<number | null>(null);
-  newItem = {name: "", url: "", notes: ""};
   private orderBeforeDrag: WatchItem[] = [];
 
   ngOnInit(): void {
-    void this.loadWatchlist();
-  }
-
-  async loadWatchlist(): Promise<void> {
-    try {
-      this.items.set(await this.api.watchlist());
-      this.errors.update((errors) => ({...errors, list: ""}));
-    } catch (error) {
-      this.errors.update((errors) => ({...errors, list: this.message(error)}));
-    }
-  }
-
-  async addWatchItem(): Promise<void> {
-    try {
-      await this.api.addWatchItem({
-        name: this.newItem.name.trim(),
-        url: this.newItem.url.trim(),
-        notes: this.newItem.notes.trim(),
-      });
-      this.newItem = {name: "", url: "", notes: ""};
-      await this.loadWatchlist();
-    } catch (error) {
-      this.workflow.notice.set({text: this.message(error), kind: "error"});
-    }
+    this.sources.loadWatchlist();
   }
 
   useUrl(url: string): void {
     this.form.patch({url});
+  }
+
+  downloadUrl(url: string): void {
+    this.form.patch({url});
+    this.workflow.startProcessingUrl(url);
   }
 
   toggleActions(itemId: number): void {
@@ -69,62 +48,30 @@ export class SavedSourcesComponent implements OnInit {
     this.openActionsId.set(null);
   }
 
-  async downloadUrl(url: string): Promise<void> {
-    this.form.patch({url});
-    await this.workflow.startProcessingUrl(url);
-  }
-
-  async loadUpdates(item: WatchItem): Promise<void> {
-    this.errors.update((errors) => ({...errors, [item.id]: ""}));
-    this.updates.update((updates) => ({...updates, [item.id]: []}));
-    try {
-      const result = await this.api.sourceUpdates(item.id);
-      this.updates.update((updates) => ({...updates, [item.id]: result.updates}));
-    } catch (error) {
-      this.errors.update((errors) => ({...errors, [item.id]: this.message(error)}));
-    }
-  }
-
-  async deleteItem(item: WatchItem): Promise<void> {
-    await this.api.deleteWatchItem(item.id);
-    await this.loadWatchlist();
-  }
-
   startDrag(event: DragEvent, item: WatchItem): void {
     const target = event.target as HTMLElement | null;
-    if (target?.closest("a, input, textarea, select, button:not(.drag-handle)")) {
+    if (target?.closest("a, input, textarea, select, button:not(.drag-handle)") || this.sources.orderSaving()) {
       event.preventDefault();
       return;
     }
-    if (this.orderSaving()) {
-      event.preventDefault();
-      return;
-    }
-    this.orderBeforeDrag = [...this.items()];
+    this.orderBeforeDrag = [...this.sources.items()];
     this.draggedItemId.set(item.id);
     this.dropTarget.set(null);
     event.dataTransfer?.setData("text/plain", String(item.id));
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = "move";
-    }
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
   }
 
   dragOver(event: DragEvent, item: WatchItem): void {
     const draggedId = this.draggedItemId();
-    if (!draggedId || draggedId === item.id) {
-      return;
-    }
+    if (!draggedId || draggedId === item.id) return;
     event.preventDefault();
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = "move";
-    }
-    const target = event.currentTarget as HTMLElement;
-    const rect = target.getBoundingClientRect();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     const position: DropPosition = event.clientY > rect.top + rect.height / 2 ? "after" : "before";
     this.dropTarget.set({id: item.id, position});
   }
 
-  async dropOn(event: DragEvent, item: WatchItem): Promise<void> {
+  dropOn(event: DragEvent, item: WatchItem): void {
     event.preventDefault();
     const draggedId = this.draggedItemId();
     const target = this.dropTarget() ?? {id: item.id, position: "before" as DropPosition};
@@ -132,15 +79,10 @@ export class SavedSourcesComponent implements OnInit {
       this.clearDragState();
       return;
     }
-
-    const reordered = this.reorderedItems(draggedId, target.id, target.position);
-    if (this.sameOrder(reordered, this.items())) {
-      this.clearDragState();
-      return;
+    const reordered = reorderItems(this.sources.items(), draggedId, target.id, target.position);
+    if (!sameOrder(reordered, this.sources.items())) {
+      this.sources.persistOrder(reordered, this.orderBeforeDrag);
     }
-
-    this.items.set(reordered);
-    await this.persistOrder(reordered);
     this.clearDragState();
   }
 
@@ -158,44 +100,23 @@ export class SavedSourcesComponent implements OnInit {
   updateMeta(update: SourceUpdate): string {
     return [update.uploader, update.upload_date].filter(Boolean).join(" / ");
   }
+}
 
-  private async persistOrder(items: WatchItem[]): Promise<void> {
-    this.orderSaving.set(true);
-    try {
-      const savedItems = await this.api.reorderWatchItems(items.map((item) => item.id));
-      this.items.set(savedItems);
-    } catch (error) {
-      this.items.set(this.orderBeforeDrag);
-      this.workflow.notice.set({text: this.message(error), kind: "error"});
-    } finally {
-      this.orderSaving.set(false);
-      this.orderBeforeDrag = [];
-    }
-  }
+function reorderItems(
+  items: WatchItem[],
+  draggedId: number,
+  targetId: number,
+  position: DropPosition,
+): WatchItem[] {
+  const draggedItem = items.find((item) => item.id === draggedId);
+  if (!draggedItem) return items;
+  const reordered = items.filter((item) => item.id !== draggedId);
+  const targetIndex = reordered.findIndex((item) => item.id === targetId);
+  if (targetIndex === -1) return items;
+  reordered.splice(position === "after" ? targetIndex + 1 : targetIndex, 0, draggedItem);
+  return reordered;
+}
 
-  private reorderedItems(draggedId: number, targetId: number, position: DropPosition): WatchItem[] {
-    const items = [...this.items()];
-    const draggedItem = items.find((item) => item.id === draggedId);
-    if (!draggedItem) {
-      return items;
-    }
-
-    const withoutDragged = items.filter((item) => item.id !== draggedId);
-    const targetIndex = withoutDragged.findIndex((item) => item.id === targetId);
-    if (targetIndex === -1) {
-      return items;
-    }
-
-    const insertIndex = position === "after" ? targetIndex + 1 : targetIndex;
-    withoutDragged.splice(insertIndex, 0, draggedItem);
-    return withoutDragged;
-  }
-
-  private sameOrder(first: WatchItem[], second: WatchItem[]): boolean {
-    return first.length === second.length && first.every((item, index) => item.id === second[index]?.id);
-  }
-
-  private message(error: unknown): string {
-    return error instanceof Error ? error.message : String(error);
-  }
+function sameOrder(first: WatchItem[], second: WatchItem[]): boolean {
+  return first.length === second.length && first.every((item, index) => item.id === second[index]?.id);
 }

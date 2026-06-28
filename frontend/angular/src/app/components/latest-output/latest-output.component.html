@@ -2,15 +2,15 @@
   <div class="panel-header">
     <h2>Latest Output</h2>
     <div class="button-row">
-      @if (canRead(workflow.latestTask())) {
-        <button class="primary-button" type="button" (click)="readSummary(workflow.latestTask())">Read Summary</button>
+      @if (canRead(vm().task)) {
+        <button class="primary-button" type="button" (click)="readSummary(vm().task)">Read Summary</button>
       }
-      <button class="secondary-button" type="button" [disabled]="!canFavorite(workflow.latestTask())" (click)="workflow.favoriteLatestSummary()">Favorite Summary</button>
-      <button class="secondary-button" type="button" [disabled]="!workflow.canCopyLatestOutput()" (click)="workflow.copyLatestOutput()">Copy Full Note</button>
+      <button class="secondary-button" type="button" [disabled]="!canFavorite(vm().task)" (click)="favoriteRequested.emit()">Favorite Summary</button>
+      <button class="secondary-button" type="button" [disabled]="!vm().canCopy" (click)="copyRequested.emit()">Copy Full Note</button>
     </div>
   </div>
 
-  @let task = workflow.latestTask();
+  @let task = vm().task;
   <dl class="output-list">
     <div>
       <dt>Video</dt>
@@ -18,7 +18,7 @@
         @if (task?.video_deleted_after_completion && task?.video_path) {
           <span class="muted-inline">Deleted after completion: {{ taskPath(task, 'video_path') }}</span>
         } @else if (task?.video_path && task?.task_id) {
-          <a class="path-anchor" [href]="workflow.fileHref('video', task)" target="_blank" rel="noreferrer">{{ taskPath(task, 'video_path') }}</a>
+          <a class="path-anchor" [href]="fileHref('video', task)" target="_blank" rel="noreferrer">{{ taskPath(task, 'video_path') }}</a>
         } @else {
           {{ taskPath(task, 'video_path') }}
         }
@@ -28,7 +28,7 @@
       <dt>Transcript</dt>
       <dd>
         @if (task?.transcription_path && task?.task_id) {
-          <a class="path-anchor" [href]="workflow.fileHref('transcript', task)" target="_blank" rel="noreferrer">{{ taskPath(task, 'transcription_path') }}</a>
+          <a class="path-anchor" [href]="fileHref('transcript', task)" target="_blank" rel="noreferrer">{{ taskPath(task, 'transcription_path') }}</a>
         } @else {
           {{ taskPath(task, 'transcription_path') }}
         }
@@ -38,7 +38,7 @@
       <dt>Markdown</dt>
       <dd>
         @if (task?.markdown_path && task?.task_id) {
-          <a class="path-anchor" [href]="workflow.fileHref('markdown', task)" target="_blank" rel="noreferrer">{{ taskPath(task, 'markdown_path') }}</a>
+          <a class="path-anchor" [href]="fileHref('markdown', task)" target="_blank" rel="noreferrer">{{ taskPath(task, 'markdown_path') }}</a>
         } @else {
           {{ taskPath(task, 'markdown_path') }}
         }
@@ -46,22 +46,22 @@
     </div>
   </dl>
 
-  <pre class="summary-box">{{ workflow.latestSummary() || (task?.status === 'failed' ? task?.error || 'Task failed.' : 'No completed task yet.') }}</pre>
+  <pre class="summary-box">{{ vm().summary || (task?.status === 'failed' ? task?.error || 'Task failed.' : 'No completed task yet.') }}</pre>
 
   <div class="recent-block">
     <div class="panel-header compact-header">
       <h2>Recent Tasks</h2>
-      <button class="secondary-button small-button" type="button" (click)="workflow.loadRecentTasks()">Refresh</button>
+      <button class="secondary-button small-button" type="button" (click)="refreshRequested.emit()">Refresh</button>
     </div>
     <div class="recent-tasks">
-      @if (workflow.recentTasks().length) {
-        @for (recent of workflow.recentTasks(); track recent.task_id) {
-          <button class="task-row" type="button" (click)="openTask(recent.task_id)">
+      @if (vm().recentTasks.length) {
+        @for (recent of vm().recentTasks; track recent.task_id) {
+          <button class="task-row" type="button" (click)="taskOpened.emit(recent.task_id)">
             <span>
-              <strong>{{ workflow.statusLabel(recent.status) }}</strong>
+              <strong>{{ statusLabel(recent.status) }}</strong>
               <span>{{ recent.url || 'No URL' }}</span>
             </span>
-            <span>{{ workflow.formatElapsed(recent) }}</span>
+            <span>{{ formatElapsed(recent) }}</span>
           </button>
         }
       } @else {

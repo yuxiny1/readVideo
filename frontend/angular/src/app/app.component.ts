@@ -1,19 +1,11 @@
-import {CommonModule} from "@angular/common";
-import {Component, inject, OnInit} from "@angular/core";
+import {ChangeDetectionStrategy, Component} from "@angular/core";
 import {RouterLink, RouterLinkActive, RouterOutlet} from "@angular/router";
-
-import {TaskWorkflowService} from "./services/task-workflow.service";
 
 @Component({
   selector: "rv-root",
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet],
   templateUrl: "./app.component.html",
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AppComponent implements OnInit {
-  readonly workflow = inject(TaskWorkflowService);
-
-  ngOnInit(): void {
-    void this.workflow.initialize();
-  }
-}
+export class AppComponent {}
