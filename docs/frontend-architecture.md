@@ -1,23 +1,30 @@
 # Frontend Architecture
 
-The Angular frontend follows a Signals-at-the-view, RxJS-at-the-async-boundary design.
+The Angular frontend follows a Signals-at-the-view, RxJS-at-the-async-boundary design, with NgRx SignalStore
+for feature state that coordinates multiple related views and mutations.
 
 ## Responsibilities
 
 - Components own short-lived interaction state such as drag targets and open menus.
-- Page-scoped facades own feature state and expose `signal` and `computed` values to containers.
+- Page-scoped facades own interaction state and expose `signal` and `computed` values to containers.
+- Component-scoped NgRx SignalStores own Favorites, Folders, Tags, and Reader document state.
 - `ReadvideoApiService` is the only root data service. It is stateless and returns typed `Observable` values.
 - Presentational components receive complete view models through `input()` and send user intent through `output()`.
 - Pure selectors and parsers contain filtering, sorting, tag normalization, and Markdown rendering.
 
-Page state services must be listed in the page or feature component `providers` array. Do not use
-`providedIn: "root"` for state that belongs to New Video, History, Favorites, Reader, or Saved Sources.
+Page state services and SignalStores must be listed in the page or feature component `providers` array. Do not use
+`providedIn: "root"` for state that belongs to New Video, History, Favorites, Reader, or Saved Sources. Favorites
+and Reader each receive a lifecycle-bound `LibraryStore`; both use the same store contract and persistent API data
+without keeping route-scoped UI state alive after navigation.
 
 ## Signals And RxJS
 
 - Use `signal` for current UI state and `computed` for derived state.
 - Do not store values that can be derived from an existing signal.
 - Keep HTTP, polling, and multi-request orchestration as Observable pipelines.
+- Use `withState`, `withComputed`, and `withMethods` to define SignalStore boundaries.
+- Use protected SignalStore state and immutable `patchState` updates.
+- Use `rxMethod` for Store HTTP mutations and handle errors inside each inner stream.
 - Convert only at the component/facade boundary.
 - Use `switchMap` for replaceable work, including task polling and dependent requests.
 - Use `take(1)` for one-shot requests and `takeUntilDestroyed` for every facade subscription.
@@ -25,8 +32,8 @@ Page state services must be listed in the page or feature component `providers` 
 
 ## SOLID Boundaries
 
-- **Single responsibility:** API transport, task presentation, model management, Reader parsing, Reader document state,
-  and Reader library selection live in separate modules.
+- **Single responsibility:** API transport, task presentation, model management, Library state, Reader parsing,
+  Reader document state, and Reader library selection live in separate modules.
 - **Open/closed:** New views consume typed view models without modifying the API transport layer.
 - **Liskov substitution:** Components depend on stable data contracts rather than concrete page services.
 - **Interface segregation:** Process Panel and Latest Output receive only the state and events they use.
@@ -37,6 +44,7 @@ Page state services must be listed in the page or feature component `providers` 
 - Every component uses `ChangeDetectionStrategy.OnPush`.
 - API methods return typed Observables and do not use `fetch` or Promise wrappers.
 - Page signals live in component-scoped providers.
+- Shared feature state uses component-scoped NgRx SignalStore, not a root store.
 - Presentational components use data-down/events-up inputs and outputs.
 - Derived state uses `computed`; state updates are immutable.
 - Templates use `@for (...; track ...)` and avoid expensive inline work.

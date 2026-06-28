@@ -1,7 +1,9 @@
 import {DomSanitizer, SafeHtml} from "@angular/platform-browser";
-import {DestroyRef, Injectable, computed, inject, signal} from "@angular/core";
-import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
-import {defer, switchMap, take, timer} from "rxjs";
+import {computed, inject} from "@angular/core";
+import {tapResponse} from "@ngrx/operators";
+import {patchState, signalStore, withComputed, withMethods, withState} from "@ngrx/signals";
+import {rxMethod} from "@ngrx/signals/rxjs-interop";
+import {concatMap, defer, pipe, switchMap, timer} from "rxjs";
 
 import {errorMessage} from "../../shared/errors";
 import {formatBytes} from "../../shared/format";
@@ -24,132 +26,168 @@ import {
 } from "./reader-preferences";
 import {ReaderFocusTheme, ReaderTextSize, ReaderViewMode, ReaderWidth} from "./reader.types";
 
-@Injectable()
-export class ReaderDocumentStore {
-  private readonly sanitizer = inject(DomSanitizer);
-  private readonly destroyRef = inject(DestroyRef);
-
-  readonly status = signal("Idle");
-  readonly path = signal("");
-  readonly title = signal("Choose a Markdown note");
-  readonly documentMeta = signal("Favorites and local Markdown files appear on the left.");
-  readonly rawContent = signal("");
-  readonly emptyMessage = signal("Pick a note to start reading.");
-  readonly documentQuery = signal("");
-  readonly error = signal("");
-  readonly focusMode = signal(readFocusModeDefault());
-  readonly focusTheme = signal<ReaderFocusTheme>(readFocusThemeDefault());
-  readonly readerWidth = signal<ReaderWidth>("standard");
-  readonly readerTextSize = signal<ReaderTextSize>("standard");
-  readonly viewMode = signal<ReaderViewMode>("rendered");
-
-  readonly headings = computed(() => extractHeadings(this.rawContent()));
-  readonly sourceUrl = computed(() => extractMetadata(this.rawContent(), "Source"));
-  readonly generatedAt = computed(() => extractMetadata(this.rawContent(), "Generated"));
-  readonly transcriptPath = computed(() => (
-    extractMetadata(this.rawContent(), "Transcript").replace(/^`|`$/g, "")
-  ));
-  readonly searchMatchCount = computed(() => countMatches(this.rawContent(), this.documentQuery()));
-  readonly html = computed<SafeHtml>(() => {
-    const content = this.rawContent();
-    const html = content
-      ? renderMarkdown(content)
-      : `<div class="reader-empty">${escapeHtml(this.emptyMessage())}</div>`;
-    return this.sanitizer.bypassSecurityTrustHtml(html);
-  });
-
-  beginOpen(path: string): void {
-    this.status.set("Loading");
-    this.path.set(path);
-    this.error.set("");
-  }
-
-  open(document: MarkdownDocument): void {
-    this.path.set(document.path);
-    this.title.set(extractTitle(document.content) || fileName(document.path));
-    this.rawContent.set(document.content);
-    this.documentMeta.set(
-      `${fileName(document.path)} · ${readingStats(document.content)} · ${extractHeadings(document.content).length} sections`,
-    );
-    this.emptyMessage.set("Pick a note to start reading.");
-    this.documentQuery.set("");
-    this.error.set("");
-    this.status.set("Open");
-  }
-
-  fail(message: string): void {
-    this.status.set("Error");
-    this.error.set(message);
-    this.rawContent.set("");
-    this.emptyMessage.set(message);
-  }
-
-  toggleFocusMode(): void {
-    this.setFocusMode(!this.focusMode());
-  }
-
-  setFocusMode(enabled: boolean): void {
-    this.focusMode.set(enabled);
-    persistFocusModeDefault(enabled);
-  }
-
-  setFocusTheme(theme: ReaderFocusTheme): void {
-    this.focusTheme.set(theme);
-    persistFocusThemeDefault(theme);
-  }
-
-  setReaderWidth(width: ReaderWidth): void {
-    this.readerWidth.set(width);
-  }
-
-  setReaderTextSize(size: ReaderTextSize): void {
-    this.readerTextSize.set(size);
-  }
-
-  setViewMode(mode: ReaderViewMode): void {
-    this.viewMode.set(mode);
-  }
-
-  scrollToHeading(id: string): void {
-    document.getElementById(id)?.scrollIntoView({behavior: "smooth", block: "start"});
-  }
-
-  findInDocument(): void {
-    const query = this.documentQuery().trim();
-    if (!query) return;
-    const finder = window as Window & {find?: (text: string) => boolean};
-    finder.find?.(query);
-  }
-
-  copyPath(value = this.path()): void {
-    if (value) this.copyText(value, "Path copied");
-  }
-
-  copyMarkdown(): void {
-    if (this.rawContent()) this.copyText(this.rawContent(), "Full Markdown copied");
-  }
-
-  formatBytes(value: number): string {
-    return formatBytes(value);
-  }
-
-  downloadHref(path = this.path()): string {
-    return `/api/markdown_files/download?path=${encodeURIComponent(path)}`;
-  }
-
-  private copyText(value: string, successStatus: string): void {
-    defer(() => navigator.clipboard.writeText(value)).pipe(
-      switchMap(() => {
-        this.status.set(successStatus);
-        return timer(1200);
-      }),
-      take(1),
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe({
-      next: () => {
-        if (this.status() === successStatus) this.status.set(this.path() ? "Open" : "Idle");
-      },
-      error: (error) => this.fail(errorMessage(error)),
-    });
-  }
+interface ReaderDocumentState {
+  status: string;
+  path: string;
+  title: string;
+  documentMeta: string;
+  rawContent: string;
+  emptyMessage: string;
+  documentQuery: string;
+  error: string;
+  focusMode: boolean;
+  focusTheme: ReaderFocusTheme;
+  readerWidth: ReaderWidth;
+  readerTextSize: ReaderTextSize;
+  viewMode: ReaderViewMode;
 }
+
+interface CopyTextCommand {
+  value: string;
+  successStatus: string;
+}
+
+export const ReaderDocumentStore = signalStore(
+  withState<ReaderDocumentState>(() => ({
+    status: "Idle",
+    path: "",
+    title: "Choose a Markdown note",
+    documentMeta: "Favorites and local Markdown files appear on the left.",
+    rawContent: "",
+    emptyMessage: "Pick a note to start reading.",
+    documentQuery: "",
+    error: "",
+    focusMode: readFocusModeDefault(),
+    focusTheme: readFocusThemeDefault(),
+    readerWidth: "standard",
+    readerTextSize: "standard",
+    viewMode: "rendered",
+  })),
+  withComputed((store) => {
+    const sanitizer = inject(DomSanitizer);
+    return {
+      headings: computed(() => extractHeadings(store.rawContent())),
+      sourceUrl: computed(() => extractMetadata(store.rawContent(), "Source")),
+      generatedAt: computed(() => extractMetadata(store.rawContent(), "Generated")),
+      transcriptPath: computed(() => (
+        extractMetadata(store.rawContent(), "Transcript").replace(/^`|`$/g, "")
+      )),
+      searchMatchCount: computed(() => countMatches(store.rawContent(), store.documentQuery())),
+      html: computed<SafeHtml>(() => {
+        const content = store.rawContent();
+        const html = content
+          ? renderMarkdown(content)
+          : `<div class="reader-empty">${escapeHtml(store.emptyMessage())}</div>`;
+        return sanitizer.bypassSecurityTrustHtml(html);
+      }),
+    };
+  }),
+  withMethods((store) => {
+    const fail = (message: string) => patchState(store, {
+      status: "Error",
+      error: message,
+      rawContent: "",
+      emptyMessage: message,
+    });
+    const copyText = rxMethod<CopyTextCommand>(
+      pipe(
+        concatMap(({value, successStatus}) => defer(() => navigator.clipboard.writeText(value)).pipe(
+          switchMap(() => {
+            patchState(store, {status: successStatus});
+            return timer(1200);
+          }),
+          tapResponse({
+            next: () => {
+              if (store.status() === successStatus) {
+                patchState(store, {status: store.path() ? "Open" : "Idle"});
+              }
+            },
+            error: (error) => fail(errorMessage(error)),
+          }),
+        )),
+      ),
+    );
+
+    return {
+      beginOpen(path: string): void {
+        patchState(store, {status: "Loading", path, error: ""});
+      },
+
+      open(document: MarkdownDocument): void {
+        patchState(store, {
+          path: document.path,
+          title: extractTitle(document.content) || fileName(document.path),
+          rawContent: document.content,
+          documentMeta: (
+            `${fileName(document.path)} · ${readingStats(document.content)} · ${extractHeadings(document.content).length} sections`
+          ),
+          emptyMessage: "Pick a note to start reading.",
+          documentQuery: "",
+          error: "",
+          status: "Open",
+        });
+      },
+
+      fail,
+
+      setStatus(status: string): void {
+        patchState(store, {status});
+      },
+
+      setDocumentQuery(documentQuery: string): void {
+        patchState(store, {documentQuery});
+      },
+
+      toggleFocusMode(): void {
+        const focusMode = !store.focusMode();
+        patchState(store, {focusMode});
+        persistFocusModeDefault(focusMode);
+      },
+
+      setFocusTheme(focusTheme: ReaderFocusTheme): void {
+        patchState(store, {focusTheme});
+        persistFocusThemeDefault(focusTheme);
+      },
+
+      setReaderWidth(readerWidth: ReaderWidth): void {
+        patchState(store, {readerWidth});
+      },
+
+      setReaderTextSize(readerTextSize: ReaderTextSize): void {
+        patchState(store, {readerTextSize});
+      },
+
+      setViewMode(viewMode: ReaderViewMode): void {
+        patchState(store, {viewMode});
+      },
+
+      scrollToHeading(id: string): void {
+        document.getElementById(id)?.scrollIntoView({behavior: "smooth", block: "start"});
+      },
+
+      findInDocument(): void {
+        const query = store.documentQuery().trim();
+        if (!query) return;
+        const finder = window as Window & {find?: (text: string) => boolean};
+        finder.find?.(query);
+      },
+
+      copyPath(value = store.path()): void {
+        if (value) copyText({value, successStatus: "Path copied"});
+      },
+
+      copyMarkdown(): void {
+        const value = store.rawContent();
+        if (value) copyText({value, successStatus: "Full Markdown copied"});
+      },
+
+      formatBytes(value: number): string {
+        return formatBytes(value);
+      },
+
+      downloadHref(path = store.path()): string {
+        return `/api/markdown_files/download?path=${encodeURIComponent(path)}`;
+      },
+    };
+  }),
+);

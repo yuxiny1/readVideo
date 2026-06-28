@@ -221,7 +221,7 @@
           name="reader-find"
           placeholder="Find in note"
           [ngModel]="vm.document.documentQuery()"
-          (ngModelChange)="vm.document.documentQuery.set($event)"
+          (ngModelChange)="vm.document.setDocumentQuery($event)"
         >
         <span class="caption">{{ vm.document.searchMatchCount() }} matches</span>
         <button class="secondary-button small-button" type="button" [disabled]="!vm.document.documentQuery().trim()" (click)="vm.document.findInDocument()">Find</button>
