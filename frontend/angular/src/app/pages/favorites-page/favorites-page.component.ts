@@ -2,6 +2,7 @@ import {CommonModule} from "@angular/common";
 import {ChangeDetectionStrategy, Component, inject, OnInit} from "@angular/core";
 import {FormsModule} from "@angular/forms";
 
+import {LibraryStore} from "../../features/library/data-access/library.store";
 import {FavoritesFacade} from "./favorites.facade";
 
 @Component({
@@ -9,7 +10,7 @@ import {FavoritesFacade} from "./favorites.facade";
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: "./favorites-page.component.html",
-  providers: [FavoritesFacade],
+  providers: [LibraryStore, FavoritesFacade],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FavoritesPageComponent implements OnInit {

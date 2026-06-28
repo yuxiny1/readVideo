@@ -89,6 +89,7 @@ class FrontendContractTest(unittest.TestCase):
     def test_tags_are_shared_across_favorites_reader_and_history(self):
         api = read_repo_file("frontend/angular/src/app/services/readvideo-api.service.ts")
         types = read_repo_file("frontend/angular/src/app/types/readvideo.types.ts")
+        library_store = read_repo_file("frontend/angular/src/app/features/library/data-access/library.store.ts")
         favorites_facade = read_repo_file("frontend/angular/src/app/pages/favorites-page/favorites.facade.ts")
         favorites_template = read_repo_file("frontend/angular/src/app/pages/favorites-page/favorites-page.component.html")
         reader_facade = read_repo_file("frontend/angular/src/app/pages/reader-page/reader.facade.ts")
@@ -114,7 +115,8 @@ class FrontendContractTest(unittest.TestCase):
         self.assertIn("setActiveFavoriteFolder", reader_facade)
         self.assertIn("activeTag", reader_facade)
         self.assertIn("saveActiveTags", reader_facade)
-        self.assertIn("updateFavoriteTags", reader_facade)
+        self.assertIn("updateFavoriteTags", library_store)
+        self.assertIn("this.library.updateTags", reader_facade)
         self.assertIn("reader-document-tags-row", reader_template)
         self.assertIn("reader-tag-edit-row", reader_template)
         self.assertIn("Save Tags", reader_template)
@@ -153,6 +155,32 @@ class FrontendContractTest(unittest.TestCase):
             self.assertIn("input.required", source)
             self.assertIn("output<", source)
             self.assertNotIn("inject(", source)
+
+    def test_ngrx_signal_stores_manage_library_and_reader_state(self):
+        package = json.loads(read_repo_file("package.json"))
+        library_store = read_repo_file("frontend/angular/src/app/features/library/data-access/library.store.ts")
+        reader_store = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-document.store.ts")
+        favorites_page = read_repo_file("frontend/angular/src/app/pages/favorites-page/favorites-page.component.ts")
+        favorites_facade = read_repo_file("frontend/angular/src/app/pages/favorites-page/favorites.facade.ts")
+        reader_page = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-page.component.ts")
+        reader_facade = read_repo_file("frontend/angular/src/app/pages/reader-page/reader.facade.ts")
+
+        self.assertEqual(package["dependencies"]["@ngrx/signals"], "^21.1.1")
+        for store in [library_store, reader_store]:
+            self.assertIn("signalStore(", store)
+            self.assertIn("withState", store)
+            self.assertIn("withComputed", store)
+            self.assertIn("withMethods", store)
+            self.assertIn("patchState", store)
+            self.assertIn("rxMethod", store)
+            self.assertNotIn("providedIn", store)
+
+        self.assertIn("providers: [LibraryStore, FavoritesFacade]", favorites_page)
+        self.assertIn("providers: [LibraryStore, ReaderDocumentStore, ReaderFacade]", reader_page)
+        self.assertIn("readonly favorites = this.library.favorites", favorites_facade)
+        self.assertIn("readonly favorites = this.library.favorites", reader_facade)
+        self.assertNotIn("readonly favorites = signal", favorites_facade)
+        self.assertNotIn("readonly favorites = signal", reader_facade)
 
     def test_frontend_typescript_modules_stay_focused(self):
         app_root = PROJECT_ROOT / "frontend/angular/src/app"

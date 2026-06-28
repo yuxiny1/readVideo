@@ -1,8 +1,9 @@
-import {DestroyRef, Injectable, computed, inject, signal} from "@angular/core";
+import {DestroyRef, Injectable, computed, effect, inject, signal} from "@angular/core";
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 import {ActivatedRoute, Router} from "@angular/router";
-import {Observable, catchError, forkJoin, map, of, switchMap, take} from "rxjs";
+import {Observable, catchError, of, take} from "rxjs";
 
+import {LibraryStore} from "../../features/library/data-access/library.store";
 import {ReadvideoApiService} from "../../services/readvideo-api.service";
 import {errorMessage} from "../../shared/errors";
 import {parseTags, tagsFor} from "../../shared/tags";
@@ -11,7 +12,6 @@ import {
   FavoriteSummary,
   MarkdownDocument,
   MarkdownFile,
-  TagSummary,
 } from "../../types/readvideo.types";
 import {favoriteTitle, filterFavorites, filterFiles, libraryItems} from "./reader-library";
 import {ReaderDocumentStore} from "./reader-document.store";
@@ -24,17 +24,19 @@ export class ReaderFacade {
   private readonly api = inject(ReadvideoApiService);
   private readonly destroyRef = inject(DestroyRef);
   readonly document = inject(ReaderDocumentStore);
+  readonly library = inject(LibraryStore);
 
-  readonly favorites = signal<FavoriteSummary[]>([]);
-  readonly folders = signal<FavoriteFolder[]>([]);
-  readonly tags = signal<TagSummary[]>([]);
+  readonly favorites = this.library.favorites;
+  readonly folders = this.library.folders;
+  readonly tags = this.library.tags;
   readonly activeFolderId = signal("all");
   readonly activeTag = signal("all");
   readonly files = signal<MarkdownFile[]>([]);
   readonly fileCount = signal("0 files");
   readonly defaultNotesDir = signal("notes");
-  readonly libraryError = signal("");
-  readonly error = computed(() => this.document.error() || this.libraryError());
+  readonly localError = signal("");
+  readonly configReady = signal(false);
+  readonly error = computed(() => this.document.error() || this.localError() || this.library.error());
   readonly searchQuery = signal("");
   readonly libraryMode = signal<LibraryMode>("all");
   readonly librarySort = signal<LibrarySort>("recent");
@@ -90,23 +92,29 @@ export class ReaderFacade {
     }
     return counts;
   });
+  private initialRouteApplied = false;
+  private readonly initialRoute = effect(() => {
+    const ready = this.configReady() && !this.library.loading();
+    if (!ready || this.initialRouteApplied) return;
+    this.initialRouteApplied = true;
+    this.applyInitialRoute();
+  });
+  private readonly libraryFeedback = effect(() => {
+    if (this.library.notice() === "Tags saved") this.document.setStatus("Tags saved");
+    if (this.library.error() && this.document.status() === "Saving tags") {
+      this.document.setStatus("Tag save failed");
+    }
+  });
 
   initialize(): void {
-    this.libraryError.set("");
+    this.localError.set("");
+    this.library.loadAll();
     this.runOnce(
-      forkJoin({
-        config: this.recover(this.api.appConfig(), null),
-        favorites: this.recover(this.api.favorites(), []),
-        folders: this.recover(this.api.favoriteFolders(), []),
-        tags: this.recover(this.api.tags(), []),
-      }),
-      ({config, favorites, folders, tags}) => {
+      this.recover(this.api.appConfig(), null),
+      (config) => {
         this.defaultNotesDir.set(config?.notes_dir || "notes");
         this.markdownFolder = this.defaultNotesDir();
-        this.applyFavorites(favorites);
-        this.folders.set(folders);
-        this.tags.set(tags);
-        this.applyInitialRoute();
+        this.configReady.set(true);
       },
     );
   }
@@ -148,7 +156,7 @@ export class ReaderFacade {
 
   openPath(path: string, updateRoute = true): void {
     this.document.beginOpen(path);
-    this.libraryError.set("");
+    this.localError.set("");
     this.runOnce(
       this.api.markdownDocument(path),
       (document) => this.applyDocument(document, updateRoute),
@@ -196,17 +204,8 @@ export class ReaderFacade {
   saveActiveTags(): void {
     const item = this.activeFavorite();
     if (!item) return;
-    this.runOnce(
-      this.api.updateFavoriteTags(item.id, parseTags(this.tagDraft(item))).pipe(
-        switchMap((updated) => this.api.tags().pipe(map((allTags) => ({updated, allTags})))),
-      ),
-      ({updated, allTags}) => {
-        this.replaceFavorite(updated);
-        this.tagDrafts[item.id] = tagsFor(updated).join(", ");
-        this.tags.set(allTags);
-        this.document.status.set("Tags saved");
-      },
-    );
+    this.document.setStatus("Saving tags");
+    this.library.updateTags({favoriteId: item.id, tags: parseTags(this.tagDraft(item))});
   }
 
   folderCount(id: string | number): number {
@@ -265,22 +264,9 @@ export class ReaderFacade {
     return this.visibleLibraryItems().filter((item) => item.path || item.favorite);
   }
 
-  private applyFavorites(favorites: FavoriteSummary[]): void {
-    this.favorites.set(favorites);
-    const ids = new Set(favorites.map((item) => item.id));
-    for (const item of favorites) this.tagDrafts[item.id] ??= tagsFor(item).join(", ");
-    for (const id of Object.keys(this.tagDrafts).map(Number)) {
-      if (!ids.has(id)) delete this.tagDrafts[id];
-    }
-  }
-
-  private replaceFavorite(updated: FavoriteSummary): void {
-    this.favorites.update((items) => items.map((item) => item.id === updated.id ? updated : item));
-  }
-
   private recover<T>(source$: Observable<T>, fallback: T): Observable<T> {
     return source$.pipe(catchError((error) => {
-      this.libraryError.set(errorMessage(error));
+      this.localError.set(errorMessage(error));
       return of(fallback);
     }));
   }
@@ -294,7 +280,7 @@ export class ReaderFacade {
       next,
       error: (error) => {
         const message = errorMessage(error);
-        this.libraryError.set(message);
+        this.localError.set(message);
         onError(message);
       },
     });

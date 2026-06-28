@@ -1,27 +1,31 @@
-import {DestroyRef, Injectable, computed, inject, signal} from "@angular/core";
+import {DestroyRef, Injectable, computed, effect, inject, signal} from "@angular/core";
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 import {Router} from "@angular/router";
-import {Observable, defer, forkJoin, map, switchMap, take} from "rxjs";
+import {Observable, defer, take} from "rxjs";
 
+import {LibraryStore} from "../../features/library/data-access/library.store";
 import {ReadvideoApiService} from "../../services/readvideo-api.service";
 import {errorMessage} from "../../shared/errors";
 import {hasTag, parseTags, tagsFor} from "../../shared/tags";
-import {FavoriteFolder, FavoriteSummary, TagSummary} from "../../types/readvideo.types";
+import {FavoriteFolder, FavoriteSummary} from "../../types/readvideo.types";
 
 @Injectable()
 export class FavoritesFacade {
   private readonly api = inject(ReadvideoApiService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  readonly library = inject(LibraryStore);
 
-  readonly favorites = signal<FavoriteSummary[]>([]);
-  readonly folders = signal<FavoriteFolder[]>([]);
-  readonly tags = signal<TagSummary[]>([]);
+  readonly favorites = this.library.favorites;
+  readonly folders = this.library.folders;
+  readonly tags = this.library.tags;
   readonly activeFolderId = signal("all");
   readonly activeTag = signal("all");
   readonly searchQuery = signal("");
-  readonly error = signal("");
-  readonly notice = signal("");
+  readonly localError = signal("");
+  readonly localNotice = signal("");
+  readonly error = computed(() => this.localError() || this.library.error());
+  readonly notice = computed(() => this.localNotice() || this.library.notice());
   readonly editingFolderId = signal<number | null>(null);
   readonly tagDrafts: Record<number, string> = {};
   readonly folderDrafts: Record<number, {name: string; notes: string}> = {};
@@ -52,23 +56,21 @@ export class FavoritesFacade {
     });
   });
   readonly favoritesCount = computed(() => (
-    `${this.filteredFavorites().length} shown / ${this.favorites().length} saved`
+    `${this.filteredFavorites().length} shown / ${this.library.favoriteCount()} saved`
   ));
+  private readonly libraryFeedback = effect(() => {
+    const notice = this.library.notice();
+    if (notice === "Folder created") {
+      this.folderName = "";
+      this.folderNotes = "";
+    }
+    if (notice === "Folder updated") this.editingFolderId.set(null);
+  });
 
   initialize(): void {
-    this.error.set("");
-    this.runOnce(
-      forkJoin({
-        folders: this.api.favoriteFolders(),
-        favorites: this.api.favorites(),
-        tags: this.api.tags(),
-      }),
-      ({folders, favorites, tags}) => {
-        this.applyFolders(folders);
-        this.applyFavorites(favorites);
-        this.tags.set(tags);
-      },
-    );
+    this.localError.set("");
+    this.localNotice.set("");
+    this.library.loadAll();
   }
 
   setActiveFolder(id: string): void {
@@ -80,88 +82,47 @@ export class FavoritesFacade {
   }
 
   createFolder(): void {
-    this.runOnce(
-      this.api.addFavoriteFolder(this.folderName.trim(), this.folderNotes.trim()).pipe(
-        switchMap(() => this.api.favoriteFolders()),
-      ),
-      (folders) => {
-        this.folderName = "";
-        this.folderNotes = "";
-        this.notice.set("Folder created");
-        this.applyFolders(folders);
-      },
-    );
+    const name = this.folderName.trim();
+    if (!name) return;
+    this.beginLibraryAction();
+    this.library.createFolder({name, notes: this.folderNotes.trim()});
   }
 
   saveFolder(folder: FavoriteFolder): void {
     const draft = this.folderDrafts[folder.id] ?? {name: folder.name, notes: folder.notes};
-    this.runOnce(
-      this.api.updateFavoriteFolder(folder.id, draft.name.trim(), draft.notes.trim()).pipe(
-        switchMap((updated) => this.api.favorites().pipe(map((favorites) => ({updated, favorites})))),
-      ),
-      ({updated, favorites}) => {
-        this.folders.update((folders) => folders.map((item) => item.id === updated.id ? updated : item));
-        this.folderDrafts[updated.id] = {name: updated.name, notes: updated.notes};
-        this.editingFolderId.set(null);
-        this.notice.set("Folder updated");
-        this.applyFavorites(favorites);
-      },
-    );
+    this.beginLibraryAction();
+    this.library.updateFolder({
+      folderId: folder.id,
+      name: draft.name.trim(),
+      notes: draft.notes.trim(),
+    });
   }
 
   assignFolder(item: FavoriteSummary, value: string): void {
-    this.runOnce(
-      this.api.assignFavoriteFolder(item.id, value ? Number(value) : null).pipe(
-        switchMap((updated) => this.api.favoriteFolders().pipe(map((folders) => ({updated, folders})))),
-      ),
-      ({updated, folders}) => {
-        this.replaceFavorite(updated);
-        this.applyFolders(folders);
-      },
-    );
+    this.beginLibraryAction();
+    this.library.assignFolder({
+      favoriteId: item.id,
+      folderId: value ? Number(value) : null,
+    });
   }
 
   deleteFavorite(item: FavoriteSummary): void {
-    this.runOnce(
-      this.api.deleteFavorite(item.id).pipe(
-        switchMap(() => forkJoin({
-          folders: this.api.favoriteFolders(),
-          favorites: this.api.favorites(),
-          tags: this.api.tags(),
-        })),
-      ),
-      ({folders, favorites, tags}) => {
-        delete this.tagDrafts[item.id];
-        this.applyFolders(folders);
-        this.applyFavorites(favorites);
-        this.tags.set(tags);
-      },
-    );
+    this.beginLibraryAction();
+    this.library.deleteFavorite(item.id);
   }
 
   saveTags(item: FavoriteSummary): void {
-    this.runOnce(
-      this.api.updateFavoriteTags(item.id, parseTags(this.tagDraft(item))).pipe(
-        switchMap((updated) => this.api.tags().pipe(map((allTags) => ({updated, allTags})))),
-      ),
-      ({updated, allTags}) => {
-        this.replaceFavorite(updated);
-        this.tagDrafts[item.id] = tagsFor(updated).join(", ");
-        this.tags.set(allTags);
-        this.notice.set("Tags saved");
-      },
-    );
+    this.beginLibraryAction();
+    this.library.updateTags({favoriteId: item.id, tags: parseTags(this.tagDraft(item))});
   }
 
   readFavorite(item: FavoriteSummary): void {
+    this.localError.set("");
     if (item.markdown_path) {
       this.openMarkdownPath(item.markdown_path);
       return;
     }
-    this.runOnce(
-      this.api.favoriteMarkdown(item.id),
-      (document) => this.openMarkdownPath(document.path),
-    );
+    this.runOnce(this.api.favoriteMarkdown(item.id), (document) => this.openMarkdownPath(document.path));
   }
 
   browseFolder(item: FavoriteSummary): void {
@@ -173,8 +134,9 @@ export class FavoritesFacade {
   }
 
   copyFolderLabel(folder: FavoriteFolder): void {
+    this.localError.set("");
     this.runOnce(defer(() => navigator.clipboard.writeText(folder.name)), () => {
-      this.notice.set("Folder name copied");
+      this.localNotice.set("Folder name copied");
     });
   }
 
@@ -258,34 +220,15 @@ export class FavoritesFacade {
     void this.router.navigate(["/reader"], {queryParams: {path}});
   }
 
-  private replaceFavorite(updated: FavoriteSummary): void {
-    this.favorites.update((items) => items.map((item) => item.id === updated.id ? updated : item));
-  }
-
-  private applyFavorites(favorites: FavoriteSummary[]): void {
-    this.favorites.set(favorites);
-    const ids = new Set(favorites.map((item) => item.id));
-    for (const item of favorites) this.tagDrafts[item.id] ??= tagsFor(item).join(", ");
-    for (const id of Object.keys(this.tagDrafts).map(Number)) {
-      if (!ids.has(id)) delete this.tagDrafts[id];
-    }
-  }
-
-  private applyFolders(folders: FavoriteFolder[]): void {
-    this.folders.set(folders);
-    const ids = new Set(folders.map((folder) => folder.id));
-    for (const folder of folders) {
-      this.folderDrafts[folder.id] ??= {name: folder.name, notes: folder.notes};
-    }
-    for (const id of Object.keys(this.folderDrafts).map(Number)) {
-      if (!ids.has(id)) delete this.folderDrafts[id];
-    }
+  private beginLibraryAction(): void {
+    this.localError.set("");
+    this.localNotice.set("");
   }
 
   private runOnce<T>(source$: Observable<T>, next: (value: T) => void): void {
     source$.pipe(take(1), takeUntilDestroyed(this.destroyRef)).subscribe({
       next,
-      error: (error) => this.error.set(errorMessage(error)),
+      error: (error) => this.localError.set(errorMessage(error)),
     });
   }
 }
