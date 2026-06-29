@@ -3,6 +3,27 @@
 The Angular frontend follows a Signals-at-the-view, RxJS-at-the-async-boundary design, with NgRx SignalStore
 for feature state that coordinates multiple related views and mutations.
 
+## Directory Layout
+
+The application uses a feature-first Angular structure:
+
+```text
+app/
+  core/api/<unit>/                         Root HTTP transport
+  features/<feature>/page/<unit>/          Route container quartet
+  features/<feature>/data-access/<unit>/   Facade, store, or service pair
+  features/<feature>/ui/<unit>/            Presentational component quartet
+  features/<feature>/utils/<unit>/         Pure selector or parser pair
+  features/<feature>/models/<unit>/        Feature-only contract pair
+  shared/models/<unit>/                    Cross-feature contract pair
+  shared/utils/<unit>/                     Cross-feature helper pair
+```
+
+Keep each spec beside its source and each TypeScript unit in its own directory. Visual component directories contain
+exactly one `.component.ts`, `.component.html`, `.component.spec.ts`, and `.component.scss`. Non-visual units contain
+their production `.ts` and colocated `.spec.ts`; they do not add empty templates. Do not place facades or stores in
+`page/`, and do not add new files to the legacy top-level `components/`, `pages/`, `services/`, or `types/` directories.
+
 ## Responsibilities
 
 - Components own short-lived interaction state such as drag targets and open menus.
