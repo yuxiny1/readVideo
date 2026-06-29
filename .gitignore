@@ -26,5 +26,5 @@ readvideo.sqlite3.backup-*
 *.wav
 *_chunk_*.wav
 *_transcription.txt
-models/
+/models/
 tmp/

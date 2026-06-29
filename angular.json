@@ -14,7 +14,7 @@
           "options": {
             "outputPath": "frontend/dist/readvideo",
             "index": "frontend/angular/src/index.html",
-            "browser": "frontend/angular/src/main.ts",
+            "browser": "frontend/angular/src/bootstrap/application-bootstrap/main.ts",
             "baseHref": "/",
             "deployUrl": "/app/",
             "tsConfig": "tsconfig.app.json",
@@ -66,6 +66,9 @@
     }
   },
   "cli": {
-    "analytics": false
+    "analytics": false,
+    "cache": {
+      "enabled": false
+    }
   }
 }

@@ -12,8 +12,8 @@ def read_repo_file(relative_path: str) -> str:
 
 class FrontendContractTest(unittest.TestCase):
     def test_reader_limits_favorite_notes_to_three_visible_items(self):
-        facade = read_repo_file("frontend/angular/src/app/pages/reader-page/reader.facade.ts")
-        template = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-page.component.html")
+        facade = read_repo_file("frontend/angular/src/app/features/reader/data-access/reader-facade/reader.facade.ts")
+        template = read_repo_file("frontend/angular/src/app/features/reader/page/reader-page/reader-page.component.html")
         styles = read_repo_file("frontend/css/partials/reader-library.css")
 
         self.assertIn("visibleFavoriteNotes", facade)
@@ -22,9 +22,9 @@ class FrontendContractTest(unittest.TestCase):
         self.assertIn("favorite-note-list", styles)
 
     def test_reader_exposes_focus_mode(self):
-        document_store = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-document.store.ts")
-        preferences = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-preferences.ts")
-        template = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-page.component.html")
+        document_store = read_repo_file("frontend/angular/src/app/features/reader/data-access/reader-document/reader-document.store.ts")
+        preferences = read_repo_file("frontend/angular/src/app/features/reader/utils/reader-preferences/reader-preferences.ts")
+        template = read_repo_file("frontend/angular/src/app/features/reader/page/reader-page/reader-page.component.html")
         library_styles = read_repo_file("frontend/css/partials/reader-library.css")
         document_styles = read_repo_file("frontend/css/partials/reader-document.css")
 
@@ -45,8 +45,8 @@ class FrontendContractTest(unittest.TestCase):
         self.assertIn(".reader-focus-dark .modern-reader", document_styles)
 
     def test_saved_sources_exposes_compact_actions_menu(self):
-        template = read_repo_file("frontend/angular/src/app/components/saved-sources/saved-sources.component.html")
-        component = read_repo_file("frontend/angular/src/app/components/saved-sources/saved-sources.component.ts")
+        template = read_repo_file("frontend/angular/src/app/features/saved-sources/ui/saved-sources/saved-sources.component.html")
+        component = read_repo_file("frontend/angular/src/app/features/saved-sources/ui/saved-sources/saved-sources.component.ts")
         styles = read_repo_file("frontend/css/partials/saved-sources.css")
 
         self.assertIn("openActionsId", component)
@@ -93,9 +93,9 @@ class FrontendContractTest(unittest.TestCase):
         )
 
     def test_new_video_exposes_commercial_editorial_note_style(self):
-        template = read_repo_file("frontend/angular/src/app/components/process-panel/process-panel.component.html")
-        form_service = read_repo_file("frontend/angular/src/app/services/process-form.service.ts")
-        types = read_repo_file("frontend/angular/src/app/types/readvideo.types.ts")
+        template = read_repo_file("frontend/angular/src/app/features/new-video/ui/process-panel/process-panel.component.html")
+        form_service = read_repo_file("frontend/angular/src/app/features/new-video/data-access/process-form/process-form.service.ts")
+        types = read_repo_file("frontend/angular/src/app/shared/models/readvideo-types/readvideo.types.ts")
 
         self.assertIn('name="note_style"', template)
         self.assertIn("Commercial Editorial", template)
@@ -104,10 +104,10 @@ class FrontendContractTest(unittest.TestCase):
         self.assertIn('"detailed" | "commercial"', types)
 
     def test_copy_buttons_copy_full_markdown_notes(self):
-        latest_template = read_repo_file("frontend/angular/src/app/components/latest-output/latest-output.component.html")
-        workflow = read_repo_file("frontend/angular/src/app/services/task-workflow.service.ts")
-        reader_template = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-page.component.html")
-        reader_document = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-document.store.ts")
+        latest_template = read_repo_file("frontend/angular/src/app/features/new-video/ui/latest-output/latest-output.component.html")
+        workflow = read_repo_file("frontend/angular/src/app/features/new-video/data-access/task-workflow/task-workflow.service.ts")
+        reader_template = read_repo_file("frontend/angular/src/app/features/reader/page/reader-page/reader-page.component.html")
+        reader_document = read_repo_file("frontend/angular/src/app/features/reader/data-access/reader-document/reader-document.store.ts")
 
         self.assertIn("Copy Full Note", latest_template)
         self.assertIn("copyRequested.emit()", latest_template)
@@ -117,15 +117,15 @@ class FrontendContractTest(unittest.TestCase):
         self.assertIn("Full Markdown copied", reader_document)
 
     def test_tags_are_shared_across_favorites_reader_and_history(self):
-        api = read_repo_file("frontend/angular/src/app/services/readvideo-api.service.ts")
-        types = read_repo_file("frontend/angular/src/app/types/readvideo.types.ts")
-        library_store = read_repo_file("frontend/angular/src/app/features/library/data-access/library.store.ts")
-        favorites_facade = read_repo_file("frontend/angular/src/app/pages/favorites-page/favorites.facade.ts")
-        favorites_template = read_repo_file("frontend/angular/src/app/pages/favorites-page/favorites-page.component.html")
-        reader_facade = read_repo_file("frontend/angular/src/app/pages/reader-page/reader.facade.ts")
-        reader_template = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-page.component.html")
-        history_facade = read_repo_file("frontend/angular/src/app/pages/history-page/history.facade.ts")
-        history_template = read_repo_file("frontend/angular/src/app/pages/history-page/history-page.component.html")
+        api = read_repo_file("frontend/angular/src/app/core/api/readvideo-api/readvideo-api.service.ts")
+        types = read_repo_file("frontend/angular/src/app/shared/models/readvideo-types/readvideo.types.ts")
+        library_store = read_repo_file("frontend/angular/src/app/features/library/data-access/library-store/library.store.ts")
+        favorites_facade = read_repo_file("frontend/angular/src/app/features/favorites/data-access/favorites-facade/favorites.facade.ts")
+        favorites_template = read_repo_file("frontend/angular/src/app/features/favorites/page/favorites-page/favorites-page.component.html")
+        reader_facade = read_repo_file("frontend/angular/src/app/features/reader/data-access/reader-facade/reader.facade.ts")
+        reader_template = read_repo_file("frontend/angular/src/app/features/reader/page/reader-page/reader-page.component.html")
+        history_facade = read_repo_file("frontend/angular/src/app/features/history/data-access/history-facade/history.facade.ts")
+        history_template = read_repo_file("frontend/angular/src/app/features/history/page/history-page/history-page.component.html")
 
         self.assertIn("TagSummary", types)
         self.assertIn("tags?: string[]", types)
@@ -158,9 +158,9 @@ class FrontendContractTest(unittest.TestCase):
 
     def test_angular_architecture_uses_scoped_signals_and_observable_boundaries(self):
         app_root = PROJECT_ROOT / "frontend/angular/src/app"
-        api = read_repo_file("frontend/angular/src/app/services/readvideo-api.service.ts")
-        routes = read_repo_file("frontend/angular/src/app/app.routes.ts")
-        new_video = read_repo_file("frontend/angular/src/app/pages/new-video-page/new-video-page.component.ts")
+        api = read_repo_file("frontend/angular/src/app/core/api/readvideo-api/readvideo-api.service.ts")
+        routes = read_repo_file("frontend/angular/src/app/routing/app-routes/app.routes.ts")
+        new_video = read_repo_file("frontend/angular/src/app/features/new-video/page/new-video-page/new-video-page.component.ts")
 
         self.assertIn("HttpClient", api)
         self.assertIn("Observable<", api)
@@ -178,8 +178,8 @@ class FrontendContractTest(unittest.TestCase):
             )
 
         for relative_path in [
-            "frontend/angular/src/app/components/process-panel/process-panel.component.ts",
-            "frontend/angular/src/app/components/latest-output/latest-output.component.ts",
+            "frontend/angular/src/app/features/new-video/ui/process-panel/process-panel.component.ts",
+            "frontend/angular/src/app/features/new-video/ui/latest-output/latest-output.component.ts",
         ]:
             source = read_repo_file(relative_path)
             self.assertIn("input.required", source)
@@ -188,12 +188,12 @@ class FrontendContractTest(unittest.TestCase):
 
     def test_ngrx_signal_stores_manage_library_and_reader_state(self):
         package = json.loads(read_repo_file("package.json"))
-        library_store = read_repo_file("frontend/angular/src/app/features/library/data-access/library.store.ts")
-        reader_store = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-document.store.ts")
-        favorites_page = read_repo_file("frontend/angular/src/app/pages/favorites-page/favorites-page.component.ts")
-        favorites_facade = read_repo_file("frontend/angular/src/app/pages/favorites-page/favorites.facade.ts")
-        reader_page = read_repo_file("frontend/angular/src/app/pages/reader-page/reader-page.component.ts")
-        reader_facade = read_repo_file("frontend/angular/src/app/pages/reader-page/reader.facade.ts")
+        library_store = read_repo_file("frontend/angular/src/app/features/library/data-access/library-store/library.store.ts")
+        reader_store = read_repo_file("frontend/angular/src/app/features/reader/data-access/reader-document/reader-document.store.ts")
+        favorites_page = read_repo_file("frontend/angular/src/app/features/favorites/page/favorites-page/favorites-page.component.ts")
+        favorites_facade = read_repo_file("frontend/angular/src/app/features/favorites/data-access/favorites-facade/favorites.facade.ts")
+        reader_page = read_repo_file("frontend/angular/src/app/features/reader/page/reader-page/reader-page.component.ts")
+        reader_facade = read_repo_file("frontend/angular/src/app/features/reader/data-access/reader-facade/reader.facade.ts")
 
         self.assertEqual(package["dependencies"]["@ngrx/signals"], "^21.1.1")
         for store in [library_store, reader_store]:
@@ -211,6 +211,73 @@ class FrontendContractTest(unittest.TestCase):
         self.assertIn("readonly favorites = this.library.favorites", reader_facade)
         self.assertNotIn("readonly favorites = signal", favorites_facade)
         self.assertNotIn("readonly favorites = signal", reader_facade)
+
+    def test_frontend_feature_files_are_grouped_by_responsibility(self):
+        app_root = PROJECT_ROOT / "frontend/angular/src/app"
+        feature_root = app_root / "features"
+
+        for facade in feature_root.rglob("*.facade.ts"):
+            self.assertEqual(
+                facade.parent.parent.name,
+                "data-access",
+                f"{facade.relative_to(PROJECT_ROOT)} must live in data-access/<unit>/",
+            )
+        for store in feature_root.rglob("*.store.ts"):
+            self.assertEqual(
+                store.parent.parent.name,
+                "data-access",
+                f"{store.relative_to(PROJECT_ROOT)} must live in data-access/<unit>/",
+            )
+        for page in feature_root.rglob("*-page.component.ts"):
+            self.assertEqual(
+                page.parent.parent.name,
+                "page",
+                f"{page.relative_to(PROJECT_ROOT)} must live in page/<unit>/",
+            )
+
+        self.assertTrue((app_root / "core/api/readvideo-api/readvideo-api.service.ts").is_file())
+        self.assertTrue((app_root / "shared/models/readvideo-types/readvideo.types.ts").is_file())
+        for legacy_directory in ["components", "pages", "services", "types"]:
+            files = list((app_root / legacy_directory).rglob("*"))
+            self.assertFalse(
+                any(path.is_file() for path in files),
+                f"Legacy app/{legacy_directory} directory must stay empty",
+            )
+
+        source_root = PROJECT_ROOT / "frontend/angular/src"
+        production_files = [
+            path for path in source_root.rglob("*.ts")
+            if not path.name.endswith(".spec.ts")
+        ]
+        for directory in {path.parent for path in production_files}:
+            units = [
+                path for path in directory.glob("*.ts")
+                if not path.name.endswith(".spec.ts")
+            ]
+            self.assertEqual(
+                len(units),
+                1,
+                f"{directory.relative_to(PROJECT_ROOT)} must contain one production TypeScript unit",
+            )
+
+        for component in source_root.rglob("*.component.ts"):
+            stem = component.name.removesuffix(".component.ts")
+            expected = {
+                f"{stem}.component.ts",
+                f"{stem}.component.html",
+                f"{stem}.component.spec.ts",
+                f"{stem}.component.scss",
+            }
+            actual = {path.name for path in component.parent.iterdir() if path.is_file()}
+            self.assertEqual(
+                actual,
+                expected,
+                f"{component.parent.relative_to(PROJECT_ROOT)} must contain one complete component quartet",
+            )
+            self.assertIn(
+                f'styleUrl: "./{stem}.component.scss"',
+                component.read_text(encoding="utf-8"),
+            )
 
     def test_frontend_typescript_modules_stay_focused(self):
         app_root = PROJECT_ROOT / "frontend/angular/src/app"
