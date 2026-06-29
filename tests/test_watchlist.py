@@ -34,7 +34,7 @@ class WatchlistStoreTest(unittest.TestCase):
             self.assertEqual([item.id for item in reordered], [third.id, first.id, second.id])
             self.assertEqual([item.id for item in store.list_items()], [third.id, first.id, second.id])
 
-            with self.assertRaisesRegex(ValueError, "Unknown"):
+            with self.assertRaisesRegex(ValueError, "找不到以下订阅源编号"):
                 store.reorder_items([third.id, 9999])
 
     def test_reorder_watch_items_deduplicates_and_appends_trailing_items(self):

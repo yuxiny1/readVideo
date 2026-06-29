@@ -43,6 +43,7 @@ export class NewVideoPageComponent implements OnInit {
     phaseDetail: this.workflow.phaseDetail(),
     progressPercent: this.workflow.progressPercent(),
     logs: this.workflow.logs(),
+    canSubmit: this.workflow.canStart(),
   }));
   readonly latestOutputVm = computed<LatestOutputViewModel>(() => ({
     task: this.workflow.latestTask(),

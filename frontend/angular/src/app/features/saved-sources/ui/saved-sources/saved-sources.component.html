@@ -1,30 +1,30 @@
 <aside class="tool-panel watch-panel">
   <div class="panel-header">
-    <h2>Saved Sources</h2>
-    <span class="caption">{{ sources.items().length }} saved</span>
+    <h2>已保存来源</h2>
+    <span class="caption">已保存 {{ sources.items().length }} 个</span>
   </div>
 
   <form class="stack compact" (ngSubmit)="sources.addWatchItem()">
     <div>
-      <label for="watch-name">Name</label>
-      <input id="watch-name" name="watch-name" required placeholder="Channel or playlist name" [(ngModel)]="sources.newItem.name">
+      <label for="watch-name">名称</label>
+      <input id="watch-name" name="watch-name" required placeholder="频道或播放列表名称" [(ngModel)]="sources.newItem.name">
     </div>
     <div>
-      <label for="watch-url">URL</label>
+      <label for="watch-url">网址</label>
       <input id="watch-url" name="watch-url" required placeholder="https://www.youtube.com/@..." [(ngModel)]="sources.newItem.url">
     </div>
     <div>
-      <label for="watch-notes">Notes</label>
-      <textarea id="watch-notes" name="watch-notes" placeholder="Topic, cadence, or priority" [(ngModel)]="sources.newItem.notes"></textarea>
+      <label for="watch-notes">备注</label>
+      <textarea id="watch-notes" name="watch-notes" placeholder="主题、更新频率或优先级" [(ngModel)]="sources.newItem.notes"></textarea>
     </div>
-    <button class="secondary-button full" type="submit">Save Source</button>
+    <button class="secondary-button full" type="submit">保存来源</button>
   </form>
 
   <div class="watchlist">
     @if (sources.errors().list) {
       <div class="empty-state">{{ sources.errors().list }}</div>
     } @else if (!sources.items().length) {
-      <div class="empty-state">No saved sources yet.</div>
+      <div class="empty-state">还没有保存来源。</div>
     } @else {
       @for (item of sources.items(); track item.id) {
         <article
@@ -43,8 +43,8 @@
             type="button"
             draggable="true"
             [disabled]="sources.orderSaving()"
-            title="Drag to reorder"
-            [attr.aria-label]="'Drag ' + item.name + ' to reorder'"
+            title="拖动调整顺序"
+            [attr.aria-label]="'拖动“' + item.name + '”调整顺序'"
           >
             <span class="drag-grip" aria-hidden="true">
               <span></span>
@@ -63,16 +63,16 @@
                   class="secondary-button small-button action-menu-button"
                   type="button"
                   [attr.aria-expanded]="openActionsId() === item.id"
-                  [attr.aria-label]="'Actions for ' + item.name"
+                  [attr.aria-label]="item.name + '的操作菜单'"
                   (click)="toggleActions(item.id)"
                 >
-                  Actions
+                  操作
                 </button>
                 @if (openActionsId() === item.id) {
                   <div class="action-menu-panel">
-                    <button type="button" (click)="useUrl(item.url); closeActions()">Use</button>
-                    <button type="button" (click)="sources.loadUpdates(item); closeActions()">Updates</button>
-                    <button class="danger-menu-item" type="button" (click)="sources.deleteItem(item); closeActions()">Delete</button>
+                    <button type="button" (click)="useUrl(item.url); closeActions()">使用</button>
+                    <button type="button" (click)="sources.loadUpdates(item); closeActions()">查看更新</button>
+                    <button class="danger-menu-item" type="button" (click)="sources.deleteItem(item); closeActions()">删除</button>
                   </div>
                 }
               </div>
@@ -96,8 +96,8 @@
                         }
                       </div>
                       <div class="watch-actions">
-                        <button class="secondary-button small-button" type="button" (click)="useUrl(update.url)">Use</button>
-                        <button class="secondary-button small-button" type="button" (click)="downloadUrl(update.url)">Download</button>
+                        <button class="secondary-button small-button" type="button" (click)="useUrl(update.url)">使用</button>
+                        <button class="secondary-button small-button" type="button" (click)="downloadUrl(update.url)">下载</button>
                       </div>
                     </div>
                   }

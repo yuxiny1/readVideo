@@ -94,7 +94,7 @@ class FavoriteStore:
             if folder_id is not None:
                 folder = conn.execute("SELECT id FROM favorite_folders WHERE id = ?", (folder_id,)).fetchone()
                 if folder is None:
-                    raise ValueError("Favorite folder does not exist.")
+                    raise ValueError("收藏文件夹不存在。")
 
             conn.execute(
                 """
@@ -205,17 +205,17 @@ class FavoriteStore:
             if folder_id is not None:
                 folder = conn.execute("SELECT id FROM favorite_folders WHERE id = ?", (folder_id,)).fetchone()
                 if folder is None:
-                    raise ValueError("Favorite folder does not exist.")
+                    raise ValueError("收藏文件夹不存在。")
 
             cursor = conn.execute(
                 "UPDATE favorite_summaries SET folder_id = ?, updated_at = ? WHERE id = ?",
                 (folder_id, now, item_id),
             )
             if cursor.rowcount == 0:
-                raise ValueError("Favorite not found.")
+                raise ValueError("找不到收藏笔记。")
         favorite = self.get_item(item_id)
         if favorite is None:
-            raise ValueError("Favorite not found.")
+            raise ValueError("找不到收藏笔记。")
         return favorite
 
     def delete_folder(self, folder_id: int) -> bool:

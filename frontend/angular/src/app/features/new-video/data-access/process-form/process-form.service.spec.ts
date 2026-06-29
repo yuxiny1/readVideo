@@ -10,7 +10,6 @@ describe("ProcessFormService", () => {
     const service = new ProcessFormService();
     expect(service.form()).toMatchObject({
       transcriptionBackend: "local",
-      notesBackend: "ollama",
       noteStyle: "detailed",
       deleteVideoAfterCompletion: false,
     });

@@ -1,6 +1,6 @@
 import {TestBed} from "@angular/core/testing";
 import {ActivatedRoute, Router, convertToParamMap} from "@angular/router";
-import {of, throwError} from "rxjs";
+import {Subject, of, throwError} from "rxjs";
 import {beforeEach, describe, expect, it, vi} from "vitest";
 
 import {ReadvideoApiService} from "../../../../core/api/readvideo-api/readvideo-api.service";
@@ -84,7 +84,7 @@ describe("ReaderFacade", () => {
     expect(facade.files()).toEqual([file]);
     expect(documentStore.path()).toBe("/notes/a.md");
     expect(documentStore.title()).toBe("Reader Note");
-    expect(facade.libraryCount()).toBe("2 favorites · 1 files");
+    expect(facade.libraryCount()).toBe("2 篇收藏 · 1 个文件");
   });
 
   it("filters, sorts, and navigates adjacent library documents", () => {
@@ -108,14 +108,28 @@ describe("ReaderFacade", () => {
     TestBed.tick();
 
     expect(api.updateFavoriteTags).toHaveBeenCalledWith(1, ["Angular", "notes"]);
-    expect(documentStore.status()).toBe("Tags saved");
+    expect(documentStore.status()).toBe("标签已保存");
   });
 
   it("keeps the Reader usable when file loading fails", () => {
     api.markdownFiles.mockReturnValue(throwError(() => new Error("folder unavailable")));
     facade.loadMarkdownFiles("/missing");
-    expect(facade.fileCount()).toBe("Error");
+    expect(facade.fileCount()).toBe("加载失败");
     expect(facade.files()).toEqual([]);
     expect(facade.error()).toBe("folder unavailable");
+  });
+
+  it("keeps the newest document when older requests finish later", () => {
+    const first = new Subject<{path: string; content: string}>();
+    const second = new Subject<{path: string; content: string}>();
+    api.markdownDocument.mockImplementation((path: string) => path.endsWith("first.md") ? first : second);
+
+    facade.openPath("/notes/first.md");
+    facade.openPath("/notes/second.md");
+    second.next({path: "/notes/second.md", content: "# 第二篇"});
+    first.next({path: "/notes/first.md", content: "# 第一篇"});
+
+    expect(documentStore.path()).toBe("/notes/second.md");
+    expect(documentStore.title()).toBe("第二篇");
   });
 });

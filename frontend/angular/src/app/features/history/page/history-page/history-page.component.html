@@ -1,10 +1,10 @@
 @let vm = history;
 <header class="topbar">
   <div>
-    <h1>readVideo History</h1>
+    <h1>处理历史</h1>
     <div class="meta-row">
       <span class="pill muted">{{ vm.visibleCountLabel() }}</span>
-      <span class="pill muted">{{ vm.tags().length }} tags</span>
+      <span class="pill muted">{{ vm.tags().length }} 个标签</span>
     </div>
   </div>
 </header>
@@ -13,28 +13,28 @@
   <section class="tool-panel history-panel">
     <div class="panel-header">
       <div>
-        <h2>Downloaded And Transcribed Videos</h2>
-        <p class="panel-subtitle">A searchable local record of every processed video, output path, and note tag.</p>
+        <h2>已下载并转录的视频</h2>
+        <p class="panel-subtitle">在本机搜索每个处理任务、输出路径和笔记标签。</p>
       </div>
-      <button class="secondary-button small-button" type="button" (click)="vm.initialize()">Refresh</button>
+      <button class="secondary-button small-button" type="button" (click)="vm.initialize()">刷新</button>
     </div>
 
     <div class="filter-toolbar history-filter-toolbar">
       <div class="search-field">
-        <label for="history-search">Search</label>
+        <label for="history-search">搜索</label>
         <input
           id="history-search"
           name="history-search"
-          placeholder="Search title, source, summary, paths, tags..."
+          placeholder="搜索标题、来源、总结、路径或标签……"
           [ngModel]="vm.searchQuery()"
-          (ngModelChange)="vm.searchQuery.set($event)"
+          (ngModelChange)="vm.setSearchQuery($event)"
         >
       </div>
     </div>
 
-    <div class="tag-strip compact-tag-strip" aria-label="History tag filters">
+    <div class="tag-strip compact-tag-strip" aria-label="历史标签筛选">
       <button class="tag-chip" [ngClass]="vm.activeTag() === 'all' ? 'active' : ''" type="button" (click)="vm.setActiveTag('all')">
-        All <span>{{ vm.tagCount("all") }}</span>
+        全部 <span>{{ vm.tagCount("all") }}</span>
       </button>
       @for (tag of vm.tags(); track tag.id) {
         <button class="tag-chip" [ngClass]="vm.activeTag() === tag.name ? 'active' : ''" type="button" (click)="vm.setActiveTag(tag.name)">
@@ -51,23 +51,23 @@
       @if (vm.error()) {
         <div class="empty-state">{{ vm.error() }}</div>
       } @else if (!vm.records().length) {
-        <div class="empty-state">No processed videos yet.</div>
+        <div class="empty-state">还没有处理过的视频。</div>
       } @else if (!vm.filteredRecords().length) {
-        <div class="empty-state">No history records match this filter.</div>
+        <div class="empty-state">没有符合当前条件的历史记录。</div>
       } @else {
         @for (record of vm.filteredRecords(); track record.task_id) {
           <article class="history-card">
             <div class="history-card-header">
               <div>
                 <h2>{{ vm.title(record) }}</h2>
-                <a class="watch-url" [href]="record.url || '#'" target="_blank" rel="noreferrer">{{ record.url || "No URL" }}</a>
+                <a class="watch-url" [href]="record.url || '#'" target="_blank" rel="noreferrer">{{ record.url || "没有来源网址" }}</a>
               </div>
-              <span class="pill" [ngClass]="vm.statusClass(record)">{{ record.status }}</span>
+              <span class="pill" [ngClass]="vm.statusClass(record)">{{ vm.statusText(record) }}</span>
             </div>
 
             <div class="tag-strip note-tag-strip">
               @if (!vm.tagsFor(record).length) {
-                <span class="tag-chip muted">No tags</span>
+                <span class="tag-chip muted">暂无标签</span>
               } @else {
                 @for (tag of vm.tagsFor(record); track tag) {
                   <button class="tag-chip" type="button" (click)="vm.setActiveTag(tag)">#{{ tag }}</button>
@@ -76,37 +76,37 @@
             </div>
 
             <dl class="path-list">
-              <div><dt>Source</dt><dd><code>{{ record.url || "-" }}</code></dd></div>
-              <div><dt>Video</dt><dd><code>{{ record.video_path || "-" }}</code></dd></div>
-              <div><dt>Transcript</dt><dd><code>{{ record.transcription_path || "-" }}</code></dd></div>
+              <div><dt>来源</dt><dd><code>{{ record.url || "-" }}</code></dd></div>
+              <div><dt>视频</dt><dd><code>{{ record.video_path || "-" }}</code></dd></div>
+              <div><dt>转录文件</dt><dd><code>{{ record.transcription_path || "-" }}</code></dd></div>
               <div><dt>Markdown</dt><dd><code>{{ record.markdown_path || "-" }}</code></dd></div>
             </dl>
 
             <div class="history-meta">
-              <span>Updated: {{ record.updated_at || "-" }}</span>
-              <span>Elapsed: {{ vm.elapsed(record) }}</span>
-              <span>Transcription: {{ record.transcription_backend || "-" }}</span>
-              <span>Summary: {{ record.summary_backend || "-" }}</span>
+              <span>更新时间：{{ record.updated_at || "-" }}</span>
+              <span>用时：{{ vm.elapsed(record) }}</span>
+              <span>转录引擎：{{ vm.transcriptionLabel(record.transcription_backend) }}</span>
+              <span>笔记引擎：{{ vm.summaryLabel(record.summary_backend) }}</span>
             </div>
 
             <div class="tag-editor history-tag-editor">
-              <label [for]="'history-tags-' + record.task_id">Tags</label>
+              <label [for]="'history-tags-' + record.task_id">标签</label>
               <div class="tag-input-row">
                 <input
                   [id]="'history-tags-' + record.task_id"
                   [name]="'history-tags-' + record.task_id"
-                  placeholder="course, ai, finance"
+                  placeholder="课程、人工智能、金融"
                   [ngModel]="vm.tagDraft(record)"
                   (ngModelChange)="vm.setTagDraft(record, $event)"
                 >
-                <button class="secondary-button small-button" type="button" (click)="vm.saveTags(record)">Save</button>
+                <button class="secondary-button small-button" type="button" (click)="vm.saveTags(record)">保存</button>
               </div>
             </div>
 
             <div class="card-actions">
-              <button class="secondary-button small-button" type="button" [disabled]="!vm.canFavorite(record)" (click)="vm.favorite(record)">Favorite</button>
+              <button class="secondary-button small-button" type="button" [disabled]="!vm.canFavorite(record)" (click)="vm.favorite(record)">收藏</button>
               @if (record.markdown_path) {
-                <a class="quiet-link small-link" [href]="'/api/markdown_files/download?path=' + vm.encodePath(record.markdown_path)">Download MD</a>
+                <a class="quiet-link small-link" [href]="'/api/markdown_files/download?path=' + vm.encodePath(record.markdown_path)">下载笔记</a>
               }
             </div>
 

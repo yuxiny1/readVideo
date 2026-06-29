@@ -173,5 +173,5 @@ function apiErrorMessage(error: HttpErrorResponse): string {
     return error.error;
   }
   const payload = error.error as ApiErrorPayload | null;
-  return payload?.detail || payload?.error || error.message || `Request failed (${error.status})`;
+  return payload?.detail || payload?.error || error.message || `请求失败（状态码 ${error.status}）`;
 }

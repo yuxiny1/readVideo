@@ -31,14 +31,14 @@ class OllamaModelOption:
 
 
 RECOMMENDED_OLLAMA_MODELS = (
-    OllamaModelOption("qwen2.5:3b", "Qwen2.5 3B", "1.9GB", "Lightweight fallback; fast, but weaker notes."),
-    OllamaModelOption("qwen2.5:7b", "Qwen2.5 7B", "4.7GB", "Good general Chinese/English summaries on typical laptops."),
-    OllamaModelOption("qwen2.5:14b", "Qwen2.5 14B", "9.0GB", "Better structure and reasoning if you have enough memory."),
-    OllamaModelOption("qwen2.5:32b", "Qwen2.5 32B", "20GB", "Default strongest local notes model when installed."),
-    OllamaModelOption("qwen3:8b", "Qwen3 8B", "5.2GB", "Newer Qwen family; strong balanced option."),
-    OllamaModelOption("qwen3:14b", "Qwen3 14B", "9.3GB", "Higher quality local summaries with moderate hardware cost."),
-    OllamaModelOption("qwen3:30b", "Qwen3 30B", "19GB", "Large local model for stronger reasoning and organization."),
-    OllamaModelOption("llama3.1:8b", "Llama 3.1 8B", "4.9GB", "Strong multilingual general model."),
+    OllamaModelOption("qwen2.5:3b", "Qwen2.5 3B", "1.9GB", "轻量备用模型，速度快，但笔记质量较弱。"),
+    OllamaModelOption("qwen2.5:7b", "Qwen2.5 7B", "4.7GB", "适合普通电脑的中英文通用总结模型。"),
+    OllamaModelOption("qwen2.5:14b", "Qwen2.5 14B", "9.0GB", "内存充足时可获得更好的结构和推理能力。"),
+    OllamaModelOption("qwen2.5:32b", "Qwen2.5 32B", "20GB", "安装后默认使用的高质量本地笔记模型。"),
+    OllamaModelOption("qwen3:8b", "Qwen3 8B", "5.2GB", "较新的 Qwen 系列，速度与质量较均衡。"),
+    OllamaModelOption("qwen3:14b", "Qwen3 14B", "9.3GB", "硬件开销适中，可生成质量更高的本地总结。"),
+    OllamaModelOption("qwen3:30b", "Qwen3 30B", "19GB", "适合更强推理和内容组织的大型本地模型。"),
+    OllamaModelOption("llama3.1:8b", "Llama 3.1 8B", "4.9GB", "多语言能力较强的通用模型。"),
 )
 
 
@@ -49,7 +49,7 @@ def recommended_models() -> list[dict]:
 def validate_model_name(model: str) -> str:
     cleaned = model.strip()
     if not cleaned or not MODEL_NAME_PATTERN.fullmatch(cleaned):
-        raise RuntimeError("Ollama model name contains invalid characters.")
+        raise RuntimeError("Ollama 模型名称包含无效字符。")
     return cleaned
 
 
@@ -84,14 +84,14 @@ def pull_model(model: str) -> str:
             timeout=1800,
         )
     except FileNotFoundError as exc:
-        raise RuntimeError("Ollama CLI is not installed or not on PATH.") from exc
+        raise RuntimeError("尚未安装 Ollama 命令行工具，或该工具不在 PATH 中。") from exc
     except subprocess.TimeoutExpired as exc:
-        raise RuntimeError(f"Timed out while pulling {model_name}.") from exc
+        raise RuntimeError(f"下载模型 {model_name} 超时。") from exc
     except subprocess.CalledProcessError as exc:
         detail = exc.stderr.strip() or exc.stdout.strip() or str(exc)
-        raise RuntimeError(f"Could not pull {model_name}: {detail}") from exc
+        raise RuntimeError(f"无法下载模型 {model_name}：{detail}") from exc
 
-    return result.stdout.strip() or f"Installed {model_name}."
+    return result.stdout.strip() or f"模型 {model_name} 已安装。"
 
 
 def list_ollama_models(generate_url: str, timeout_seconds: int = 5) -> list[OllamaModel]:
@@ -100,7 +100,7 @@ def list_ollama_models(generate_url: str, timeout_seconds: int = 5) -> list[Olla
         with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
             data = json.loads(response.read().decode("utf-8"))
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-        raise RuntimeError(f"Could not reach Ollama at {_ollama_base_url(generate_url)}.") from exc
+        raise RuntimeError(f"无法连接位于 {_ollama_base_url(generate_url)} 的 Ollama 服务。") from exc
 
     models = data.get("models") or []
     return [_model_from_payload(model) for model in models]
@@ -118,9 +118,9 @@ def pull_ollama_model(model: str, generate_url: str, timeout_seconds: int = 600)
         with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
-        raise RuntimeError(_ollama_http_error(exc, f"Could not pull Ollama model {model}.")) from exc
+        raise RuntimeError(_ollama_http_error(exc, f"无法下载 Ollama 模型 {model}。")) from exc
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-        raise RuntimeError(f"Could not pull Ollama model {model}.") from exc
+        raise RuntimeError(f"无法下载 Ollama 模型 {model}。") from exc
 
 
 def _model_from_payload(payload: dict[str, Any]) -> OllamaModel:
@@ -141,7 +141,7 @@ def _model_from_payload(payload: dict[str, Any]) -> OllamaModel:
 def _ollama_api_url(generate_url: str, path: str) -> str:
     parsed = urllib.parse.urlparse(generate_url)
     if not parsed.scheme or not parsed.netloc:
-        raise RuntimeError(f"Invalid Ollama URL: {generate_url}")
+        raise RuntimeError(f"Ollama 地址无效：{generate_url}")
     return urllib.parse.urlunparse((parsed.scheme, parsed.netloc, path, "", "", ""))
 
 

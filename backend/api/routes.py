@@ -44,9 +44,9 @@ from backend.storage.watchlist import WatchlistStore
 router = APIRouter()
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 OPENAI_TRANSCRIPTION_MODELS = [
-    {"name": "gpt-4o-mini-transcribe", "label": "GPT-4o Mini Transcribe", "notes": "Lower cost OpenAI transcription."},
-    {"name": "gpt-4o-transcribe", "label": "GPT-4o Transcribe", "notes": "Higher quality OpenAI transcription."},
-    {"name": "whisper-1", "label": "Whisper 1", "notes": "Legacy OpenAI Whisper model."},
+    {"name": "gpt-4o-mini-transcribe", "label": "GPT-4o Mini 转录", "notes": "成本较低的 OpenAI 转录模型。"},
+    {"name": "gpt-4o-transcribe", "label": "GPT-4o 转录", "notes": "质量更高的 OpenAI 转录模型。"},
+    {"name": "whisper-1", "label": "Whisper 1", "notes": "旧版 OpenAI Whisper 模型。"},
 ]
 
 
@@ -71,7 +71,7 @@ def resolve_history_file(path: str) -> Path:
     if not file_path.is_absolute():
         file_path = PROJECT_ROOT / file_path
     if not file_path.exists() or not file_path.is_file():
-        raise FileNotFoundError(f"File does not exist: {path}")
+        raise FileNotFoundError(f"文件不存在：{path}")
     return file_path
 
 
@@ -141,7 +141,7 @@ async def create_task(request: ProcessVideoRequest, background_tasks: Background
 async def get_task_status(task_id: str):
     task = get_task(task_id)
     if task is None:
-        raise HTTPException(status_code=404, detail="Task not found")
+        raise HTTPException(status_code=404, detail="找不到任务。")
     return task
 
 
@@ -184,7 +184,7 @@ async def lookup_history(url: str):
 async def get_history(task_id: str):
     record = get_history_store().get_record(task_id)
     if record is None:
-        raise HTTPException(status_code=404, detail="History record not found")
+        raise HTTPException(status_code=404, detail="找不到历史记录。")
     return _history_record_dict(record, get_tag_store().tags_for_task(record.task_id))
 
 
@@ -192,7 +192,7 @@ async def get_history(task_id: str):
 async def update_history_tags(task_id: str, request: TagAssignmentRequest):
     record = get_history_store().get_record(task_id)
     if record is None:
-        raise HTTPException(status_code=404, detail="History record not found")
+        raise HTTPException(status_code=404, detail="找不到历史记录。")
     try:
         tags = get_tag_store().set_task_tags(task_id, request.tags)
     except ValueError as exc:
@@ -204,7 +204,7 @@ async def update_history_tags(task_id: str, request: TagAssignmentRequest):
 async def download_history_file(task_id: str, file_kind: str):
     record = get_history_store().get_record(task_id)
     if record is None:
-        raise HTTPException(status_code=404, detail="History record not found")
+        raise HTTPException(status_code=404, detail="找不到历史记录。")
 
     paths = {
         "video": record.video_path,
@@ -212,11 +212,12 @@ async def download_history_file(task_id: str, file_kind: str):
         "markdown": record.markdown_path,
     }
     if file_kind not in paths:
-        raise HTTPException(status_code=404, detail="Unknown file kind")
+        raise HTTPException(status_code=404, detail="不支持这种文件类型。")
 
     file_path = paths[file_kind]
     if not file_path:
-        raise HTTPException(status_code=404, detail=f"No {file_kind} file saved for this task")
+        file_label = {"video": "视频", "transcript": "转录", "markdown": "Markdown 笔记"}[file_kind]
+        raise HTTPException(status_code=404, detail=f"此任务没有保存{file_label}文件。")
 
     try:
         path = resolve_history_file(file_path)
@@ -254,7 +255,7 @@ async def update_favorite_folder(folder_id: int, request: FavoriteFolderUpdateRe
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if folder is None:
-        raise HTTPException(status_code=404, detail="Favorite folder not found")
+        raise HTTPException(status_code=404, detail="找不到收藏文件夹。")
     return folder.__dict__
 
 
@@ -262,7 +263,7 @@ async def update_favorite_folder(folder_id: int, request: FavoriteFolderUpdateRe
 async def delete_favorite_folder(folder_id: int):
     deleted = get_favorite_store().delete_folder(folder_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="Favorite folder not found")
+        raise HTTPException(status_code=404, detail="找不到收藏文件夹。")
     return {"deleted": True}
 
 
@@ -270,9 +271,9 @@ async def delete_favorite_folder(folder_id: int):
 async def add_favorite(request: FavoriteRequest):
     record = get_history_store().get_record(request.task_id)
     if record is None:
-        raise HTTPException(status_code=404, detail="History record not found")
+        raise HTTPException(status_code=404, detail="找不到历史记录。")
     if not record.summary and not record.markdown_path:
-        raise HTTPException(status_code=400, detail="This task has no summary or Markdown note yet.")
+        raise HTTPException(status_code=400, detail="此任务尚未生成总结或 Markdown 笔记。")
 
     item = get_favorite_store().add_from_history(record, request.folder_id)
     return _favorite_dict(item, get_tag_store().tags_for_task(item.task_id))
@@ -282,9 +283,9 @@ async def add_favorite(request: FavoriteRequest):
 async def read_favorite_markdown(item_id: int):
     item = get_favorite_store().get_item(item_id)
     if item is None:
-        raise HTTPException(status_code=404, detail="Favorite not found")
+        raise HTTPException(status_code=404, detail="找不到收藏笔记。")
     if not item.markdown_path:
-        raise HTTPException(status_code=404, detail="This favorite has no Markdown path")
+        raise HTTPException(status_code=404, detail="此收藏没有 Markdown 文件路径。")
     try:
         document = read_markdown_file(item.markdown_path)
     except (FileNotFoundError, ValueError, UnicodeDecodeError) as exc:
@@ -305,7 +306,7 @@ async def assign_favorite_folder(item_id: int, request: FavoriteFolderAssignment
 async def update_favorite_tags(item_id: int, request: TagAssignmentRequest):
     item = get_favorite_store().get_item(item_id)
     if item is None:
-        raise HTTPException(status_code=404, detail="Favorite not found")
+        raise HTTPException(status_code=404, detail="找不到收藏笔记。")
     try:
         tags = get_tag_store().set_task_tags(item.task_id, request.tags)
     except ValueError as exc:
@@ -317,7 +318,7 @@ async def update_favorite_tags(item_id: int, request: TagAssignmentRequest):
 async def delete_favorite(item_id: int):
     deleted = get_favorite_store().delete_item(item_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="Favorite not found")
+        raise HTTPException(status_code=404, detail="找不到收藏笔记。")
     return {"deleted": True}
 
 
@@ -383,7 +384,7 @@ async def reorder_watch_items(request: WatchlistReorderRequest):
 async def delete_watch_item(item_id: int):
     deleted = get_store().delete_item(item_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="Watch item not found")
+        raise HTTPException(status_code=404, detail="找不到订阅源。")
     return {"deleted": True}
 
 
@@ -391,7 +392,7 @@ async def delete_watch_item(item_id: int):
 async def update_watch_item(item_id: int, request: WatchItemUpdateRequest):
     item = get_store().update_item(item_id, request.name, str(request.url), request.notes)
     if item is None:
-        raise HTTPException(status_code=404, detail="Watch item not found")
+        raise HTTPException(status_code=404, detail="找不到订阅源。")
     return item.__dict__
 
 
@@ -399,11 +400,11 @@ async def update_watch_item(item_id: int, request: WatchItemUpdateRequest):
 async def list_watch_item_updates(item_id: int, limit: int = Query(default=8, ge=1, le=50)):
     item = get_store().get_item(item_id)
     if item is None:
-        raise HTTPException(status_code=404, detail="Watch item not found")
+        raise HTTPException(status_code=404, detail="找不到订阅源。")
     try:
         updates = list_source_updates(item.url, limit)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"Could not load source updates: {exc}") from exc
+        raise HTTPException(status_code=400, detail=f"无法获取订阅源更新：{exc}") from exc
     return {
         "source": item.__dict__,
         "updates": [update.__dict__ for update in updates],
@@ -479,13 +480,13 @@ def get_transcription_models():
         "installed_whisper": list_installed_whisper_models(),
         "openai": OPENAI_TRANSCRIPTION_MODELS,
         "languages": [
-            {"code": "auto", "label": "Auto detect"},
-            {"code": "zh", "label": "Chinese"},
-            {"code": "en", "label": "English"},
-            {"code": "ja", "label": "Japanese"},
-            {"code": "ko", "label": "Korean"},
-            {"code": "es", "label": "Spanish"},
-            {"code": "fr", "label": "French"},
+            {"code": "auto", "label": "自动检测"},
+            {"code": "zh", "label": "中文"},
+            {"code": "en", "label": "英语"},
+            {"code": "ja", "label": "日语"},
+            {"code": "ko", "label": "韩语"},
+            {"code": "es", "label": "西班牙语"},
+            {"code": "fr", "label": "法语"},
         ],
     }
 

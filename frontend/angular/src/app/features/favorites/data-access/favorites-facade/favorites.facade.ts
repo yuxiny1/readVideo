@@ -55,17 +55,53 @@ export class FavoritesFacade {
       ].join(" ").toLocaleLowerCase().includes(query);
     });
   });
-  readonly favoritesCount = computed(() => (
-    `${this.filteredFavorites().length} shown / ${this.library.favoriteCount()} saved`
-  ));
-  private readonly libraryFeedback = effect(() => {
-    const notice = this.library.notice();
-    if (notice === "Folder created") {
-      this.folderName = "";
-      this.folderNotes = "";
+  readonly folderCounts = computed(() => {
+    const counts: Record<string, number> = {all: this.favorites().length, unfiled: 0};
+    for (const item of this.favorites()) {
+      const key = item.folder_id ? String(item.folder_id) : "unfiled";
+      counts[key] = (counts[key] ?? 0) + 1;
     }
-    if (notice === "Folder updated") this.editingFolderId.set(null);
+    return counts;
   });
+  readonly folderTagLists = computed(() => {
+    const values: Record<string, Set<string>> = {all: new Set(), unfiled: new Set()};
+    for (const item of this.favorites()) {
+      const keys = ["all", item.folder_id ? String(item.folder_id) : "unfiled"];
+      for (const key of keys) {
+        values[key] ??= new Set();
+        for (const tag of tagsFor(item)) values[key].add(tag);
+      }
+    }
+    return Object.fromEntries(Object.entries(values).map(([key, tags]) => [
+      key,
+      [...tags].sort((a, b) => a.localeCompare(b, undefined, {sensitivity: "base"})).slice(0, 5),
+    ])) as Record<string, string[]>;
+  });
+  readonly tagCounts = computed(() => {
+    const counts: Record<string, number> = {all: this.favorites().length};
+    for (const item of this.favorites()) {
+      for (const tag of tagsFor(item)) {
+        const key = tag.toLocaleLowerCase();
+        counts[key] = (counts[key] ?? 0) + 1;
+      }
+    }
+    return counts;
+  });
+  readonly visibleTags = computed(() => this.tags().filter((tag) => this.tagCount(tag.name) > 0));
+  readonly favoritesCount = computed(() => (
+    `显示 ${this.filteredFavorites().length} 篇，共收藏 ${this.library.favoriteCount()} 篇`
+  ));
+
+  constructor() {
+    effect(() => {
+      const notice = this.library.notice();
+      if (notice === "文件夹已创建") {
+        this.folderName = "";
+        this.folderNotes = "";
+      }
+      if (notice === "文件夹已更新") this.editingFolderId.set(null);
+    });
+  }
 
   initialize(): void {
     this.localError.set("");
@@ -79,6 +115,10 @@ export class FavoritesFacade {
 
   setActiveTag(tag: string): void {
     this.activeTag.set(tag);
+  }
+
+  setSearchQuery(query: string): void {
+    this.searchQuery.set(query);
   }
 
   createFolder(): void {
@@ -136,7 +176,7 @@ export class FavoritesFacade {
   copyFolderLabel(folder: FavoriteFolder): void {
     this.localError.set("");
     this.runOnce(defer(() => navigator.clipboard.writeText(folder.name)), () => {
-      this.localNotice.set("Folder name copied");
+      this.localNotice.set("文件夹名称已复制");
     });
   }
 
@@ -167,24 +207,16 @@ export class FavoritesFacade {
     this.folderDrafts[folder.id] = {...draft, notes: value};
   }
 
-  favoritesForFolder(id: string | number): FavoriteSummary[] {
-    if (id === "all") return this.favorites();
-    if (id === "unfiled") return this.favorites().filter((item) => !item.folder_id);
-    return this.favorites().filter((item) => item.folder_id === Number(id));
-  }
-
   folderCount(id: string | number): number {
-    return this.favoritesForFolder(id).length;
+    return this.folderCounts()[String(id)] ?? 0;
   }
 
   tagCount(tag: string): number {
-    if (tag === "all") return this.favorites().length;
-    return this.favorites().filter((item) => hasTag(tagsFor(item), tag)).length;
+    return this.tagCounts()[tag.toLocaleLowerCase()] ?? 0;
   }
 
   folderTags(id: string | number): string[] {
-    const values = new Set(this.favoritesForFolder(id).flatMap((item) => tagsFor(item)));
-    return [...values].sort((a, b) => a.localeCompare(b, undefined, {sensitivity: "base"})).slice(0, 5);
+    return this.folderTagLists()[String(id)] ?? [];
   }
 
   folderId(folder: FavoriteFolder): string {
@@ -192,7 +224,7 @@ export class FavoritesFacade {
   }
 
   folderInitial(folder: FavoriteFolder): string {
-    return (folder.name.trim()[0] || "N").toUpperCase();
+    return (folder.name.trim()[0] || "夹").toUpperCase();
   }
 
   title(item: FavoriteSummary): string {

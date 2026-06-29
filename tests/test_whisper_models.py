@@ -22,7 +22,7 @@ class WhisperModelsTest(unittest.TestCase):
         self.assertTrue(large_turbo["recommended"])
 
     def test_download_whisper_model_rejects_unknown_model(self):
-        with self.assertRaisesRegex(ValueError, "Unknown"):
+        with self.assertRaisesRegex(ValueError, "找不到 Whisper 模型"):
             whisper_models.download_whisper_model("not-a-model.bin")
 
     def test_download_whisper_model_writes_target_once(self):

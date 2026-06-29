@@ -23,35 +23,35 @@ class WhisperModelOption:
 RECOMMENDED_WHISPER_MODELS = [
     WhisperModelOption(
         name="ggml-base.bin",
-        label="Base",
+        label="基础模型",
         size="141MB",
         path="models/ggml-base.bin",
         url=f"{BASE_URL}/ggml-base.bin",
-        notes="Fast smoke tests. Lower accuracy on noisy or mixed-language videos.",
+        notes="适合快速测试；处理噪声或混合语言视频时准确度较低。",
     ),
     WhisperModelOption(
         name="ggml-small.bin",
-        label="Small",
+        label="小型模型",
         size="465MB",
         path="models/ggml-small.bin",
         url=f"{BASE_URL}/ggml-small.bin",
-        notes="Fast, but more likely to repeat or hallucinate on noisy, English, or mixed-language speech.",
+        notes="速度快，但处理噪声、英语或混合语言语音时更容易重复或误识别。",
     ),
     WhisperModelOption(
         name="ggml-medium.bin",
-        label="Medium",
+        label="中型模型",
         size="1.5GB",
         path="models/ggml-medium.bin",
         url=f"{BASE_URL}/ggml-medium.bin",
-        notes="Better accuracy for YouTube speech, accents, and mixed languages.",
+        notes="处理网络视频、口音和混合语言时准确度更高。",
     ),
     WhisperModelOption(
         name="ggml-large-v3-turbo.bin",
-        label="Large v3 Turbo",
+        label="大型 v3 Turbo 模型",
         size="1.6GB",
         path="models/ggml-large-v3-turbo.bin",
         url=f"{BASE_URL}/ggml-large-v3-turbo.bin",
-        notes="Best local quality/speed tradeoff here; recommended for final notes.",
+        notes="本地质量与速度的最佳平衡，推荐用于正式笔记。",
         recommended=True,
     ),
 ]
@@ -101,7 +101,7 @@ def _find_model(model_name: str) -> WhisperModelOption:
     for option in RECOMMENDED_WHISPER_MODELS:
         if model_name in {option.name, option.path}:
             return option
-    raise ValueError(f"Unknown Whisper model: {model_name}")
+    raise ValueError(f"找不到 Whisper 模型：{model_name}")
 
 
 def _resolve_model_path(path: str) -> Path:

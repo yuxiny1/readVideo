@@ -5,16 +5,16 @@
   [class.reader-focus-dark]="vm.document.focusMode() && vm.document.focusTheme() === 'dark'"
 >
   <div>
-    <h1>Reader</h1>
+    <h1>阅读器</h1>
     <div class="meta-row">
-      <span class="pill" [ngClass]="vm.document.status() === 'Open' ? 'ok' : vm.document.status() === 'Error' ? 'error' : 'muted'">{{ vm.document.status() }}</span>
+      <span class="pill" [ngClass]="vm.document.status() === '已打开' ? 'ok' : vm.document.status() === '错误' ? 'error' : 'muted'">{{ vm.document.status() }}</span>
       <span class="pill muted">{{ vm.libraryCount() }}</span>
     </div>
   </div>
   <div class="button-row">
-    <button class="secondary-button small-button" type="button" [disabled]="!vm.canOpenPrevious()" (click)="vm.openAdjacent(-1)">Previous</button>
-    <button class="secondary-button small-button" type="button" [disabled]="!vm.canOpenNext()" (click)="vm.openAdjacent(1)">Next</button>
-    <a class="quiet-link small-link" routerLink="/favorites">Favorites</a>
+    <button class="secondary-button small-button" type="button" [disabled]="!vm.canOpenPrevious()" (click)="vm.openAdjacent(-1)">上一篇</button>
+    <button class="secondary-button small-button" type="button" [disabled]="!vm.canOpenNext()" (click)="vm.openAdjacent(1)">下一篇</button>
+    <a class="quiet-link small-link" routerLink="/favorites">收藏</a>
   </div>
 </header>
 
@@ -27,8 +27,8 @@
     <aside class="reader-library">
       <section class="tool-panel reader-library-panel">
         <div class="panel-header">
-          <h2>Notes</h2>
-          <button class="secondary-button small-button" type="button" (click)="vm.initialize()">Refresh</button>
+          <h2>笔记库</h2>
+          <button class="secondary-button small-button" type="button" (click)="vm.initialize()">刷新</button>
         </div>
 
         @if (vm.error()) {
@@ -36,26 +36,26 @@
         }
 
         <section class="reader-section reader-search-section">
-          <label for="reader-search">Search</label>
+          <label for="reader-search">搜索</label>
           <input
             id="reader-search"
             name="reader-search"
-            placeholder="Search titles, summaries, paths..."
+            placeholder="搜索标题、总结或路径……"
             [ngModel]="vm.searchQuery()"
-            (ngModelChange)="vm.searchQuery.set($event)"
+            (ngModelChange)="vm.setSearchQuery($event)"
           >
-          <div class="segmented-control" aria-label="Library view">
-            <button type="button" [ngClass]="vm.libraryMode() === 'all' ? 'active' : ''" (click)="vm.setLibraryMode('all')">All</button>
-            <button type="button" [ngClass]="vm.libraryMode() === 'favorites' ? 'active' : ''" (click)="vm.setLibraryMode('favorites')">Favorites</button>
-            <button type="button" [ngClass]="vm.libraryMode() === 'files' ? 'active' : ''" (click)="vm.setLibraryMode('files')">Files</button>
+          <div class="segmented-control" aria-label="笔记库视图">
+            <button type="button" [ngClass]="vm.libraryMode() === 'all' ? 'active' : ''" (click)="vm.setLibraryMode('all')">全部</button>
+            <button type="button" [ngClass]="vm.libraryMode() === 'favorites' ? 'active' : ''" (click)="vm.setLibraryMode('favorites')">收藏</button>
+            <button type="button" [ngClass]="vm.libraryMode() === 'files' ? 'active' : ''" (click)="vm.setLibraryMode('files')">文件</button>
           </div>
           <div>
-            <label for="reader-sort">Sort</label>
+            <label for="reader-sort">排序</label>
             <select id="reader-sort" name="reader-sort" [ngModel]="vm.librarySort()" (ngModelChange)="vm.setLibrarySort($event)">
-              <option value="recent">Newest</option>
-              <option value="title">Title</option>
-              <option value="folder">Folder</option>
-              <option value="path">Path</option>
+              <option value="recent">最新</option>
+              <option value="title">标题</option>
+              <option value="folder">文件夹</option>
+              <option value="path">路径</option>
             </select>
           </div>
         </section>
@@ -63,19 +63,19 @@
         @if (vm.libraryMode() !== 'files') {
           <section class="reader-section reader-tags-section">
             <div class="section-heading-row">
-              <h3>Tags</h3>
-              <span class="caption">{{ vm.tags().length }}</span>
+              <h3>标签</h3>
+              <span class="caption">{{ vm.visibleTags().length }}</span>
             </div>
             <div class="tag-strip reader-tag-filter">
               <button class="tag-chip" [ngClass]="vm.activeTag() === 'all' ? 'active' : ''" type="button" (click)="vm.setActiveTag('all')">
-                All <span>{{ vm.tagCount("all") }}</span>
+                全部 <span>{{ vm.tagCount("all") }}</span>
               </button>
-              @if (!vm.tags().length) {
-                <span class="tag-chip muted">No tags yet</span>
+              @if (!vm.visibleTags().length) {
+                <span class="tag-chip muted">暂无标签</span>
               } @else {
-                @for (tag of vm.tags(); track tag.id) {
+                @for (tag of vm.visibleTags(); track tag.id) {
                   <button class="tag-chip" [ngClass]="vm.activeTag() === tag.name ? 'active' : ''" type="button" (click)="vm.setActiveTag(tag.name)">
-                    #{{ tag.name }} <span>{{ tag.task_count }}</span>
+                    #{{ tag.name }} <span>{{ vm.tagCount(tag.name) }}</span>
                   </button>
                 }
               }
@@ -83,16 +83,16 @@
           </section>
 
           <section class="reader-section">
-            <h3>Favorite Folders</h3>
+            <h3>收藏文件夹</h3>
             <div class="reader-folder-grid">
-              <button class="folder-chip" [ngClass]="vm.activeFolderId() === 'all' ? 'active' : ''" type="button" (click)="vm.activeFolderId.set('all')">
-                <span>All</span><span>{{ vm.folderCount("all") }}</span>
+              <button class="folder-chip" [ngClass]="vm.activeFolderId() === 'all' ? 'active' : ''" type="button" (click)="vm.setActiveFavoriteFolder('all')">
+                <span>全部</span><span>{{ vm.folderCount("all") }}</span>
               </button>
-              <button class="folder-chip" [ngClass]="vm.activeFolderId() === 'unfiled' ? 'active' : ''" type="button" (click)="vm.activeFolderId.set('unfiled')">
-                <span>Unfiled</span><span>{{ vm.folderCount("unfiled") }}</span>
+              <button class="folder-chip" [ngClass]="vm.activeFolderId() === 'unfiled' ? 'active' : ''" type="button" (click)="vm.setActiveFavoriteFolder('unfiled')">
+                <span>未分类</span><span>{{ vm.folderCount("unfiled") }}</span>
               </button>
               @for (folder of vm.folders(); track folder.id) {
-                <button class="folder-chip" [ngClass]="vm.activeFolderId() === vm.folderId(folder) ? 'active' : ''" type="button" (click)="vm.activeFolderId.set(vm.folderId(folder))">
+                <button class="folder-chip" [ngClass]="vm.activeFolderId() === vm.folderId(folder) ? 'active' : ''" type="button" (click)="vm.setActiveFavoriteFolder(vm.folderId(folder))">
                   <span>{{ folder.name }}</span><span>{{ vm.folderCount(folder.id) }}</span>
                 </button>
               }
@@ -101,21 +101,21 @@
 
           <section class="reader-section">
             <div class="section-heading-row">
-              <h3>Favorite Notes</h3>
-              <span class="caption">{{ vm.visibleFavoriteNotes().length }}/{{ vm.filteredFavorites().length }}</span>
+              <h3>收藏笔记</h3>
+              <span class="caption">{{ vm.filteredFavorites().length }} 篇</span>
             </div>
             <div class="reader-note-list favorite-note-list">
               @if (!vm.filteredFavorites().length) {
-                <div class="empty-state">No favorites match this folder or search.</div>
+                <div class="empty-state">没有符合当前文件夹或搜索条件的收藏笔记。</div>
               } @else {
-                @for (item of vm.visibleFavoriteNotes(); track item.id) {
+                @for (item of vm.filteredFavorites(); track item.id) {
                   <button class="reader-note-item" [ngClass]="vm.isActivePath(item.markdown_path) ? 'active' : ''" type="button" (click)="vm.openFavorite(item)">
                     <strong>{{ vm.titleFor(item) }}</strong>
-                    <span>{{ item.folder_name || "Unfiled" }}</span>
+                    <span>{{ item.folder_name || "未分类" }}</span>
                     @if (vm.tagsFor(item).length) {
                       <small>#{{ vm.tagsFor(item).join(" #") }}</small>
                     }
-                    <code>{{ item.markdown_path || "No Markdown path" }}</code>
+                    <code>{{ item.markdown_path || "没有 Markdown 路径" }}</code>
                   </button>
                 }
               }
@@ -126,23 +126,23 @@
         @if (vm.libraryMode() !== 'favorites') {
           <section class="reader-section">
             <div class="section-heading-row">
-              <h3>Markdown Files</h3>
-              <span class="caption">{{ vm.filteredFiles().length }} shown</span>
+              <h3>Markdown 文件</h3>
+              <span class="caption">显示 {{ vm.filteredFiles().length }} 个</span>
             </div>
             <form class="stack compact" (ngSubmit)="vm.loadMarkdownFiles(vm.markdownFolder, true)">
               <div>
-                <label for="reader-md-folder">Folder Path</label>
+                <label for="reader-md-folder">文件夹路径</label>
                 <input id="reader-md-folder" name="reader-md-folder" placeholder="notes" [(ngModel)]="vm.markdownFolder">
               </div>
               <div class="button-row">
-                <button class="secondary-button" type="submit">Load</button>
-                <button class="secondary-button" type="button" (click)="vm.loadMarkdownFiles(vm.defaultNotesDir(), true)">Default</button>
+                <button class="secondary-button" type="submit">加载</button>
+                <button class="secondary-button" type="button" (click)="vm.loadMarkdownFiles(vm.defaultNotesDir(), true)">默认路径</button>
               </div>
             </form>
 
             <div class="reader-file-list">
               @if (!vm.filteredFiles().length) {
-                <div class="empty-state">No Markdown files match this folder or search.</div>
+                <div class="empty-state">没有符合当前文件夹或搜索条件的 Markdown 文件。</div>
               } @else {
                 @for (file of vm.filteredFiles(); track file.path) {
                   <button class="reader-file-item" [ngClass]="vm.isActivePath(file.path) ? 'active' : ''" type="button" (click)="vm.openFile(file)">
@@ -168,7 +168,7 @@
           <p class="reader-meta-line">{{ vm.document.documentMeta() }}</p>
         }
         <div class="reader-document-tags-row">
-          <span class="reader-tags-label">Tags</span>
+          <span class="reader-tags-label">标签</span>
           @if (vm.activeDocumentTags().length) {
             <div class="tag-strip reader-document-tags">
               @for (tag of vm.activeDocumentTags(); track tag) {
@@ -176,41 +176,41 @@
               }
             </div>
           } @else {
-            <span class="tag-chip muted">No tags</span>
+            <span class="tag-chip muted">暂无标签</span>
           }
           <div class="reader-tag-edit-row">
             <input
               name="reader-active-tags"
-              placeholder="course, ai, finance"
+              placeholder="课程、人工智能、金融"
               [disabled]="!vm.activeFavorite()"
               [ngModel]="vm.activeTagDraft()"
               (ngModelChange)="vm.setActiveTagDraft($event)"
             >
-            <button class="secondary-button small-button" type="button" [disabled]="!vm.activeFavorite()" (click)="vm.saveActiveTags()">Save Tags</button>
+            <button class="secondary-button small-button" type="button" [disabled]="!vm.activeFavorite()" (click)="vm.saveActiveTags()">保存标签</button>
           </div>
         </div>
       </div>
       <div class="reader-document-actions">
         <button class="secondary-button small-button focus-mode-button" type="button" [ngClass]="vm.document.focusMode() ? 'active' : ''" (click)="vm.document.toggleFocusMode()">
-          {{ vm.document.focusMode() ? 'Exit Focus' : 'Focus Mode' }}
+          {{ vm.document.focusMode() ? '退出专注' : '专注模式' }}
         </button>
-        <div class="segmented-control compact-segmented" aria-label="Reader view">
-          <button type="button" [ngClass]="vm.document.viewMode() === 'rendered' ? 'active' : ''" (click)="vm.document.setViewMode('rendered')">Read</button>
-          <button type="button" [ngClass]="vm.document.viewMode() === 'markdown' ? 'active' : ''" (click)="vm.document.setViewMode('markdown')">MD</button>
+        <div class="segmented-control compact-segmented" aria-label="阅读视图">
+          <button type="button" [ngClass]="vm.document.viewMode() === 'rendered' ? 'active' : ''" (click)="vm.document.setViewMode('rendered')">阅读</button>
+          <button type="button" [ngClass]="vm.document.viewMode() === 'markdown' ? 'active' : ''" (click)="vm.document.setViewMode('markdown')">源码</button>
         </div>
         @if (vm.document.focusMode()) {
-          <div class="segmented-control compact-segmented focus-theme-toggle" aria-label="Focus theme">
-            <button type="button" [ngClass]="vm.document.focusTheme() === 'light' ? 'active' : ''" (click)="vm.document.setFocusTheme('light')">Light</button>
-            <button type="button" [ngClass]="vm.document.focusTheme() === 'dark' ? 'active' : ''" (click)="vm.document.setFocusTheme('dark')">Dark</button>
+          <div class="segmented-control compact-segmented focus-theme-toggle" aria-label="专注模式主题">
+            <button type="button" [ngClass]="vm.document.focusTheme() === 'light' ? 'active' : ''" (click)="vm.document.setFocusTheme('light')">浅色</button>
+            <button type="button" [ngClass]="vm.document.focusTheme() === 'dark' ? 'active' : ''" (click)="vm.document.setFocusTheme('dark')">深色</button>
           </div>
-          <div class="segmented-control compact-segmented" aria-label="Focus text size">
-            <button type="button" [ngClass]="vm.document.readerTextSize() === 'standard' ? 'active' : ''" (click)="vm.document.setReaderTextSize('standard')">Standard</button>
-            <button type="button" [ngClass]="vm.document.readerTextSize() === 'large' ? 'active' : ''" (click)="vm.document.setReaderTextSize('large')">Large</button>
+          <div class="segmented-control compact-segmented" aria-label="专注模式字号">
+            <button type="button" [ngClass]="vm.document.readerTextSize() === 'standard' ? 'active' : ''" (click)="vm.document.setReaderTextSize('standard')">标准</button>
+            <button type="button" [ngClass]="vm.document.readerTextSize() === 'large' ? 'active' : ''" (click)="vm.document.setReaderTextSize('large')">大号</button>
           </div>
         }
         @if (vm.document.path()) {
-          <button class="secondary-button small-button" type="button" (click)="vm.document.copyMarkdown()">Copy Full MD</button>
-          <a class="quiet-link small-link" [href]="vm.document.downloadHref()">Download MD</a>
+          <button class="secondary-button small-button" type="button" (click)="vm.document.copyMarkdown()">复制完整笔记</button>
+          <a class="quiet-link small-link" [href]="vm.document.downloadHref()">下载笔记</a>
         }
       </div>
     </div>
@@ -219,12 +219,12 @@
       <div class="reader-findbar">
         <input
           name="reader-find"
-          placeholder="Find in note"
+          placeholder="在笔记中查找"
           [ngModel]="vm.document.documentQuery()"
           (ngModelChange)="vm.document.setDocumentQuery($event)"
         >
-        <span class="caption">{{ vm.document.searchMatchCount() }} matches</span>
-        <button class="secondary-button small-button" type="button" [disabled]="!vm.document.documentQuery().trim()" (click)="vm.document.findInDocument()">Find</button>
+        <span class="caption">{{ vm.document.searchMatchCount() }} 处匹配</span>
+        <button class="secondary-button small-button" type="button" [disabled]="!vm.document.documentQuery().trim()" (click)="vm.document.findInDocument()">查找</button>
       </div>
     }
 
@@ -248,30 +248,30 @@
     <aside class="reader-inspector">
       <section class="tool-panel reader-inspector-panel">
         <div class="panel-header">
-          <h2>Note</h2>
-          <span class="pill muted">{{ vm.document.headings().length }} sections</span>
+          <h2>笔记信息</h2>
+          <span class="pill muted">{{ vm.document.headings().length }} 个章节</span>
         </div>
 
         <section class="reader-section">
-          <h3>Reading</h3>
-          <div class="segmented-control" aria-label="Reading width">
-            <button type="button" [ngClass]="vm.document.readerWidth() === 'standard' ? 'active' : ''" (click)="vm.document.setReaderWidth('standard')">Standard</button>
-            <button type="button" [ngClass]="vm.document.readerWidth() === 'wide' ? 'active' : ''" (click)="vm.document.setReaderWidth('wide')">Wide</button>
+          <h3>阅读设置</h3>
+          <div class="segmented-control" aria-label="阅读宽度">
+            <button type="button" [ngClass]="vm.document.readerWidth() === 'standard' ? 'active' : ''" (click)="vm.document.setReaderWidth('standard')">标准</button>
+            <button type="button" [ngClass]="vm.document.readerWidth() === 'wide' ? 'active' : ''" (click)="vm.document.setReaderWidth('wide')">宽版</button>
           </div>
-          <div class="segmented-control" aria-label="Text size">
-            <button type="button" [ngClass]="vm.document.readerTextSize() === 'standard' ? 'active' : ''" (click)="vm.document.setReaderTextSize('standard')">Standard</button>
-            <button type="button" [ngClass]="vm.document.readerTextSize() === 'large' ? 'active' : ''" (click)="vm.document.setReaderTextSize('large')">Large</button>
+          <div class="segmented-control" aria-label="字号">
+            <button type="button" [ngClass]="vm.document.readerTextSize() === 'standard' ? 'active' : ''" (click)="vm.document.setReaderTextSize('standard')">标准</button>
+            <button type="button" [ngClass]="vm.document.readerTextSize() === 'large' ? 'active' : ''" (click)="vm.document.setReaderTextSize('large')">大号</button>
           </div>
         </section>
 
         <section class="reader-section">
           <div class="section-heading-row">
-            <h3>Outline</h3>
+            <h3>目录</h3>
             <span class="caption">{{ vm.document.headings().length }}</span>
           </div>
           <div class="reader-outline-list">
             @if (!vm.document.headings().length) {
-              <div class="empty-state">No headings in this note.</div>
+              <div class="empty-state">这篇笔记没有章节标题。</div>
             } @else {
               @for (heading of vm.document.headings(); track heading.id) {
                 <button
@@ -289,10 +289,10 @@
         </section>
 
         <section class="reader-section">
-          <h3>Details</h3>
+          <h3>详细信息</h3>
           <dl class="reader-detail-list">
             <div>
-              <dt>Path</dt>
+              <dt>路径</dt>
               <dd>
                 @if (vm.document.path()) {
                   <button class="path-copy-button" type="button" (click)="vm.document.copyPath()">{{ vm.document.path() }}</button>
@@ -302,7 +302,7 @@
               </dd>
             </div>
             <div>
-              <dt>Source</dt>
+              <dt>来源</dt>
               <dd>
                 @if (vm.document.sourceUrl()) {
                   @if (vm.document.sourceUrl().startsWith('http')) {
@@ -316,11 +316,11 @@
               </dd>
             </div>
             <div>
-              <dt>Generated</dt>
+              <dt>生成时间</dt>
               <dd>{{ vm.document.generatedAt() || "-" }}</dd>
             </div>
             <div>
-              <dt>Tags</dt>
+              <dt>标签</dt>
               <dd>
                 @if (vm.activeDocumentTags().length) {
                   <span>{{ vm.activeDocumentTags().join(", ") }}</span>
@@ -330,7 +330,7 @@
               </dd>
             </div>
             <div>
-              <dt>Transcript</dt>
+              <dt>转录文件</dt>
               <dd>
                 @if (vm.document.transcriptPath()) {
                   <button class="path-copy-button" type="button" (click)="vm.document.copyPath(vm.document.transcriptPath())">{{ vm.document.transcriptPath() }}</button>

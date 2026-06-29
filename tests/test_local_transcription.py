@@ -133,7 +133,7 @@ class LocalTranscriptionTest(unittest.TestCase):
         long_error = "x" * 2105
         result = CompletedProcess(args=["ffmpeg"], returncode=1, stdout="", stderr=long_error)
         with patch("backend.services.local_transcription.subprocess.run", return_value=result):
-            with self.assertRaisesRegex(RuntimeError, "Command failed: ffmpeg"):
+            with self.assertRaisesRegex(RuntimeError, "命令执行失败：ffmpeg"):
                 _run_command(["ffmpeg", "-version"])
 
     def test_run_command_decodes_invalid_process_output_for_errors(self):
@@ -145,18 +145,18 @@ class LocalTranscriptionTest(unittest.TestCase):
     def test_validate_reports_missing_dependencies_and_model(self):
         service = LocalWhisperTranscription(whisper_cli="whisper-cli", model_path="missing.bin")
         with patch("backend.services.local_transcription.shutil.which", return_value=None):
-            with self.assertRaisesRegex(RuntimeError, "ffmpeg was not found"):
+            with self.assertRaisesRegex(RuntimeError, "未找到 ffmpeg"):
                 service._validate()
 
         def fake_which(command):
             return "/usr/bin/ffmpeg" if command == "ffmpeg" else None
 
         with patch("backend.services.local_transcription.shutil.which", side_effect=fake_which):
-            with self.assertRaisesRegex(RuntimeError, "whisper-cli was not found"):
+            with self.assertRaisesRegex(RuntimeError, "未找到 whisper-cli"):
                 service._validate()
 
         with patch("backend.services.local_transcription.shutil.which", return_value="/usr/local/bin/tool"):
-            with self.assertRaisesRegex(RuntimeError, "Local Whisper model not found"):
+            with self.assertRaisesRegex(RuntimeError, "未在 missing.bin 找到本地 Whisper 模型"):
                 service._validate()
 
 

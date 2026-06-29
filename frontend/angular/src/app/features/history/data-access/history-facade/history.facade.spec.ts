@@ -45,7 +45,7 @@ describe("HistoryFacade", () => {
   it("loads history and filters by tag and query", () => {
     facade.initialize();
     expect(facade.records()).toHaveLength(2);
-    expect(facade.visibleCountLabel()).toBe("2 shown / 2 records");
+    expect(facade.visibleCountLabel()).toBe("显示 2 条，共 2 条记录");
 
     facade.setActiveTag("frontend");
     facade.searchQuery.set("signals");
@@ -56,7 +56,7 @@ describe("HistoryFacade", () => {
   it("favorites a record and refreshes history", () => {
     facade.favorite(record());
     expect(api.favoriteTask).toHaveBeenCalledWith("task-1");
-    expect(facade.notice()).toBe("Favorite saved");
+    expect(facade.notice()).toBe("已保存到收藏");
   });
 
   it("normalizes and saves record tags", () => {
@@ -67,13 +67,13 @@ describe("HistoryFacade", () => {
 
     expect(api.updateHistoryTags).toHaveBeenCalledWith("task-1", ["Angular", "notes"]);
     expect(facade.records()[0].tags).toEqual(["Angular", "notes"]);
-    expect(facade.notice()).toBe("Tags saved");
+    expect(facade.notice()).toBe("标签已保存");
   });
 
   it("exposes load failures", () => {
     api.history.mockReturnValue(throwError(() => new Error("history failed")));
     facade.initialize();
-    expect(facade.countLabel()).toBe("Error");
+    expect(facade.countLabel()).toBe("加载失败");
     expect(facade.error()).toBe("history failed");
   });
 });

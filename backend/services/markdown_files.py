@@ -24,9 +24,9 @@ class MarkdownDocument:
 def list_markdown_files(directory: str) -> list[MarkdownFile]:
     folder = Path(directory).expanduser()
     if not folder.exists():
-        raise FileNotFoundError(f"Markdown folder does not exist: {directory}")
+        raise FileNotFoundError(f"Markdown 文件夹不存在：{directory}")
     if not folder.is_dir():
-        raise NotADirectoryError(f"Markdown path is not a folder: {directory}")
+        raise NotADirectoryError(f"Markdown 路径不是文件夹：{directory}")
 
     files = sorted(folder.glob("*.md"), key=lambda path: path.stat().st_mtime, reverse=True)
     return [_file_to_record(path) for path in files if path.is_file()]
@@ -35,9 +35,9 @@ def list_markdown_files(directory: str) -> list[MarkdownFile]:
 def resolve_markdown_file(path: str) -> Path:
     markdown_path = Path(path).expanduser()
     if markdown_path.suffix.lower() != ".md":
-        raise ValueError("Only Markdown files can be downloaded.")
+        raise ValueError("只能下载 Markdown 文件。")
     if not markdown_path.exists() or not markdown_path.is_file():
-        raise FileNotFoundError(f"Markdown file does not exist: {path}")
+        raise FileNotFoundError(f"Markdown 文件不存在：{path}")
     return markdown_path
 
 

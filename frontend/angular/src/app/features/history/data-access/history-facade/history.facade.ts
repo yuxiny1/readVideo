@@ -5,8 +5,18 @@ import {Observable, forkJoin, map, switchMap, take} from "rxjs";
 import {ReadvideoApiService} from "../../../../core/api/readvideo-api/readvideo-api.service";
 import {TagSummary, TaskRecord} from "../../../../shared/models/readvideo-types/readvideo.types";
 import {errorMessage} from "../../../../shared/utils/errors/errors";
-import {formatElapsed} from "../../../../shared/utils/format/format";
+import {formatElapsed, statusLabel} from "../../../../shared/utils/format/format";
 import {hasTag, parseTags, tagsFor} from "../../../../shared/utils/tags/tags";
+
+const TRANSCRIPTION_LABELS: Readonly<Record<string, string>> = Object.freeze({
+  local: "本地 Whisper",
+  openai: "OpenAI 转录",
+  reused: "复用已有转录",
+});
+const SUMMARY_LABELS: Readonly<Record<string, string>> = Object.freeze({
+  ollama: "本地 AI 笔记",
+  extractive: "本地提取式笔记",
+});
 
 @Injectable()
 export class HistoryFacade {
@@ -15,7 +25,7 @@ export class HistoryFacade {
 
   readonly records = signal<TaskRecord[]>([]);
   readonly tags = signal<TagSummary[]>([]);
-  readonly countLabel = signal("Loading");
+  readonly countLabel = signal("正在加载");
   readonly error = signal("");
   readonly notice = signal("");
   readonly searchQuery = signal("");
@@ -43,12 +53,12 @@ export class HistoryFacade {
   });
   readonly visibleCountLabel = computed(() => {
     const count = this.countLabel();
-    if (count === "Loading" || count === "Error") return count;
-    return `${this.filteredRecords().length} shown / ${this.records().length} records`;
+    if (count === "正在加载" || count === "加载失败") return count;
+    return `显示 ${this.filteredRecords().length} 条，共 ${this.records().length} 条记录`;
   });
 
   initialize(): void {
-    this.countLabel.set("Loading");
+    this.countLabel.set("正在加载");
     this.error.set("");
     this.runOnce(
       forkJoin({records: this.api.history(), tags: this.api.tags()}),
@@ -63,11 +73,15 @@ export class HistoryFacade {
     this.activeTag.set(tag);
   }
 
+  setSearchQuery(query: string): void {
+    this.searchQuery.set(query);
+  }
+
   favorite(record: TaskRecord): void {
     this.runOnce(
       this.api.favoriteTask(record.task_id).pipe(switchMap(() => this.api.history())),
       (records) => {
-        this.notice.set("Favorite saved");
+        this.notice.set("已保存到收藏");
         this.applyRecords(records);
       },
     );
@@ -83,7 +97,7 @@ export class HistoryFacade {
         this.replaceRecord(updated);
         this.tagDrafts[record.task_id] = tagsFor(updated).join(", ");
         this.tags.set(allTags);
-        this.notice.set("Tags saved");
+        this.notice.set("标签已保存");
       },
     );
   }
@@ -100,6 +114,18 @@ export class HistoryFacade {
 
   elapsed(record: TaskRecord): string {
     return formatElapsed(record);
+  }
+
+  statusText(record: TaskRecord): string {
+    return statusLabel(record.status);
+  }
+
+  transcriptionLabel(value = ""): string {
+    return TRANSCRIPTION_LABELS[value] || value || "-";
+  }
+
+  summaryLabel(value = ""): string {
+    return SUMMARY_LABELS[value] || value || "-";
   }
 
   canFavorite(record: TaskRecord): boolean {
@@ -131,7 +157,7 @@ export class HistoryFacade {
   private applyRecords(records: TaskRecord[]): void {
     this.records.set(records);
     this.syncTagDrafts(records);
-    this.countLabel.set(`${records.length} records`);
+    this.countLabel.set(`${records.length} 条记录`);
   }
 
   private replaceRecord(updated: TaskRecord): void {
@@ -155,7 +181,7 @@ export class HistoryFacade {
     ).subscribe({
       next,
       error: (error) => {
-        this.countLabel.set("Error");
+        this.countLabel.set("加载失败");
         this.error.set(errorMessage(error));
       },
     });

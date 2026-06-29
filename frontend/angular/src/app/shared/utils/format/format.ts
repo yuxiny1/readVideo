@@ -1,24 +1,34 @@
 import {TaskRecord} from "../../models/readvideo-types/readvideo.types";
 
+export const TASK_STATUS_LABELS: Readonly<Record<string, string>> = Object.freeze({
+  idle: "空闲",
+  queued: "已排队",
+  downloading: "正在下载",
+  transcribing: "正在转录",
+  organizing_notes: "正在整理笔记",
+  completed: "已完成",
+  failed: "失败",
+});
+
 export function statusLabel(status = ""): string {
-  return String(status || "idle").replaceAll("_", " ");
+  return TASK_STATUS_LABELS[String(status || "idle")] ?? "状态未知";
 }
 
 export function formatElapsed(task: Partial<TaskRecord> | null | undefined): string {
   const start = Date.parse(task?.created_at || "");
   const end = Date.parse(task?.completed_at || task?.updated_at || new Date().toISOString());
   if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
-    return "0s";
+    return "0 秒";
   }
 
   const seconds = Math.round((end - start) / 1000);
   if (seconds < 60) {
-    return `${seconds}s`;
+    return `${seconds} 秒`;
   }
 
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
-  return `${minutes}m ${remainingSeconds}s`;
+  return `${minutes} 分 ${remainingSeconds} 秒`;
 }
 
 export function formatBytes(value: unknown): string {
@@ -43,6 +53,6 @@ export function formatSpeed(value: unknown): string {
 export function formatEta(value: unknown): string {
   const seconds = Number(value);
   if (!Number.isFinite(seconds) || seconds <= 0) return "";
-  if (seconds < 60) return `${Math.round(seconds)}s`;
-  return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
+  if (seconds < 60) return `${Math.round(seconds)} 秒`;
+  return `${Math.floor(seconds / 60)} 分 ${Math.round(seconds % 60)} 秒`;
 }

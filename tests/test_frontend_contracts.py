@@ -11,14 +11,14 @@ def read_repo_file(relative_path: str) -> str:
 
 
 class FrontendContractTest(unittest.TestCase):
-    def test_reader_limits_favorite_notes_to_three_visible_items(self):
+    def test_reader_exposes_all_filtered_favorite_notes(self):
         facade = read_repo_file("frontend/angular/src/app/features/reader/data-access/reader-facade/reader.facade.ts")
         template = read_repo_file("frontend/angular/src/app/features/reader/page/reader-page/reader-page.component.html")
         styles = read_repo_file("frontend/css/partials/reader-library.css")
 
-        self.assertIn("visibleFavoriteNotes", facade)
-        self.assertIn(".slice(0, 3)", facade)
-        self.assertIn("@for (item of vm.visibleFavoriteNotes(); track item.id)", template)
+        self.assertNotIn("visibleFavoriteNotes", facade)
+        self.assertNotIn(".slice(0, 3)", facade)
+        self.assertIn("@for (item of vm.filteredFavorites(); track item.id)", template)
         self.assertIn("favorite-note-list", styles)
 
     def test_reader_exposes_focus_mode(self):
@@ -35,8 +35,8 @@ class FrontendContractTest(unittest.TestCase):
         self.assertIn("readvideo.reader.focusTheme", preferences)
         self.assertIn("reader-focus-mode", template)
         self.assertIn("reader-focus-dark", template)
-        self.assertIn("Focus Mode", template)
-        self.assertIn("Dark", template)
+        self.assertIn("专注模式", template)
+        self.assertIn("深色", template)
         self.assertIn("@if (!vm.document.focusMode())", template)
         self.assertIn(".reader-workspace.reader-focus-mode", library_styles)
         self.assertIn(".reader-workspace.reader-focus-dark", library_styles)
@@ -51,13 +51,14 @@ class FrontendContractTest(unittest.TestCase):
 
         self.assertIn("openActionsId", component)
         self.assertIn("action-menu-panel", template)
-        self.assertIn("Use", template)
-        self.assertIn("Updates", template)
-        self.assertIn("Delete", template)
+        self.assertIn("使用", template)
+        self.assertIn("查看更新", template)
+        self.assertIn("删除", template)
         self.assertIn(".action-menu-panel", styles)
 
     def test_check_script_runs_frontend_build_and_backend_coverage(self):
         package = json.loads(read_repo_file("package.json"))
+        typescript = json.loads(read_repo_file("tsconfig.json"))
 
         self.assertEqual(
             package["scripts"]["check"],
@@ -66,6 +67,28 @@ class FrontendContractTest(unittest.TestCase):
         self.assertEqual(package["scripts"]["test:frontend"], "ng test --watch=false")
         self.assertEqual(package["scripts"]["test:frontend:coverage"], "ng test --watch=false --coverage")
         self.assertIn("coverage report --fail-under=80", package["scripts"]["test:coverage"])
+        self.assertTrue(typescript["compilerOptions"]["noUnusedLocals"])
+        self.assertTrue(typescript["compilerOptions"]["noUnusedParameters"])
+
+    def test_primary_user_interface_copy_is_chinese(self):
+        index = read_repo_file("frontend/angular/src/index.html")
+        templates = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in (PROJECT_ROOT / "frontend/angular/src/app").rglob("*.component.html")
+        )
+        task_state = read_repo_file("backend/core/task_state.py")
+        markdown_notes = read_repo_file("backend/services/markdown_notes.py")
+
+        self.assertIn('lang="zh-CN"', index)
+        for old_copy in [
+            "New Video", "Latest Output", "Recent Tasks", "Run Log", "Favorites",
+            "Notebook Folders", "Saved Sources", "Read Summary", "Copy Full Note",
+            "No tasks yet", "Focus Mode", "Segmented Notes",
+        ]:
+            self.assertNotIn(f">{old_copy}<", templates)
+        self.assertIn("任务已进入队列。", task_state)
+        self.assertIn('"## 总结"', markdown_notes)
+        self.assertIn('"## 分段笔记"', markdown_notes)
 
     def test_every_frontend_typescript_module_has_a_colocated_spec(self):
         source_root = PROJECT_ROOT / "frontend" / "angular" / "src"
@@ -98,8 +121,8 @@ class FrontendContractTest(unittest.TestCase):
         types = read_repo_file("frontend/angular/src/app/shared/models/readvideo-types/readvideo.types.ts")
 
         self.assertIn('name="note_style"', template)
-        self.assertIn("Commercial Editorial", template)
-        self.assertIn("Business Lens", template)
+        self.assertIn("商业分析", template)
+        self.assertIn("商业视角", template)
         self.assertIn('note_style: form.noteStyle', form_service)
         self.assertIn('"detailed" | "commercial"', types)
 
@@ -109,12 +132,12 @@ class FrontendContractTest(unittest.TestCase):
         reader_template = read_repo_file("frontend/angular/src/app/features/reader/page/reader-page/reader-page.component.html")
         reader_document = read_repo_file("frontend/angular/src/app/features/reader/data-access/reader-document/reader-document.store.ts")
 
-        self.assertIn("Copy Full Note", latest_template)
+        self.assertIn("复制完整笔记", latest_template)
         self.assertIn("copyRequested.emit()", latest_template)
         self.assertIn("markdownDocument(markdownPath)", workflow)
-        self.assertIn("Full Markdown note copied", workflow)
-        self.assertIn("Copy Full MD", reader_template)
-        self.assertIn("Full Markdown copied", reader_document)
+        self.assertIn("已复制完整 Markdown 笔记", workflow)
+        self.assertIn("复制完整笔记", reader_template)
+        self.assertIn("完整 Markdown 已复制", reader_document)
 
     def test_tags_are_shared_across_favorites_reader_and_history(self):
         api = read_repo_file("frontend/angular/src/app/core/api/readvideo-api/readvideo-api.service.ts")
@@ -132,11 +155,11 @@ class FrontendContractTest(unittest.TestCase):
         self.assertIn("updateFavoriteTags", api)
         self.assertIn("updateHistoryTags", api)
         self.assertIn("/api/tags", api)
-        self.assertIn("Notebook Folders", favorites_template)
+        self.assertIn("笔记文件夹", favorites_template)
         self.assertIn("tagDrafts", favorites_facade)
         self.assertIn("folder-visual-card", favorites_template)
         self.assertIn("note-tag-manager", favorites_template)
-        self.assertIn("Save Tags", favorites_template)
+        self.assertIn("保存标签", favorites_template)
         self.assertIn("openFolderInReader", favorites_facade)
         self.assertIn("updateFavoriteFolder", api)
         self.assertNotIn('(click)="deleteFolder(folder)"', favorites_template)
@@ -149,8 +172,8 @@ class FrontendContractTest(unittest.TestCase):
         self.assertIn("this.library.updateTags", reader_facade)
         self.assertIn("reader-document-tags-row", reader_template)
         self.assertIn("reader-tag-edit-row", reader_template)
-        self.assertIn("Save Tags", reader_template)
-        self.assertIn("No tags", reader_template)
+        self.assertIn("保存标签", reader_template)
+        self.assertIn("暂无标签", reader_template)
         self.assertIn("reader-tag-filter", reader_template)
         self.assertIn("activeDocumentTags", reader_template)
         self.assertIn("filteredRecords", history_facade)

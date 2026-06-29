@@ -41,18 +41,23 @@ export function libraryItems(
   favorites: FavoriteSummary[],
   files: MarkdownFile[],
 ): ReaderLibraryItem[] {
+  const favoriteItems = mode === "all" || mode === "favorites"
+    ? favorites.map((favorite) => ({
+      kind: "favorite" as const,
+      path: favorite.markdown_path || "",
+      favorite,
+      file: null,
+    }))
+    : [];
+  const favoritePaths = new Set(favoriteItems.map((item) => item.path).filter(Boolean));
+  const fileItems = mode === "all" || mode === "files"
+    ? files
+      .filter((file) => mode === "files" || !favoritePaths.has(file.path))
+      .map((file) => ({kind: "file" as const, path: file.path, favorite: null, file}))
+    : [];
   return [
-    ...(mode === "all" || mode === "favorites"
-      ? favorites.map((favorite) => ({
-        kind: "favorite" as const,
-        path: favorite.markdown_path || "",
-        favorite,
-        file: null,
-      }))
-      : []),
-    ...(mode === "all" || mode === "files"
-      ? files.map((file) => ({kind: "file" as const, path: file.path, favorite: null, file}))
-      : []),
+    ...favoriteItems,
+    ...fileItems,
   ];
 }
 
@@ -64,7 +69,7 @@ function sortFavorites(items: FavoriteSummary[], sort: LibrarySort): FavoriteSum
   return [...items].sort((first, second) => {
     if (sort === "title") return compareText(favoriteTitle(first), favoriteTitle(second));
     if (sort === "folder") {
-      return compareText(first.folder_name || "Unfiled", second.folder_name || "Unfiled")
+      return compareText(first.folder_name || "未分类", second.folder_name || "未分类")
         || compareText(favoriteTitle(first), favoriteTitle(second));
     }
     if (sort === "path") return compareText(first.markdown_path || "", second.markdown_path || "");

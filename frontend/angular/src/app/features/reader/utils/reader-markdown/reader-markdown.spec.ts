@@ -15,8 +15,8 @@ describe("reader Markdown helpers", () => {
   it("extracts metadata, title, and supported headings", () => {
     const markdown = "# Main title\nSource: https://example.com\n## **Section**\n#### Hidden";
     expect(extractTitle(markdown)).toBe("Main title");
-    expect(extractMetadata(markdown, "Source")).toBe("https://example.com");
-    expect(extractMetadata(markdown, "Transcript")).toBe("");
+    expect(extractMetadata(markdown, "source")).toBe("https://example.com");
+    expect(extractMetadata(markdown, "transcript")).toBe("");
     expect(extractHeadings(markdown)).toEqual([
       {id: "section-1", level: 1, title: "Main title"},
       {id: "section-2", level: 2, title: "Section"},
@@ -30,8 +30,8 @@ describe("reader Markdown helpers", () => {
 
   it("formats cross-platform file names and reading time", () => {
     expect(fileName("C:\\notes\\summary.md")).toBe("summary.md");
-    expect(fileName("")).toBe("Markdown note");
-    expect(readingStats("short note")).toBe("1 min read");
+    expect(fileName("")).toBe("Markdown 笔记");
+    expect(readingStats("short note")).toBe("约 1 分钟读完");
   });
 
   it("renders headings, emphasis, lists, quotes, rules, and code safely", () => {

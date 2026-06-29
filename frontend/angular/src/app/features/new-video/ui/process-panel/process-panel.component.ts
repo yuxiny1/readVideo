@@ -31,9 +31,12 @@ export interface ProcessPanelViewModel {
   phaseDetail: string;
   progressPercent: number;
   logs: TaskLog[];
+  canSubmit: boolean;
 }
 
 export type DuplicateAction = "use" | "regenerate" | "redownload";
+const TASK_STEPS = ["queued", "downloading", "transcribing", "organizing_notes", "completed"] as const;
+type TaskStep = typeof TASK_STEPS[number];
 
 @Component({
   selector: "rv-process-panel",
@@ -50,11 +53,11 @@ export class ProcessPanelComponent {
   readonly whisperDownloadRequested = output<string>();
   readonly strongestModelRequested = output<void>();
   readonly duplicateAction = output<DuplicateAction>();
-  readonly steps = ["queued", "downloading", "transcribing", "organizing_notes", "completed"];
+  readonly steps = TASK_STEPS;
 
-  stepClass(step: string): string {
+  stepClass(step: TaskStep): string {
     const status = this.vm().latestTask?.status || "";
-    const currentIndex = this.steps.indexOf(status);
+    const currentIndex = this.steps.findIndex((item) => item === status);
     const stepIndex = this.steps.indexOf(step);
     if (status === "failed") return "failed";
     if (currentIndex >= 0 && stepIndex <= currentIndex) {
@@ -83,9 +86,9 @@ export class ProcessPanelComponent {
 
   whisperModelLabel(model: WhisperModelOption): string {
     return [
-      model.recommended ? "Recommended" : "",
+      model.recommended ? "推荐" : "",
       model.size,
-      model.installed ? "installed" : "download",
+      model.installed ? "已安装" : "可下载",
     ].filter(Boolean).join(" · ");
   }
 

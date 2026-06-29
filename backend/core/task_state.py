@@ -96,10 +96,10 @@ def _append_log(logs: list[dict[str, Any]], entry: dict[str, Any]) -> list[dict[
 
 def _default_status_message(status: str) -> str:
     return {
-        "queued": "Task queued.",
-        "downloading": "Downloading video with yt-dlp.",
-        "transcribing": "Transcribing audio.",
-        "organizing_notes": "Writing detailed paragraph summary and segmented notes.",
-        "completed": "Task completed.",
-        "failed": "Task failed.",
-    }.get(status, status.replace("_", " ").capitalize())
+        "queued": "任务已进入队列。",
+        "downloading": "正在使用 yt-dlp 下载视频。",
+        "transcribing": "正在转录音频。",
+        "organizing_notes": "正在整理详细总结和分段笔记。",
+        "completed": "任务已完成。",
+        "failed": "任务失败。",
+    }.get(status, "状态已更新。")

@@ -24,7 +24,7 @@ describe("ReaderDocumentStore", () => {
     });
     store.setDocumentQuery("note");
 
-    expect(store.status()).toBe("Open");
+    expect(store.status()).toBe("已打开");
     expect(store.title()).toBe("Course");
     expect(store.headings()).toHaveLength(2);
     expect(store.sourceUrl()).toBe("https://example.com");
@@ -50,9 +50,9 @@ describe("ReaderDocumentStore", () => {
 
   it("tracks open failures without unsafe HTML", () => {
     store.beginOpen("/missing.md");
-    expect(store.status()).toBe("Loading");
+    expect(store.status()).toBe("正在加载");
     store.fail("<missing>");
-    expect(store.status()).toBe("Error");
+    expect(store.status()).toBe("错误");
     expect(store.rawContent()).toBe("");
     expect(String(store.html())).toContain("&lt;missing&gt;");
   });
@@ -67,7 +67,7 @@ describe("ReaderDocumentStore", () => {
     await vi.runAllTimersAsync();
 
     expect(writeText).toHaveBeenCalledWith("# Full note");
-    expect(store.status()).toBe("Open");
+    expect(store.status()).toBe("已打开");
     expect(store.downloadHref()).toBe("/api/markdown_files/download?path=%2Fnotes%2Fa.md");
     expect(store.formatBytes(1024)).toBe("1.0 KB");
   });

@@ -131,7 +131,7 @@ class VideoProcessorReuseTest(unittest.TestCase):
         task = TASKS["new-task"]
         self.assertEqual(task["status"], "completed")
         self.assertIn("\ufffd", write_note.call_args.kwargs["transcript_text"])
-        self.assertTrue(any("invalid UTF-8 bytes" in log["message"] for log in task["logs"]))
+        self.assertTrue(any("无效的 UTF-8 字节" in log["message"] for log in task["logs"]))
         self.assertEqual(rewritten_transcript, write_note.call_args.kwargs["transcript_text"])
 
     def test_process_video_deletes_local_video_after_success(self):
@@ -186,7 +186,7 @@ class VideoProcessorReuseTest(unittest.TestCase):
             self.assertTrue(task["video_deleted_after_completion"])
             self.assertEqual(task["download_status"], "deleted_after_completion")
             self.assertEqual(record.video_path, str(video))
-            self.assertTrue(any("Deleted local video after completion" in log["message"] for log in task["logs"]))
+            self.assertTrue(any("任务完成后已删除本地视频" in log["message"] for log in task["logs"]))
 
     def test_delete_downloaded_video_records_missing_file_without_failing(self):
         set_task_status("missing-delete", "completed")
@@ -195,7 +195,7 @@ class VideoProcessorReuseTest(unittest.TestCase):
 
         self.assertFalse(deleted)
         self.assertFalse(TASKS["missing-delete"]["video_deleted_after_completion"])
-        self.assertIn("already missing", TASKS["missing-delete"]["video_delete_error"])
+        self.assertIn("本地视频文件不存在", TASKS["missing-delete"]["video_delete_error"])
 
     def test_download_progress_hook_updates_task_details_and_logs_buckets(self):
         set_task_status("progress-task", "downloading")
@@ -226,8 +226,8 @@ class VideoProcessorReuseTest(unittest.TestCase):
         self.assertEqual(task["download_status"], "finished")
         self.assertEqual(task["download_filename"], "demo.mp4")
         self.assertEqual(task["download_percent"], 100)
-        self.assertTrue(any("Download 50.0% complete." in log["message"] for log in task["logs"]))
-        self.assertTrue(any("Download finished" in log["message"] for log in task["logs"]))
+        self.assertTrue(any("下载进度：50.0%" in log["message"] for log in task["logs"]))
+        self.assertTrue(any("下载完成" in log["message"] for log in task["logs"]))
 
     def test_download_percent_handles_missing_and_caps_at_one_hundred(self):
         self.assertIsNone(_download_percent(None, 100))

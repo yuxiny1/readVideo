@@ -42,7 +42,7 @@ class AudioTranscription:
         Split the audio file into chunks based on duration in seconds.
         """
         if chunk_duration_sec <= 0:
-            raise ValueError("chunk_duration_sec must be greater than 0")
+            raise ValueError("音频分段时长必须大于 0。")
 
         chunks = []
         audio_file_path = Path(audio_path)
@@ -92,7 +92,7 @@ class AudioTranscription:
         if isinstance(transcription, dict):
             return transcription.get("text", "")
 
-        raise TypeError("OpenAI transcription response did not include text.")
+        raise TypeError("OpenAI 转录响应中没有文本内容。")
 
     def save_transcription(self, text: str, original_video_path: str) -> str:
         """
@@ -122,7 +122,7 @@ class AudioTranscription:
         """
         video_path = Path(video_file_path)
         if not video_path.is_file():
-            raise FileNotFoundError(f"Video file not found: {video_file_path}")
+            raise FileNotFoundError(f"找不到视频文件：{video_file_path}")
 
         audio_file_path = video_path.with_suffix(".wav")
         audio_chunks = []

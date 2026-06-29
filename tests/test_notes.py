@@ -69,13 +69,13 @@ class NotesTest(unittest.TestCase):
             markdown = Path(result.markdown_path).read_text(encoding="utf-8")
 
         self.assertIn("# 測試影片", markdown)
-        self.assertIn("## Summary", markdown)
-        self.assertIn("## Segmented Notes", markdown)
-        self.assertIn("#### Original Transcript", markdown)
+        self.assertIn("## 总结", markdown)
+        self.assertIn("## 分段笔记", markdown)
+        self.assertIn("#### 原文片段", markdown)
         self.assertIn("```text", markdown)
         self.assertIn("市場正在創新高但是宏觀情況仍然不確定", markdown)
-        self.assertNotIn("## Full Transcript", markdown)
-        self.assertNotIn("Transcript:", markdown)
+        self.assertNotIn("## 完整转录", markdown)
+        self.assertNotIn("转录文件：", markdown)
         self.assertTrue(result.summary)
 
     def test_structured_note_uses_numbered_section_when_title_is_unclear(self):
@@ -95,8 +95,8 @@ class NotesTest(unittest.TestCase):
             )
             markdown = Path(result.markdown_path).read_text(encoding="utf-8")
 
-        self.assertIn("### Section 1", markdown)
-        self.assertNotIn("Transcript Segment", markdown)
+        self.assertIn("### 第 1 节", markdown)
+        self.assertNotIn("转录片段", markdown)
 
     def test_summarize_transcript_returns_limited_items(self):
         transcript = "\n".join(f"這是一段關於市場和美元體系的內容 {i}" for i in range(20))
@@ -104,7 +104,7 @@ class NotesTest(unittest.TestCase):
         self.assertLessEqual(len(summary), 3)
 
     def test_summarize_transcript_rejects_unknown_backend(self):
-        with self.assertRaisesRegex(RuntimeError, "summary_backend"):
+        with self.assertRaisesRegex(RuntimeError, "总结引擎"):
             summarize_transcript_with_backend("hello", backend="missing")
 
     def test_summarize_transcript_groups_contextual_topics(self):
@@ -179,12 +179,12 @@ class NotesTest(unittest.TestCase):
             if "中文长文编辑" in prompt:
                 return "\n".join(
                     [
-                        "## Summary",
+                        "## 总结",
                         "这节内容先从现代社会对计算技术的依赖讲起，再回到早期计算工具和机械计算的发展。",
                         "- 产品定位: 先定义用户问题，再说明产品要解决的核心场景。",
                         "- 执行路径: 后半段整理执行步骤和后续行动。",
                         "",
-                        "## Sections",
+                        "## 分段笔记",
                         "### 1. 产品定位",
                         "内容先解释用户问题，再把产品定位放在具体场景里。原文连续提到产品定位不是一句口号，而是要说明用户具体遇到什么阻碍、为什么现有方案不够用，以及这个产品准备如何降低使用门槛。",
                         "- 这一段还保留了用户问题 1、用户问题 2 和场景细节，而不是只写一个抽象结论。",
@@ -217,29 +217,29 @@ class NotesTest(unittest.TestCase):
 
         def fake_request(prompt, model, url, timeout_seconds):
             self.assertIn("商业新闻分析式文章摘要", prompt)
-            self.assertIn("## Business Lens", prompt)
+            self.assertIn("## 商业视角", prompt)
             self.assertIn("商业核心", prompt)
             self.assertIn("关键指标", prompt)
             self.assertIn("忙碌的商业读者", prompt)
             self.assertIn("不要模仿或复制任何特定媒体", prompt)
             return "\n".join(
                 [
-                    "## Summary",
+                    "## 总结",
                     "这段内容把市场变化放在企业决策的背景下，强调需求、风险和现金流需要重新排序。",
                     "- 商业判断: 企业需要重新评估需求和现金流。",
                     "",
-                    "## Business Lens",
+                    "## 商业视角",
                     "- 商业核心: 企业需要重新评估需求和现金流。",
-                    "### Risks",
+                    "### 风险",
                     "- 风险: 市场变化会进入预算和战略优先级。",
                     "- 下一步信号: 观察真实需求和现金流质量。",
                     "",
-                    "## Editorial Article",
+                    "## 商业分析",
                     "市场变化正在把企业管理层推回一个更基本的问题：哪些需求是真实的，哪些增长只是环境宽松时的幻觉。",
                     "",
                     "这段视频的商业含义在于，风险不再只是宏观背景，而是会进入现金流、预算和战略优先级。",
                     "",
-                    "## Sections",
+                    "## 分段笔记",
                     "### 1. 市场变化",
                     "视频说明市场正在变化，企业需要重新判断需求、风险和现金流。",
                 ]
@@ -287,11 +287,11 @@ class NotesTest(unittest.TestCase):
             )
             markdown = Path(result.markdown_path).read_text(encoding="utf-8")
 
-        self.assertIn("## Business Lens", markdown)
+        self.assertIn("## 商业视角", markdown)
         self.assertIn("商业核心: 企业需要重新评估需求和现金流", markdown)
-        self.assertIn("## Editorial Article", markdown)
+        self.assertIn("## 商业分析", markdown)
         self.assertIn("企业管理层", markdown)
-        self.assertIn("## Segmented Notes", markdown)
+        self.assertIn("## 分段笔记", markdown)
 
     def test_write_markdown_note_uses_ollama_article_sections_without_full_transcript(self):
         article = ArticleNote(
@@ -318,16 +318,16 @@ class NotesTest(unittest.TestCase):
             )
             markdown = Path(result.markdown_path).read_text(encoding="utf-8")
 
-        self.assertIn("## Summary", markdown)
-        self.assertIn("### Narrative Summary", markdown)
+        self.assertIn("## 总结", markdown)
+        self.assertIn("### 内容概览", markdown)
         self.assertIn("这节课把原始转录重新压缩成正文摘要", markdown)
-        self.assertIn("## Segmented Notes", markdown)
+        self.assertIn("## 分段笔记", markdown)
         self.assertIn("### 1. 学习路线", markdown)
         self.assertIn("先建立课程地图", markdown)
-        self.assertIn("#### Original Transcript", markdown)
+        self.assertIn("#### 原文片段", markdown)
         self.assertIn("完整逐字稿第二行", markdown)
-        self.assertNotIn("## Full Transcript", markdown)
-        self.assertNotIn("/tmp/transcript.txt", markdown)
+        self.assertNotIn("## 完整转录", markdown)
+        self.assertIn("- 转录文件：`/tmp/transcript.txt`", markdown)
 
 
 if __name__ == "__main__":

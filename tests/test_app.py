@@ -32,24 +32,24 @@ class MainAppTest(unittest.TestCase):
 
     def test_load_settings_validates_chunk_seconds(self):
         with patch.dict("os.environ", {"OPENAI_API_KEY": "test-key", "READVIDEO_CHUNK_SECONDS": "0"}):
-            with self.assertRaisesRegex(RuntimeError, "greater than 0"):
+            with self.assertRaisesRegex(RuntimeError, "必须大于 0"):
                 load_settings()
 
     def test_load_settings_validates_backend_names_and_integer_chunks(self):
         with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "bad"}, clear=True):
-            with self.assertRaisesRegex(RuntimeError, "must be local or openai"):
+            with self.assertRaisesRegex(RuntimeError, "请选择本地 Whisper 或 OpenAI 转录"):
                 load_settings()
 
         with patch.dict("os.environ", {"READVIDEO_NOTES_BACKEND": "bad"}, clear=True):
-            with self.assertRaisesRegex(RuntimeError, "must be extractive or ollama"):
+            with self.assertRaisesRegex(RuntimeError, "请选择本地提取式笔记或 Ollama 本地大模型"):
                 load_settings()
 
         with patch.dict("os.environ", {"READVIDEO_NOTE_STYLE": "tabloid"}, clear=True):
-            with self.assertRaisesRegex(RuntimeError, "must be detailed or commercial"):
+            with self.assertRaisesRegex(RuntimeError, "请选择详细笔记或商业分析"):
                 load_settings()
 
         with patch.dict("os.environ", {"READVIDEO_CHUNK_SECONDS": "soon"}, clear=True):
-            with self.assertRaisesRegex(RuntimeError, "must be an integer"):
+            with self.assertRaisesRegex(RuntimeError, "必须是整数"):
                 load_settings()
 
     def test_process_video_endpoint_accepts_json_body(self):
@@ -454,6 +454,19 @@ class MainAppTest(unittest.TestCase):
         client = TestClient(app)
         response = client.get("/task_status/missing")
         self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()["detail"], "找不到任务。")
+
+    def test_framework_errors_are_returned_in_chinese(self):
+        client = TestClient(app)
+
+        missing_route = client.get("/missing-route")
+        invalid_request = client.post("/process_video/", json={})
+
+        self.assertEqual(missing_route.status_code, 404)
+        self.assertEqual(missing_route.json()["detail"], "找不到请求的资源。")
+        self.assertEqual(invalid_request.status_code, 422)
+        self.assertEqual(invalid_request.json()["detail"], "请求参数无效。")
+        self.assertEqual(invalid_request.json()["errors"][0]["message"], "缺少必填参数。")
 
 
 if __name__ == "__main__":

@@ -24,7 +24,7 @@ class MarkdownFilesTest(unittest.TestCase):
             text_file = Path(tmpdir) / "note.txt"
             text_file.write_text("No", encoding="utf-8")
 
-            with self.assertRaisesRegex(ValueError, "Only Markdown"):
+            with self.assertRaisesRegex(ValueError, "只能下载 Markdown"):
                 resolve_markdown_file(str(text_file))
 
     def test_list_markdown_files_rejects_missing_or_non_directory_path(self):

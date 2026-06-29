@@ -1,7 +1,7 @@
 import {DestroyRef, Injectable, computed, effect, inject, signal} from "@angular/core";
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 import {ActivatedRoute, Router} from "@angular/router";
-import {Observable, catchError, of, take} from "rxjs";
+import {EMPTY, Observable, Subject, catchError, of, switchMap, take, tap} from "rxjs";
 
 import {ReadvideoApiService} from "../../../../core/api/readvideo-api/readvideo-api.service";
 import {LibraryStore} from "../../../library/data-access/library-store/library.store";
@@ -23,6 +23,8 @@ export class ReaderFacade {
   private readonly router = inject(Router);
   private readonly api = inject(ReadvideoApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly markdownFileRequests = new Subject<{directory: string; updateRoute: boolean}>();
+  private readonly documentRequests = new Subject<{path: string; updateRoute: boolean}>();
   readonly document = inject(ReaderDocumentStore);
   readonly library = inject(LibraryStore);
 
@@ -32,7 +34,7 @@ export class ReaderFacade {
   readonly activeFolderId = signal("all");
   readonly activeTag = signal("all");
   readonly files = signal<MarkdownFile[]>([]);
-  readonly fileCount = signal("0 files");
+  readonly fileCount = signal("0 个文件");
   readonly defaultNotesDir = signal("notes");
   readonly localError = signal("");
   readonly configReady = signal(false);
@@ -50,7 +52,6 @@ export class ReaderFacade {
     this.searchQuery(),
     this.librarySort(),
   ));
-  readonly visibleFavoriteNotes = computed(() => this.filteredFavorites().slice(0, 3));
   readonly filteredFiles = computed(() => filterFiles(
     this.files(),
     this.searchQuery(),
@@ -61,7 +62,7 @@ export class ReaderFacade {
     this.filteredFavorites(),
     this.filteredFiles(),
   ));
-  readonly libraryCount = computed(() => `${this.filteredFavorites().length} favorites · ${this.fileCount()}`);
+  readonly libraryCount = computed(() => `${this.filteredFavorites().length} 篇收藏 · ${this.fileCount()}`);
   readonly activeFavorite = computed(() => (
     this.favorites().find((item) => item.markdown_path === this.document.path()) ?? null
   ));
@@ -92,19 +93,58 @@ export class ReaderFacade {
     }
     return counts;
   });
+  readonly visibleTags = computed(() => this.tags().filter((tag) => this.tagCount(tag.name) > 0));
   private initialRouteApplied = false;
-  private readonly initialRoute = effect(() => {
-    const ready = this.configReady() && !this.library.loading();
-    if (!ready || this.initialRouteApplied) return;
-    this.initialRouteApplied = true;
-    this.applyInitialRoute();
-  });
-  private readonly libraryFeedback = effect(() => {
-    if (this.library.notice() === "Tags saved") this.document.setStatus("Tags saved");
-    if (this.library.error() && this.document.status() === "Saving tags") {
-      this.document.setStatus("Tag save failed");
-    }
-  });
+  constructor() {
+    effect(() => {
+      const ready = this.configReady() && !this.library.loading();
+      if (!ready || this.initialRouteApplied) return;
+      this.initialRouteApplied = true;
+      this.applyInitialRoute();
+    });
+    effect(() => {
+      if (this.library.notice() === "标签已保存") this.document.setStatus("标签已保存");
+      if (this.library.error() && this.document.status() === "正在保存标签") {
+        this.document.setStatus("标签保存失败");
+      }
+    });
+    this.markdownFileRequests.pipe(
+      switchMap(({directory, updateRoute}) => this.api.markdownFiles(directory).pipe(
+        tap((files) => {
+          this.markdownFolder = directory;
+          this.files.set(files);
+          this.fileCount.set(`${files.length} 个文件`);
+          if (updateRoute) {
+            void this.router.navigate([], {
+              relativeTo: this.route,
+              queryParams: {folder: directory, path: null},
+              queryParamsHandling: "merge",
+            });
+          }
+        }),
+        catchError((error) => {
+          this.localError.set(errorMessage(error));
+          this.files.set([]);
+          this.fileCount.set("加载失败");
+          return EMPTY;
+        }),
+      )),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe();
+
+    this.documentRequests.pipe(
+      switchMap(({path, updateRoute}) => this.api.markdownDocument(path).pipe(
+        tap((document) => this.applyDocument(document, updateRoute)),
+        catchError((error) => {
+          const message = errorMessage(error);
+          this.localError.set(message);
+          this.document.fail(message);
+          return EMPTY;
+        }),
+      )),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe();
+  }
 
   initialize(): void {
     this.localError.set("");
@@ -123,22 +163,8 @@ export class ReaderFacade {
     directory = this.markdownFolder.trim() || this.defaultNotesDir(),
     updateRoute = false,
   ): void {
-    this.fileCount.set("Loading");
-    this.runOnce(this.api.markdownFiles(directory), (files) => {
-      this.markdownFolder = directory;
-      this.files.set(files);
-      this.fileCount.set(`${files.length} files`);
-      if (updateRoute) {
-        void this.router.navigate([], {
-          relativeTo: this.route,
-          queryParams: {folder: directory, path: null},
-          queryParamsHandling: "merge",
-        });
-      }
-    }, () => {
-      this.files.set([]);
-      this.fileCount.set("Error");
-    });
+    this.fileCount.set("正在加载");
+    this.markdownFileRequests.next({directory, updateRoute});
   }
 
   openFavorite(item: FavoriteSummary): void {
@@ -157,11 +183,7 @@ export class ReaderFacade {
   openPath(path: string, updateRoute = true): void {
     this.document.beginOpen(path);
     this.localError.set("");
-    this.runOnce(
-      this.api.markdownDocument(path),
-      (document) => this.applyDocument(document, updateRoute),
-      (message) => this.document.fail(message),
-    );
+    this.documentRequests.next({path, updateRoute});
   }
 
   openAdjacent(direction: -1 | 1): void {
@@ -176,6 +198,10 @@ export class ReaderFacade {
 
   setLibraryMode(mode: LibraryMode): void {
     this.libraryMode.set(mode);
+  }
+
+  setSearchQuery(query: string): void {
+    this.searchQuery.set(query);
   }
 
   setActiveTag(tag: string): void {
@@ -204,7 +230,7 @@ export class ReaderFacade {
   saveActiveTags(): void {
     const item = this.activeFavorite();
     if (!item) return;
-    this.document.setStatus("Saving tags");
+    this.document.setStatus("正在保存标签");
     this.library.updateTags({favoriteId: item.id, tags: parseTags(this.tagDraft(item))});
   }
 
@@ -274,14 +300,12 @@ export class ReaderFacade {
   private runOnce<T>(
     source$: Observable<T>,
     next: (value: T) => void,
-    onError: (message: string) => void = () => undefined,
   ): void {
     source$.pipe(take(1), takeUntilDestroyed(this.destroyRef)).subscribe({
       next,
       error: (error) => {
         const message = errorMessage(error);
         this.localError.set(message);
-        onError(message);
       },
     });
   }

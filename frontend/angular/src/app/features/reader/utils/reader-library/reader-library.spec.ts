@@ -59,6 +59,14 @@ describe("reader library selectors", () => {
     expect(libraryItems("files", [favorite()], [file()])[0].path).toBe("/notes/reader.md");
   });
 
+  it("deduplicates favorite and file rows with the same path in combined mode", () => {
+    const favoriteItem = favorite({markdown_path: "/notes/shared.md"});
+    const fileItem = file({path: "/notes/shared.md"});
+
+    expect(libraryItems("all", [favoriteItem], [fileItem])).toHaveLength(1);
+    expect(libraryItems("files", [favoriteItem], [fileItem])).toHaveLength(1);
+  });
+
   it("falls back from title to URL and task id", () => {
     expect(favoriteTitle(favorite({title: ""}))).toBe("https://example.com/video");
     expect(favoriteTitle(favorite({title: "", url: ""}))).toBe("task-1");
