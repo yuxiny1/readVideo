@@ -48,7 +48,7 @@ def load_openai_api_key(config_path: str = "apiKey.json", required: bool = True)
             return api_key
 
     if required:
-        raise RuntimeError("Set OPENAI_API_KEY or create apiKey.json with an apiKey value.")
+        raise RuntimeError("请设置 OPENAI_API_KEY，或创建包含 apiKey 的 apiKey.json。")
     return None
 
 
@@ -59,10 +59,10 @@ def _load_chunk_seconds(raw_value: Optional[str]) -> int:
     try:
         chunk_seconds = int(raw_value)
     except ValueError as exc:
-        raise RuntimeError("READVIDEO_CHUNK_SECONDS must be an integer.") from exc
+        raise RuntimeError("音频分段时长必须是整数。") from exc
 
     if chunk_seconds <= 0:
-        raise RuntimeError("READVIDEO_CHUNK_SECONDS must be greater than 0.")
+        raise RuntimeError("音频分段时长必须大于 0。")
 
     return chunk_seconds
 
@@ -86,15 +86,15 @@ def _default_local_whisper_model() -> str:
 def load_settings() -> Settings:
     transcription_backend = os.getenv("READVIDEO_TRANSCRIPTION_BACKEND", "local").lower()
     if transcription_backend not in {"local", "openai"}:
-        raise RuntimeError("READVIDEO_TRANSCRIPTION_BACKEND must be local or openai.")
+        raise RuntimeError("转录方式配置无效，请选择本地 Whisper 或 OpenAI 转录。")
 
     notes_backend = os.getenv("READVIDEO_NOTES_BACKEND", "ollama").lower()
     if notes_backend not in {"extractive", "ollama"}:
-        raise RuntimeError("READVIDEO_NOTES_BACKEND must be extractive or ollama.")
+        raise RuntimeError("笔记引擎配置无效，请选择本地提取式笔记或 Ollama 本地大模型。")
 
     note_style = os.getenv("READVIDEO_NOTE_STYLE", "detailed").lower()
     if note_style not in {"detailed", "commercial"}:
-        raise RuntimeError("READVIDEO_NOTE_STYLE must be detailed or commercial.")
+        raise RuntimeError("笔记风格配置无效，请选择详细笔记或商业分析。")
 
     return Settings(
         transcription_backend=transcription_backend,

@@ -41,7 +41,7 @@ class OllamaModelsTest(unittest.TestCase):
             self.assertEqual(list_installed_models(), ["qwen2.5:3b", "qwen3:14b"])
 
     def test_pull_model_validates_model_name(self):
-        with self.assertRaisesRegex(RuntimeError, "invalid"):
+        with self.assertRaisesRegex(RuntimeError, "无效字符"):
             pull_model("bad model; rm -rf /")
 
     def test_list_ollama_models_parses_api_response(self):

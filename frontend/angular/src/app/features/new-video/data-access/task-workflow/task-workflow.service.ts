@@ -6,6 +6,7 @@ import {
   Subject,
   catchError,
   defer,
+  exhaustMap,
   filter,
   forkJoin,
   map,
@@ -37,6 +38,11 @@ export interface StartProcessingOptions {
   forceDownload?: boolean;
 }
 
+interface StartProcessingRequest {
+  url: string;
+  options: StartProcessingOptions;
+}
+
 @Injectable()
 export class TaskWorkflowService {
   private readonly api = inject(ReadvideoApiService);
@@ -44,31 +50,63 @@ export class TaskWorkflowService {
   private readonly models = inject(LocalModelsService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly pollRequests = new Subject<string>();
+  private readonly startRequests = new Subject<StartProcessingRequest>();
 
   readonly config = this.models.config;
-  readonly health = signal<"Checking" | "Online" | "Offline">("Checking");
+  readonly health = signal<"检查中" | "在线" | "离线">("检查中");
   readonly latestTask = signal<TaskRecord | null>(null);
-  readonly latestSummary = signal("");
-  readonly notice = signal<NoticeState>({text: "Idle", kind: "muted"});
+  readonly latestSummary = computed(() => this.latestTask()?.summary ?? "");
+  readonly notice = signal<NoticeState>({text: "空闲", kind: "muted"});
   readonly duplicate = signal<DuplicateLookup | null>(null);
   readonly duplicateUrl = signal("");
   readonly recentTasks = signal<TaskRecord[]>([]);
 
   readonly backendLabel = computed(() => {
     const config = this.config();
-    return config ? `${config.transcription_backend} / Better Local AI Notes` : "Backend";
+    if (!config) return "处理引擎";
+    const transcription = config.transcription_backend === "local" ? "本地 Whisper" : "OpenAI 转录";
+    return `${transcription}、本地 AI 笔记`;
   });
   readonly taskIdLabel = computed(() => {
     const taskId = this.latestTask()?.task_id;
-    return taskId ? `Task ${taskId}` : "";
+    return taskId ? `任务 ${taskId}` : "";
   });
   readonly progressPercent = computed(() => taskProgressPercent(this.latestTask()));
   readonly phaseTitle = computed(() => statusLabel(this.latestTask()?.status || "idle"));
   readonly phaseDetail = computed(() => describeTaskPhase(this.latestTask()));
   readonly logs = computed(() => this.latestTask()?.logs ?? []);
   readonly canCopyLatestOutput = computed(() => Boolean(this.latestTask()?.markdown_path || this.latestSummary()));
+  readonly canStart = computed(() => {
+    const status = this.latestTask()?.status;
+    return !status || TERMINAL_TASK_STATUSES.has(status);
+  });
 
   constructor() {
+    this.startRequests.pipe(
+      exhaustMap(({url, options}) => {
+        if (!this.canStart()) {
+          this.setNotice("当前任务仍在处理中，请等待完成后再提交新任务。", "pending");
+          return EMPTY;
+        }
+        const ready$ = options.skipDuplicateCheck ? of(true) : this.checkDuplicate(url);
+        return ready$.pipe(
+          filter(Boolean),
+          map(() => this.processForm.payload(url, options)),
+          filter((payload) => this.validatePayload(payload)),
+          tap(() => this.queueTask(url)),
+          switchMap((payload) => this.api.processVideo(payload)),
+          catchError((error) => {
+            this.setNotice(errorMessage(error), "error");
+            return EMPTY;
+          }),
+        );
+      }),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe((task) => {
+      this.renderTask(task);
+      this.pollRequests.next(task.task_id);
+    });
+
     this.pollRequests.pipe(
       switchMap((taskId) => timer(0, 1800).pipe(
         switchMap(() => this.api.taskStatus(taskId)),
@@ -88,12 +126,12 @@ export class TaskWorkflowService {
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: ({health, config}) => {
-        this.health.set(health.status === "ok" ? "Online" : "Offline");
+        this.health.set(health.status === "ok" ? "在线" : "离线");
         this.models.initialize(config);
         this.loadRecentTasks();
       },
       error: (error) => {
-        this.health.set("Offline");
+        this.health.set("离线");
         this.setNotice(errorMessage(error), "error");
       },
     });
@@ -107,25 +145,7 @@ export class TaskWorkflowService {
   startProcessingUrl(url: string, options: StartProcessingOptions = {}): void {
     const normalizedUrl = url.trim();
     if (!normalizedUrl) return;
-    const ready$ = options.skipDuplicateCheck
-      ? of(true)
-      : this.checkDuplicate(normalizedUrl);
-
-    ready$.pipe(
-      filter(Boolean),
-      map(() => this.processForm.payload(normalizedUrl, options)),
-      filter((payload) => this.validatePayload(payload)),
-      tap(() => this.queueTask(normalizedUrl)),
-      switchMap((payload) => this.api.processVideo(payload)),
-      take(1),
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe({
-      next: (task) => {
-        this.renderTask(task);
-        this.pollRequests.next(task.task_id);
-      },
-      error: (error) => this.setNotice(errorMessage(error), "error"),
-    });
+    this.startRequests.next({url: normalizedUrl, options});
   }
 
   useExistingDuplicateOutput(): void {
@@ -136,7 +156,7 @@ export class TaskWorkflowService {
       ...record,
       status: "completed",
       completed_at: record.completed_at || record.updated_at,
-      logs: [localTaskLog("completed", `Using existing output from task ${record.task_id}.`)],
+      logs: [localTaskLog("completed", `正在使用任务 ${record.task_id} 的已有输出。`)],
     });
   }
 
@@ -174,7 +194,7 @@ export class TaskWorkflowService {
     if (!taskId) return;
     this.runOnce(
       this.api.favoriteTask(taskId),
-      () => this.setNotice("Summary saved to Favorites.", "ok"),
+      () => this.setNotice("总结已保存到收藏。", "ok"),
     );
   }
 
@@ -186,9 +206,9 @@ export class TaskWorkflowService {
 
     const content$ = markdownPath
       ? this.api.markdownDocument(markdownPath).pipe(
-        map((document) => ({content: document.content, notice: "Full Markdown note copied."})),
+        map((document) => ({content: document.content, notice: "已复制完整 Markdown 笔记。"})),
       )
-      : of({content: fallbackSummary, notice: "Summary copied."});
+      : of({content: fallbackSummary, notice: "已复制总结。"});
 
     this.runOnce(
       content$.pipe(
@@ -205,7 +225,7 @@ export class TaskWorkflowService {
       map((duplicate) => this.applyDuplicateLookup(url, duplicate)),
       catchError((error) => {
         this.hideDuplicatePanel();
-        this.setNotice(`History check failed; continuing normally.\n${errorMessage(error)}`, "pending");
+        this.setNotice(`检查历史记录失败，将继续正常处理。\n${errorMessage(error)}`, "pending");
         return of(true);
       }),
     );
@@ -219,7 +239,7 @@ export class TaskWorkflowService {
     if (!duplicate.can_reuse) {
       this.hideDuplicatePanel();
       this.setNotice(
-        "Found this URL in history, but the saved video file is missing. Downloading again.",
+        "历史记录中已有此网址，但本地视频不存在，将重新下载。",
         "pending",
       );
       return true;
@@ -227,7 +247,7 @@ export class TaskWorkflowService {
     this.duplicate.set(duplicate);
     this.duplicateUrl.set(url);
     this.setNotice(
-      "This video was already downloaded. Choose whether to reuse it or regenerate notes.",
+      "此视频已经下载。请选择复用已有结果、重新生成笔记或重新下载。",
       "pending",
     );
     return false;
@@ -240,8 +260,8 @@ export class TaskWorkflowService {
     }
     const selectedModel = payload.ollama_model || this.config()?.ollama_model || "qwen2.5:32b";
     if (!this.models.isInstalledOllamaModel(selectedModel)) {
-      const details = `Ollama has ${this.models.installedModels().join(", ") || "no visible models"}. Missing: ${selectedModel}.`;
-      this.failLocalValidation(`Missing Ollama model: ${selectedModel}`, details);
+      const details = `Ollama 当前可见模型：${this.models.installedModels().join(", ") || "无"}。缺少模型：${selectedModel}。`;
+      this.failLocalValidation(`缺少 Ollama 模型：${selectedModel}`, details);
       return false;
     }
     return true;
@@ -260,21 +280,19 @@ export class TaskWorkflowService {
   private queueTask(url: string): void {
     this.hideDuplicatePanel();
     this.processForm.patch({url});
-    this.latestSummary.set("");
     const now = new Date().toISOString();
     this.latestTask.set({
       task_id: "queued",
       status: "queued",
-      logs: [localTaskLog("queued", `Queued ${url}`)],
+      logs: [localTaskLog("queued", `已将 ${url} 加入队列。`)],
       created_at: now,
       updated_at: now,
     });
-    this.setNotice("Queued", "pending");
+    this.setNotice("任务已进入队列", "pending");
   }
 
   private renderTask(task: TaskRecord): void {
     this.latestTask.set(task);
-    this.latestSummary.set(task.summary ?? "");
     this.notice.set(taskNotice(task));
     if (TERMINAL_TASK_STATUSES.has(task.status)) this.loadRecentTasks();
   }

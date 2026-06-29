@@ -41,7 +41,13 @@ describe("FavoritesFacade", () => {
     api = {
       favorites: vi.fn(() => of([favorite(), favorite({id: 2, folder_id: 4, folder_name: "Courses", tags: ["work"]})])),
       favoriteFolders: vi.fn(() => of([folder])),
-      tags: vi.fn(() => of([])),
+      tags: vi.fn(() => of([{
+        id: 1,
+        name: "frontend",
+        task_count: 99,
+        created_at: "2026-01-01",
+        updated_at: "2026-01-01",
+      }])),
       addFavoriteFolder: vi.fn(() => of(folder)),
       updateFavoriteFolder: vi.fn(() => of(folder)),
       assignFavoriteFolder: vi.fn(() => of(favorite({folder_id: 4}))),
@@ -63,9 +69,11 @@ describe("FavoritesFacade", () => {
   it("filters favorites by folder, tag, and text", () => {
     facade.setActiveFolder("unfiled");
     facade.setActiveTag("frontend");
-    facade.searchQuery.set("signals");
+    facade.setSearchQuery("signals");
     expect(facade.filteredFavorites().map((item) => item.id)).toEqual([1]);
-    expect(facade.favoritesCount()).toBe("1 shown / 2 saved");
+    expect(facade.favoritesCount()).toBe("显示 1 篇，共收藏 2 篇");
+    expect(facade.tagCount("frontend")).toBe(1);
+    expect(facade.visibleTags()).toHaveLength(1);
   });
 
   it("delegates folder and tag commands to the library store", () => {

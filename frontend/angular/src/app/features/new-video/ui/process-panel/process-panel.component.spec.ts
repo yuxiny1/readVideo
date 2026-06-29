@@ -12,7 +12,6 @@ const form: ProcessFormState = {
   transcriptionModel: "",
   localWhisperModel: "models/large.bin",
   localWhisperLanguage: "auto",
-  notesBackend: "ollama",
   noteStyle: "detailed",
   ollamaModel: "qwen:32b",
   deleteVideoAfterCompletion: false,
@@ -63,6 +62,7 @@ describe("ProcessPanelComponent", () => {
       phaseDetail: "Working",
       progressPercent: 50,
       logs: [],
+      canSubmit: true,
     };
     fixture.componentRef.setInput("vm", vm);
     fixture.detectChanges();
@@ -85,7 +85,7 @@ describe("ProcessPanelComponent", () => {
   it("resolves and labels local models", () => {
     expect(component.resolveWhisperModel("large")).toBe(whisper);
     expect(component.resolveOllamaModel("qwen:32b")).toBe(ollama);
-    expect(component.whisperModelLabel(whisper)).toBe("Recommended · 3 GB · installed");
+    expect(component.whisperModelLabel(whisper)).toBe("推荐 · 3 GB · 已安装");
     expect(component.modelLabel(ollama)).toBe("20 GB · 32B · Q4");
   });
 });

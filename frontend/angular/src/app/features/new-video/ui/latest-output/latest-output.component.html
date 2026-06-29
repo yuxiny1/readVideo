@@ -1,22 +1,22 @@
 <section class="tool-panel output-panel">
   <div class="panel-header">
-    <h2>Latest Output</h2>
+    <h2>最新结果</h2>
     <div class="button-row">
       @if (canRead(vm().task)) {
-        <button class="primary-button" type="button" (click)="readSummary(vm().task)">Read Summary</button>
+        <button class="primary-button" type="button" (click)="readSummary(vm().task)">阅读总结</button>
       }
-      <button class="secondary-button" type="button" [disabled]="!canFavorite(vm().task)" (click)="favoriteRequested.emit()">Favorite Summary</button>
-      <button class="secondary-button" type="button" [disabled]="!vm().canCopy" (click)="copyRequested.emit()">Copy Full Note</button>
+      <button class="secondary-button" type="button" [disabled]="!canFavorite(vm().task)" (click)="favoriteRequested.emit()">收藏总结</button>
+      <button class="secondary-button" type="button" [disabled]="!vm().canCopy" (click)="copyRequested.emit()">复制完整笔记</button>
     </div>
   </div>
 
   @let task = vm().task;
   <dl class="output-list">
     <div>
-      <dt>Video</dt>
+      <dt>视频</dt>
       <dd>
         @if (task?.video_deleted_after_completion && task?.video_path) {
-          <span class="muted-inline">Deleted after completion: {{ taskPath(task, 'video_path') }}</span>
+          <span class="muted-inline">完成后已删除：{{ taskPath(task, 'video_path') }}</span>
         } @else if (task?.video_path && task?.task_id) {
           <a class="path-anchor" [href]="fileHref('video', task)" target="_blank" rel="noreferrer">{{ taskPath(task, 'video_path') }}</a>
         } @else {
@@ -25,7 +25,7 @@
       </dd>
     </div>
     <div>
-      <dt>Transcript</dt>
+      <dt>转录文件</dt>
       <dd>
         @if (task?.transcription_path && task?.task_id) {
           <a class="path-anchor" [href]="fileHref('transcript', task)" target="_blank" rel="noreferrer">{{ taskPath(task, 'transcription_path') }}</a>
@@ -46,12 +46,12 @@
     </div>
   </dl>
 
-  <pre class="summary-box">{{ vm().summary || (task?.status === 'failed' ? task?.error || 'Task failed.' : 'No completed task yet.') }}</pre>
+  <pre class="summary-box">{{ vm().summary || (task?.status === 'failed' ? task?.error || '任务失败。' : '还没有已完成的任务。') }}</pre>
 
   <div class="recent-block">
     <div class="panel-header compact-header">
-      <h2>Recent Tasks</h2>
-      <button class="secondary-button small-button" type="button" (click)="refreshRequested.emit()">Refresh</button>
+      <h2>最近任务</h2>
+      <button class="secondary-button small-button" type="button" (click)="refreshRequested.emit()">刷新</button>
     </div>
     <div class="recent-tasks">
       @if (vm().recentTasks.length) {
@@ -59,13 +59,13 @@
           <button class="task-row" type="button" (click)="taskOpened.emit(recent.task_id)">
             <span>
               <strong>{{ statusLabel(recent.status) }}</strong>
-              <span>{{ recent.url || 'No URL' }}</span>
+              <span>{{ recent.url || '没有来源网址' }}</span>
             </span>
             <span>{{ formatElapsed(recent) }}</span>
           </button>
         }
       } @else {
-        <div class="empty-state">No tasks yet.</div>
+        <div class="empty-state">还没有任务。</div>
       }
     </div>
   </div>

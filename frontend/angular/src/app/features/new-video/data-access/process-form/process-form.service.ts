@@ -11,7 +11,6 @@ export interface ProcessFormState {
   transcriptionModel: string;
   localWhisperModel: string;
   localWhisperLanguage: string;
-  notesBackend: "ollama";
   noteStyle: "detailed" | "commercial";
   ollamaModel: string;
   deleteVideoAfterCompletion: boolean;
@@ -26,7 +25,6 @@ export class ProcessFormService {
     transcriptionModel: "",
     localWhisperModel: "",
     localWhisperLanguage: "",
-    notesBackend: "ollama",
     noteStyle: "detailed",
     ollamaModel: "",
     deleteVideoAfterCompletion: readDeleteVideoDefault(),

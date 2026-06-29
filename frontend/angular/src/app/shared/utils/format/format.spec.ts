@@ -4,16 +4,16 @@ import {formatBytes, formatElapsed, formatEta, formatSpeed, statusLabel} from ".
 
 describe("format helpers", () => {
   it("formats status labels", () => {
-    expect(statusLabel("organizing_notes")).toBe("organizing notes");
-    expect(statusLabel()).toBe("idle");
+    expect(statusLabel("organizing_notes")).toBe("正在整理笔记");
+    expect(statusLabel()).toBe("空闲");
   });
 
   it("formats valid and invalid elapsed ranges", () => {
     expect(formatElapsed({created_at: "2026-01-01T00:00:00Z", completed_at: "2026-01-01T00:01:05Z"}))
-      .toBe("1m 5s");
+      .toBe("1 分 5 秒");
     expect(formatElapsed({created_at: "2026-01-01T00:00:00Z", completed_at: "2026-01-01T00:00:12Z"}))
-      .toBe("12s");
-    expect(formatElapsed({created_at: "invalid"})).toBe("0s");
+      .toBe("12 秒");
+    expect(formatElapsed({created_at: "invalid"})).toBe("0 秒");
   });
 
   it("formats byte values and transfer rates", () => {
@@ -26,8 +26,8 @@ describe("format helpers", () => {
   });
 
   it("formats ETA values", () => {
-    expect(formatEta(14.6)).toBe("15s");
-    expect(formatEta(125)).toBe("2m 5s");
+    expect(formatEta(14.6)).toBe("15 秒");
+    expect(formatEta(125)).toBe("2 分 5 秒");
     expect(formatEta(-1)).toBe("");
   });
 });

@@ -74,12 +74,12 @@ describe("LibraryStore", () => {
     store.loadAll();
     store.createFolder({name: "New", notes: "N"});
     expect(api.addFavoriteFolder).toHaveBeenCalledWith("New", "N");
-    expect(store.notice()).toBe("Folder created");
+    expect(store.notice()).toBe("文件夹已创建");
 
     api.favorites.mockReturnValue(of([favorite({folder_name: "Updated"})]));
     store.updateFolder({folderId: 4, name: "Updated", notes: "Text"});
     expect(store.folders()[0].name).toBe("Updated");
-    expect(store.notice()).toBe("Folder updated");
+    expect(store.notice()).toBe("文件夹已更新");
   });
 
   it("assigns folders and updates tags immutably", () => {
@@ -93,7 +93,7 @@ describe("LibraryStore", () => {
     store.updateTags({favoriteId: 1, tags: ["angular"]});
     expect(store.favorites()[0].tags).toEqual(["angular"]);
     expect(store.tags()[0].name).toBe("angular");
-    expect(store.notice()).toBe("Tags saved");
+    expect(store.notice()).toBe("标签已保存");
   });
 
   it("refreshes collections after deletion", () => {
@@ -105,7 +105,7 @@ describe("LibraryStore", () => {
 
     expect(api.deleteFavorite).toHaveBeenCalledWith(1);
     expect(store.favorites()).toEqual([]);
-    expect(store.notice()).toBe("Favorite removed");
+    expect(store.notice()).toBe("收藏已移除");
   });
 
   it("captures request errors and always clears loading", () => {
@@ -114,7 +114,8 @@ describe("LibraryStore", () => {
     expect(store.error()).toBe("database unavailable");
     expect(store.loading()).toBe(false);
 
-    store.clearFeedback();
+    api.favorites.mockReturnValue(of([favorite()]));
+    store.loadAll();
     expect(store.error()).toBe("");
   });
 });

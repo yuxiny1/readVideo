@@ -13,6 +13,7 @@ For local transcription quality, `ggml-large-v3-turbo.bin` is the recommended de
 - Saves the raw transcript next to the downloaded video.
 - Creates a Markdown note with key points, a narrative summary paragraph, and segmented notes; the raw transcript stays in its own `.txt` file instead of being embedded in the note.
 - Creates Better Local AI Notes with Ollama by default.
+- Uses Simplified Chinese consistently for the interface, task logs, validation errors, and generated note headings while keeping API identifiers stable.
 - Can add a Commercial Editorial mode with a Business Lens and article summary for a more business-publication style read.
 - Lets you choose the Markdown output folder per request.
 - Can delete the downloaded local video after a successful run while keeping the transcript, Markdown note, and history.

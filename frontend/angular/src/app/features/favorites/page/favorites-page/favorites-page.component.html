@@ -1,11 +1,11 @@
 @let vm = favoritesPage;
 <header class="topbar">
   <div>
-    <h1>Favorites</h1>
+    <h1>收藏</h1>
     <div class="meta-row">
       <span class="pill muted">{{ vm.favoritesCount() }}</span>
-      <span class="pill muted">{{ vm.folders().length }} folders</span>
-      <span class="pill muted">{{ vm.tags().length }} tags</span>
+      <span class="pill muted">{{ vm.folders().length }} 个文件夹</span>
+      <span class="pill muted">{{ vm.visibleTags().length }} 个标签</span>
     </div>
   </div>
 </header>
@@ -14,32 +14,32 @@
   <section class="tool-panel favorites-panel notebook-notes-panel">
     <div class="panel-header">
       <div>
-        <h2>Notes</h2>
+        <h2>笔记</h2>
       </div>
-      <button class="secondary-button small-button" type="button" (click)="vm.initialize()">Refresh</button>
+      <button class="secondary-button small-button" type="button" (click)="vm.initialize()">刷新</button>
     </div>
 
     <div class="filter-toolbar">
       <div class="search-field">
-        <label for="favorite-search">Search</label>
+        <label for="favorite-search">搜索</label>
         <input
           id="favorite-search"
           name="favorite-search"
-          placeholder="Search title, source, summary, path, tags..."
+          placeholder="搜索标题、来源、总结、路径或标签……"
           [ngModel]="vm.searchQuery()"
-          (ngModelChange)="vm.searchQuery.set($event)"
+          (ngModelChange)="vm.setSearchQuery($event)"
         >
       </div>
       <div>
-        <label for="favorite-folder-filter">Folder</label>
+        <label for="favorite-folder-filter">文件夹</label>
         <select
           id="favorite-folder-filter"
           name="favorite-folder-filter"
           [ngModel]="vm.activeFolderId()"
           (ngModelChange)="vm.setActiveFolder($event)"
         >
-          <option value="all">All folders</option>
-          <option value="unfiled">Unfiled</option>
+          <option value="all">全部文件夹</option>
+          <option value="unfiled">未分类</option>
           @for (folder of vm.folders(); track folder.id) {
             <option [value]="folder.id">{{ folder.name }}</option>
           }
@@ -49,20 +49,20 @@
 
     <section class="favorite-tag-filter-card">
       <div class="section-heading-row">
-        <h3>Tags</h3>
-        <span class="caption">Filter</span>
+        <h3>标签</h3>
+        <span class="caption">筛选</span>
       </div>
-      <div class="tag-strip compact-tag-strip" aria-label="Favorite tag filters">
+      <div class="tag-strip compact-tag-strip" aria-label="收藏标签筛选">
         <button class="tag-chip" [ngClass]="vm.activeTag() === 'all' ? 'active' : ''" type="button" (click)="vm.setActiveTag('all')">
-          All <span>{{ vm.tagCount("all") }}</span>
+          全部 <span>{{ vm.tagCount("all") }}</span>
         </button>
-        @if (!vm.tags().length) {
-          <span class="tag-chip muted">No tags yet</span>
-          <span class="caption">Add tags from a note card.</span>
+        @if (!vm.visibleTags().length) {
+          <span class="tag-chip muted">暂无标签</span>
+          <span class="caption">可以在笔记中添加标签。</span>
         } @else {
-          @for (tag of vm.tags(); track tag.id) {
+          @for (tag of vm.visibleTags(); track tag.id) {
             <button class="tag-chip" [ngClass]="vm.activeTag() === tag.name ? 'active' : ''" type="button" (click)="vm.setActiveTag(tag.name)">
-              #{{ tag.name }} <span>{{ tag.task_count }}</span>
+              #{{ tag.name }} <span>{{ vm.tagCount(tag.name) }}</span>
             </button>
           }
         }
@@ -77,23 +77,23 @@
       @if (vm.error()) {
         <div class="empty-state">{{ vm.error() }}</div>
       } @else if (!vm.filteredFavorites().length) {
-        <div class="empty-state">No saved notes match this notebook view.</div>
+        <div class="empty-state">没有符合当前条件的收藏笔记。</div>
       } @else {
         @for (item of vm.filteredFavorites(); track item.id) {
           <article class="favorite-card notebook-note-card">
             <div class="history-card-header">
               <div>
                 <h2>{{ vm.title(item) }}</h2>
-                <a class="watch-url" [href]="item.url || '#'" target="_blank" rel="noreferrer">{{ item.url || "No URL" }}</a>
+                <a class="watch-url" [href]="item.url || '#'" target="_blank" rel="noreferrer">{{ item.url || "没有来源网址" }}</a>
               </div>
-              <span class="pill ok">{{ item.folder_name || "Unfiled" }}</span>
+              <span class="pill ok">{{ item.folder_name || "未分类" }}</span>
             </div>
 
             <section class="note-tag-manager">
               <div class="section-heading-row">
-                <h3>Tags</h3>
+                <h3>标签</h3>
                 @if (!vm.tagsFor(item).length) {
-                  <span class="tag-chip muted">No tags</span>
+                  <span class="tag-chip muted">暂无标签</span>
                 }
               </div>
               @if (vm.tagsFor(item).length) {
@@ -107,30 +107,30 @@
                 <input
                   [id]="'favorite-tags-' + item.id"
                   [name]="'favorite-tags-' + item.id"
-                  placeholder="course, ai, finance"
+                  placeholder="课程、人工智能、金融"
                   [ngModel]="vm.tagDraft(item)"
                   (ngModelChange)="vm.setTagDraft(item, $event)"
                 >
-                <button class="secondary-button small-button" type="button" (click)="vm.saveTags(item)">Save Tags</button>
+                <button class="secondary-button small-button" type="button" (click)="vm.saveTags(item)">保存标签</button>
               </div>
             </section>
 
             <section class="favorite-detail">
-              <h3>Summary</h3>
-              <pre class="summary-preview">{{ item.summary || "No summary saved." }}</pre>
+              <h3>总结</h3>
+              <pre class="summary-preview">{{ item.summary || "尚未保存总结。" }}</pre>
             </section>
 
             <dl class="path-list notebook-path-list">
-              <div><dt>Source</dt><dd><code>{{ item.url || "-" }}</code></dd></div>
+              <div><dt>来源</dt><dd><code>{{ item.url || "-" }}</code></dd></div>
               <div><dt>Markdown</dt><dd><code>{{ item.markdown_path || "-" }}</code></dd></div>
-              <div><dt>Folder Path</dt><dd><code>{{ item.notes_dir || "-" }}</code></dd></div>
+              <div><dt>文件夹路径</dt><dd><code>{{ item.notes_dir || "-" }}</code></dd></div>
             </dl>
 
             <div class="favorite-management-grid">
               <div class="folder-picker">
-                <label [for]="'favorite-folder-' + item.id">Notebook Folder</label>
+                <label [for]="'favorite-folder-' + item.id">收藏文件夹</label>
                 <select [id]="'favorite-folder-' + item.id" [ngModel]="item.folder_id || ''" (ngModelChange)="vm.assignFolder(item, $event)">
-                  <option value="">Unfiled</option>
+                  <option value="">未分类</option>
                   @for (folder of vm.folders(); track folder.id) {
                     <option [value]="folder.id">{{ folder.name }}</option>
                   }
@@ -140,13 +140,13 @@
 
             <div class="card-actions">
               @if (item.markdown_path) {
-                <button class="secondary-button small-button" type="button" (click)="vm.readFavorite(item)">Open Reader</button>
-                <a class="quiet-link small-link" [href]="vm.downloadHref(item.markdown_path)">Download MD</a>
+                <button class="secondary-button small-button" type="button" (click)="vm.readFavorite(item)">打开阅读器</button>
+                <a class="quiet-link small-link" [href]="vm.downloadHref(item.markdown_path)">下载笔记</a>
               }
               @if (item.notes_dir) {
-                <button class="secondary-button small-button" type="button" (click)="vm.browseFolder(item)">Browse Folder</button>
+                <button class="secondary-button small-button" type="button" (click)="vm.browseFolder(item)">浏览文件夹</button>
               }
-              <button class="danger-button small-button" type="button" (click)="vm.deleteFavorite(item)">Remove</button>
+              <button class="danger-button small-button" type="button" (click)="vm.deleteFavorite(item)">移除</button>
             </div>
           </article>
         }
@@ -158,20 +158,20 @@
     <section class="tool-panel tag-panel notebook-tag-panel priority-tag-panel">
       <div class="panel-header">
         <div>
-          <h2>Tags</h2>
+          <h2>标签</h2>
         </div>
       </div>
       <div class="tag-strip tag-management-list">
         <button class="tag-chip" [ngClass]="vm.activeTag() === 'all' ? 'active' : ''" type="button" (click)="vm.setActiveTag('all')">
-          All <span>{{ vm.tagCount("all") }}</span>
+          全部 <span>{{ vm.tagCount("all") }}</span>
         </button>
-        @if (!vm.tags().length) {
-          <span class="tag-chip muted">No tags yet</span>
-          <span class="caption">Save tags on a note card first.</span>
+        @if (!vm.visibleTags().length) {
+          <span class="tag-chip muted">暂无标签</span>
+          <span class="caption">请先在笔记中保存标签。</span>
         } @else {
-          @for (tag of vm.tags(); track tag.id) {
+          @for (tag of vm.visibleTags(); track tag.id) {
             <button class="tag-chip" [ngClass]="vm.activeTag() === tag.name ? 'active' : ''" type="button" (click)="vm.setActiveTag(tag.name)">
-              #{{ tag.name }} <span>{{ tag.task_count }}</span>
+              #{{ tag.name }} <span>{{ vm.tagCount(tag.name) }}</span>
             </button>
           }
         }
@@ -181,38 +181,38 @@
     <section class="tool-panel folder-panel notebook-folder-panel">
       <div class="panel-header">
         <div>
-          <h2>Notebook Folders</h2>
-          <p class="panel-subtitle">Create a stable reading structure without moving Markdown files.</p>
+          <h2>笔记文件夹</h2>
+          <p class="panel-subtitle">无需移动 Markdown 文件，也能建立清晰稳定的阅读结构。</p>
         </div>
-        <span class="caption">{{ vm.folders().length }} folders</span>
+        <span class="caption">{{ vm.folders().length }} 个文件夹</span>
       </div>
 
       <div class="folder-board">
         <article class="folder-visual-card" [ngClass]="vm.activeFolderId() === 'all' ? 'active' : ''">
           <button class="folder-visual-main" type="button" (click)="vm.setActiveFolder('all')">
-            <span class="folder-glyph all-glyph">All</span>
+            <span class="folder-glyph all-glyph">全</span>
             <span>
-              <strong>All Notes</strong>
-              <small>{{ vm.folderCount("all") }} saved notes</small>
+              <strong>全部笔记</strong>
+              <small>{{ vm.folderCount("all") }} 篇收藏笔记</small>
             </span>
           </button>
           <div class="folder-action-row">
-            <button class="secondary-button small-button" type="button" (click)="vm.setActiveFolder('all')">View</button>
-            <button class="secondary-button small-button" type="button" (click)="vm.openFolderInReader('all')">Reader</button>
+            <button class="secondary-button small-button" type="button" (click)="vm.setActiveFolder('all')">查看</button>
+            <button class="secondary-button small-button" type="button" (click)="vm.openFolderInReader('all')">阅读</button>
           </div>
         </article>
 
         <article class="folder-visual-card" [ngClass]="vm.activeFolderId() === 'unfiled' ? 'active' : ''">
           <button class="folder-visual-main" type="button" (click)="vm.setActiveFolder('unfiled')">
-            <span class="folder-glyph unfiled-glyph">UF</span>
+            <span class="folder-glyph unfiled-glyph">未</span>
             <span>
-              <strong>Unfiled</strong>
-              <small>{{ vm.folderCount("unfiled") }} notes need a folder</small>
+              <strong>未分类</strong>
+              <small>{{ vm.folderCount("unfiled") }} 篇笔记需要分类</small>
             </span>
           </button>
           <div class="folder-action-row">
-            <button class="secondary-button small-button" type="button" (click)="vm.setActiveFolder('unfiled')">View</button>
-            <button class="secondary-button small-button" type="button" (click)="vm.openFolderInReader('unfiled')">Reader</button>
+            <button class="secondary-button small-button" type="button" (click)="vm.setActiveFolder('unfiled')">查看</button>
+            <button class="secondary-button small-button" type="button" (click)="vm.openFolderInReader('unfiled')">阅读</button>
           </div>
         </article>
 
@@ -222,7 +222,7 @@
               <span class="folder-glyph">{{ vm.folderInitial(folder) }}</span>
               <span>
                 <strong>{{ folder.name }}</strong>
-                <small>{{ vm.folderCount(folder.id) }} notes · updated {{ folder.updated_at || "-" }}</small>
+                <small>{{ vm.folderCount(folder.id) }} 篇笔记 · 更新于 {{ folder.updated_at || "-" }}</small>
               </span>
             </button>
             @if (folder.notes) {
@@ -236,16 +236,16 @@
               </div>
             }
             <div class="folder-action-row">
-              <button class="secondary-button small-button" type="button" (click)="vm.setActiveFolder(vm.folderId(folder))">View</button>
-              <button class="secondary-button small-button" type="button" (click)="vm.openFolderInReader(folder.id)">Reader</button>
-              <button class="secondary-button small-button" type="button" (click)="vm.beginEditFolder(folder)">Edit</button>
-              <button class="secondary-button small-button" type="button" (click)="vm.copyFolderLabel(folder)">Copy</button>
+              <button class="secondary-button small-button" type="button" (click)="vm.setActiveFolder(vm.folderId(folder))">查看</button>
+              <button class="secondary-button small-button" type="button" (click)="vm.openFolderInReader(folder.id)">阅读</button>
+              <button class="secondary-button small-button" type="button" (click)="vm.beginEditFolder(folder)">编辑</button>
+              <button class="secondary-button small-button" type="button" (click)="vm.copyFolderLabel(folder)">复制</button>
             </div>
 
             @if (vm.editingFolderId() === folder.id) {
               <form class="folder-edit-form" (ngSubmit)="vm.saveFolder(folder)">
                 <div>
-                  <label [for]="'folder-name-' + folder.id">Folder Name</label>
+                  <label [for]="'folder-name-' + folder.id">文件夹名称</label>
                   <input
                     [id]="'folder-name-' + folder.id"
                     [name]="'folder-name-' + folder.id"
@@ -255,7 +255,7 @@
                   >
                 </div>
                 <div>
-                  <label [for]="'folder-notes-' + folder.id">Notes</label>
+                  <label [for]="'folder-notes-' + folder.id">备注</label>
                   <textarea
                     [id]="'folder-notes-' + folder.id"
                     [name]="'folder-notes-' + folder.id"
@@ -264,8 +264,8 @@
                   ></textarea>
                 </div>
                 <div class="folder-action-row">
-                  <button class="secondary-button small-button" type="submit">Save</button>
-                  <button class="secondary-button small-button" type="button" (click)="vm.cancelEditFolder()">Cancel</button>
+                  <button class="secondary-button small-button" type="submit">保存</button>
+                  <button class="secondary-button small-button" type="button" (click)="vm.cancelEditFolder()">取消</button>
                 </div>
               </form>
             }
@@ -275,14 +275,14 @@
 
       <form class="stack compact folder-create-form" (ngSubmit)="vm.createFolder()">
         <div>
-          <label for="favorite-folder-name">New Folder</label>
-          <input id="favorite-folder-name" name="favorite-folder-name" required placeholder="Course Notes, Product, Research..." [(ngModel)]="vm.folderName">
+          <label for="favorite-folder-name">新建文件夹</label>
+          <input id="favorite-folder-name" name="favorite-folder-name" required placeholder="课程笔记、产品、研究……" [(ngModel)]="vm.folderName">
         </div>
         <div>
-          <label for="favorite-folder-notes">Folder Notes</label>
-          <textarea id="favorite-folder-notes" name="favorite-folder-notes" placeholder="What belongs here" [(ngModel)]="vm.folderNotes"></textarea>
+          <label for="favorite-folder-notes">文件夹备注</label>
+          <textarea id="favorite-folder-notes" name="favorite-folder-notes" placeholder="记录这个文件夹收纳的内容" [(ngModel)]="vm.folderNotes"></textarea>
         </div>
-        <button class="secondary-button full" type="submit">Create Folder</button>
+        <button class="secondary-button full" type="submit">创建文件夹</button>
       </form>
     </section>
 

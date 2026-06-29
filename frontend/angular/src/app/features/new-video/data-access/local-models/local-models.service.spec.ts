@@ -101,7 +101,7 @@ describe("LocalModelsService", () => {
     expect(service.validateOllamaSelection()).toBe(false);
     expect(service.ollamaStatus().text).toContain("ollama pull missing:32b");
     expect(service.validateWhisperSelection()).toBe(false);
-    expect(service.whisperStatus().text).toContain("Not installed");
+    expect(service.whisperStatus().text).toContain("尚未安装");
   });
 
   it("downloads the selected Whisper model and refreshes model state", () => {

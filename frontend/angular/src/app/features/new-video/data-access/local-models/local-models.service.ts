@@ -23,10 +23,10 @@ export class LocalModelsService {
   readonly config = signal<AppConfig | null>(null);
   readonly ollamaModels = signal<OllamaModel[]>([]);
   readonly ollamaAvailable = signal(false);
-  readonly ollamaStatus = signal<NoticeState>({text: "Checking Ollama models...", kind: "muted"});
+  readonly ollamaStatus = signal<NoticeState>({text: "正在检查 Ollama 模型……", kind: "muted"});
   readonly whisperModels = signal<WhisperModelOption[]>([]);
   readonly transcriptionLanguages = signal<TranscriptionLanguageOption[]>([]);
-  readonly whisperStatus = signal<NoticeState>({text: "Checking local Whisper models...", kind: "muted"});
+  readonly whisperStatus = signal<NoticeState>({text: "正在检查本地 Whisper 模型……", kind: "muted"});
   readonly ollamaModelOptions = computed(() => [...this.ollamaModels()].sort((first, second) => {
     const sizeDelta = Number(second.size || 0) - Number(first.size || 0);
     return sizeDelta || first.name.localeCompare(second.name);
@@ -38,7 +38,6 @@ export class LocalModelsService {
       transcriptionBackend: config.transcription_backend || "local",
       localWhisperModel: config.local_whisper_model || "models/ggml-large-v3-turbo.bin",
       localWhisperLanguage: config.local_whisper_language || "auto",
-      notesBackend: "ollama",
       noteStyle: config.note_style || "detailed",
       ollamaModel: config.ollama_model || "qwen2.5:32b",
     });
@@ -55,7 +54,7 @@ export class LocalModelsService {
         this.ollamaAvailable.set(result.status === "ok");
         this.ollamaModels.set(result.models ?? []);
         if (result.status !== "ok") {
-          this.ollamaStatus.set({text: result.error || "Ollama is not reachable.", kind: "error"});
+          this.ollamaStatus.set({text: result.error || "无法连接 Ollama。", kind: "error"});
           return;
         }
         this.selectDefaultOllamaModel(preferStrongest);
@@ -86,10 +85,10 @@ export class LocalModelsService {
   downloadSelectedWhisperModel(modelPath = this.form.form().localWhisperModel): void {
     const model = this.resolveWhisperModel(modelPath) ?? this.recommendedWhisperModel();
     if (!model) {
-      this.whisperStatus.set({text: "Choose a recommended Whisper model before downloading.", kind: "error"});
+      this.whisperStatus.set({text: "请先选择推荐的 Whisper 模型。", kind: "error"});
       return;
     }
-    this.whisperStatus.set({text: `Downloading ${model.label} (${model.size})...`, kind: "pending"});
+    this.whisperStatus.set({text: `正在下载 ${model.label}（${model.size}）……`, kind: "pending"});
     this.api.downloadTranscriptionModel(model.name).pipe(
       switchMap((download) => this.api.transcriptionModels().pipe(
         map((models) => ({download, models})),
@@ -102,8 +101,8 @@ export class LocalModelsService {
         this.applyTranscriptionModels(models, false);
         this.whisperStatus.set({
           text: download.downloaded
-            ? `Ready: downloaded ${model.label}.`
-            : `Ready: ${model.label} was already installed.`,
+            ? `已就绪：${model.label} 下载完成。`
+            : `已就绪：${model.label} 已经安装。`,
           kind: "ok",
         });
       },
@@ -117,21 +116,21 @@ export class LocalModelsService {
     if (model?.installed) {
       this.whisperStatus.set({
         text: model.recommended
-          ? `Ready: ${model.label} is installed. Recommended for reducing repeated transcript text.`
-          : `Ready: ${model.label} is installed. Large v3 Turbo is stronger if repeats continue.`,
+          ? `已就绪：${model.label} 已安装，推荐用于减少转录文本重复。`
+          : `已就绪：${model.label} 已安装；如果仍有重复，建议改用大型 v3 Turbo 模型。`,
         kind: model.recommended ? "ok" : "pending",
       });
       return true;
     }
     if (model) {
       this.whisperStatus.set({
-        text: `Not installed: ${model.label} (${model.size}). Use Download, or run: curl -L -o ${model.path} ${model.url}`,
+        text: `尚未安装：${model.label}（${model.size}）。请点击下载，或运行：curl -L -o ${model.path} ${model.url}`,
         kind: "error",
       });
       return false;
     }
     this.whisperStatus.set({
-      text: selection ? `Custom model path: ${selection}` : "Choose a local Whisper model.",
+      text: selection ? `自定义模型路径：${selection}` : "请选择本地 Whisper 模型。",
       kind: selection ? "muted" : "error",
     });
     return Boolean(selection);
@@ -142,16 +141,16 @@ export class LocalModelsService {
       || this.config()?.ollama_model
       || "qwen2.5:32b";
     if (!this.ollamaAvailable()) {
-      this.ollamaStatus.set({text: "Ollama is not reachable.", kind: "error"});
+      this.ollamaStatus.set({text: "无法连接 Ollama。", kind: "error"});
       return false;
     }
     if (!this.isInstalledOllamaModel(selectedName)) {
-      this.ollamaStatus.set({text: `Missing: ${selectedName}. Run: ollama pull ${selectedName}`, kind: "error"});
+      this.ollamaStatus.set({text: `缺少模型：${selectedName}。请运行：ollama pull ${selectedName}`, kind: "error"});
       return false;
     }
     const selected = this.resolveOllamaModel(selectedName);
     const size = selected?.size_label ? ` (${selected.size_label})` : "";
-    this.ollamaStatus.set({text: `Ready: ${selectedName}${size} is installed locally.`, kind: "ok"});
+    this.ollamaStatus.set({text: `已就绪：${selectedName}${size} 已安装在本机。`, kind: "ok"});
     return true;
   }
 

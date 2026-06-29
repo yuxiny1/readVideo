@@ -1,12 +1,12 @@
 <section class="tool-panel process-panel">
   <div class="panel-header">
-    <h2>New Video</h2>
+    <h2>新视频</h2>
     <span class="caption">{{ vm().taskIdLabel }}</span>
   </div>
 
   <form class="stack" (ngSubmit)="submitRequested.emit()">
     <div>
-      <label for="video-url">YouTube URL</label>
+      <label for="video-url">YouTube 网址</label>
       <input
         id="video-url"
         name="url"
@@ -18,7 +18,7 @@
     </div>
 
     <div>
-      <label for="notes-dir">Markdown Output Folder</label>
+      <label for="notes-dir">Markdown 输出文件夹</label>
       <input
         id="notes-dir"
         name="notes_dir"
@@ -30,20 +30,20 @@
 
     <div class="form-grid">
       <div>
-        <label for="transcription-backend">Transcript Engine</label>
+        <label for="transcription-backend">转录引擎</label>
         <select
           id="transcription-backend"
           name="transcription_backend"
           [ngModel]="vm().form.transcriptionBackend"
           (ngModelChange)="patchForm({transcriptionBackend: $event})"
         >
-          <option value="local">Local Whisper</option>
-          <option value="openai">OpenAI Transcription</option>
+          <option value="local">本地 Whisper</option>
+          <option value="openai">OpenAI 转录</option>
         </select>
-        <p class="field-status muted">Local Whisper runs on this Mac. Use Large v3 Turbo when smaller models repeat phrases.</p>
+        <p class="field-status muted">本地 Whisper 在这台电脑上运行。小模型出现重复语句时，请使用大型 v3 Turbo 模型。</p>
       </div>
       <div>
-        <label for="local-whisper-model">Local Whisper Model</label>
+        <label for="local-whisper-model">本地 Whisper 模型</label>
         <div class="input-action-row">
           <select
             id="local-whisper-model"
@@ -52,13 +52,13 @@
             (ngModelChange)="patchForm({localWhisperModel: $event})"
           >
             @if (vm().form.localWhisperModel && !resolveWhisperModel(vm().form.localWhisperModel)) {
-              <option [value]="vm().form.localWhisperModel">Custom: {{ vm().form.localWhisperModel }}</option>
+              <option [value]="vm().form.localWhisperModel">自定义：{{ vm().form.localWhisperModel }}</option>
             }
             @for (model of vm().whisperModels; track model.name) {
               <option [value]="model.path">{{ model.label }} · {{ whisperModelLabel(model) }}</option>
             }
           </select>
-          <button class="secondary-button small-button" type="button" (click)="whisperDownloadRequested.emit(vm().form.localWhisperModel)">Download</button>
+          <button class="secondary-button small-button" type="button" (click)="whisperDownloadRequested.emit(vm().form.localWhisperModel)">下载</button>
         </div>
         <p class="field-status" [ngClass]="vm().whisperStatus.kind">{{ vm().whisperStatus.text }}</p>
       </div>
@@ -66,7 +66,7 @@
 
     <div class="form-grid">
       <div>
-        <label for="local-whisper-language">Whisper Language</label>
+        <label for="local-whisper-language">Whisper 语言</label>
         <input
           id="local-whisper-language"
           name="local_whisper_language"
@@ -80,10 +80,10 @@
             <option [value]="language.code" [label]="language.label"></option>
           }
         </datalist>
-        <p class="field-status muted">Use auto for mixed Chinese/English videos.</p>
+        <p class="field-status muted">处理中英混合视频时建议使用自动检测。</p>
       </div>
       <div>
-        <label for="transcription-model">OpenAI Transcription Model</label>
+        <label for="transcription-model">OpenAI 转录模型</label>
         <input
           id="transcription-model"
           name="transcription_model"
@@ -96,22 +96,22 @@
 
     <div class="form-grid">
       <div>
-        <label for="note-style">Notes Style</label>
+        <label for="note-style">笔记风格</label>
         <select
           id="note-style"
           name="note_style"
           [ngModel]="vm().form.noteStyle"
           (ngModelChange)="patchForm({noteStyle: $event})"
         >
-          <option value="detailed">Detailed Notes</option>
-          <option value="commercial">Commercial Editorial</option>
+          <option value="detailed">详细笔记</option>
+          <option value="commercial">商业分析</option>
         </select>
         <p class="field-status muted">
-          Commercial Editorial adds a Business Lens plus a polished business-news style article before the segmented notes.
+          商业分析会在分段笔记前增加商业视角和经过整理的商业文章。
         </p>
       </div>
       <div>
-        <label for="ollama-model">Local AI Model</label>
+        <label for="ollama-model">本地 AI 模型</label>
         <div class="input-action-row">
           <select
             id="ollama-model"
@@ -120,13 +120,13 @@
             (ngModelChange)="patchForm({ollamaModel: $event})"
           >
             @if (vm().form.ollamaModel && !resolveOllamaModel(vm().form.ollamaModel)) {
-              <option [value]="vm().form.ollamaModel">Configured: {{ vm().form.ollamaModel }}</option>
+              <option [value]="vm().form.ollamaModel">已配置：{{ vm().form.ollamaModel }}</option>
             }
             @for (model of vm().ollamaModels; track model.name) {
               <option [value]="model.name">{{ model.name }} · {{ modelLabel(model) }}</option>
             }
           </select>
-          <button class="secondary-button small-button" type="button" (click)="strongestModelRequested.emit()">Use Strongest</button>
+          <button class="secondary-button small-button" type="button" (click)="strongestModelRequested.emit()">使用最大模型</button>
         </div>
         <p class="field-status" [ngClass]="vm().ollamaStatus.kind">{{ vm().ollamaStatus.text }}</p>
       </div>
@@ -141,15 +141,15 @@
         (ngModelChange)="patchForm({deleteVideoAfterCompletion: $event})"
       >
       <div>
-        <label for="delete-video-after-completion">Delete local video after completion</label>
-        <p>Default for this browser. Keeps the transcript and Markdown note, then removes the downloaded video when the run succeeds.</p>
+        <label for="delete-video-after-completion">完成后删除本地视频</label>
+        <p>此设置会作为当前浏览器的默认值。任务成功后保留转录和 Markdown 笔记，并删除已下载的视频。</p>
       </div>
     </div>
 
-    <button class="primary-button" type="submit">Start Processing</button>
+    <button class="primary-button" type="submit" [disabled]="!vm().canSubmit">开始处理</button>
   </form>
 
-  <div class="progress-strip" aria-label="Task progress">
+  <div class="progress-strip" aria-label="任务进度">
     @for (step of steps; track step) {
       <span class="step" [ngClass]="stepClass(step)">{{ statusLabel(step) }}</span>
     }
@@ -160,18 +160,18 @@
   @if (vm().duplicate; as duplicate) {
     <div class="duplicate-panel">
       <div>
-        <h2>Already Downloaded</h2>
+        <h2>已经下载</h2>
         <p class="duplicate-message">
-          {{ duplicate.record?.title || duplicate.record?.url || 'This video' }} is already in history and the local video file is still present.
+          {{ duplicate.record?.title || duplicate.record?.url || '此视频' }} 已存在于历史记录中，并且本地视频文件仍然可用。
         </p>
       </div>
       <dl class="output-list compact-output">
         <div>
-          <dt>Video</dt>
+          <dt>视频</dt>
           <dd>{{ duplicate.resolved_paths?.video || duplicate.record?.video_path || '-' }}</dd>
         </div>
         <div>
-          <dt>Transcript</dt>
+          <dt>转录文件</dt>
           <dd>{{ duplicate.resolved_paths?.transcript || duplicate.record?.transcription_path || '-' }}</dd>
         </div>
         <div>
@@ -181,15 +181,15 @@
       </dl>
       <div class="button-row duplicate-actions">
         <button class="secondary-button" type="button" [disabled]="!(duplicate.record?.summary || duplicate.markdown_exists)" (click)="duplicateAction.emit('use')">
-          {{ duplicate.record?.summary || duplicate.markdown_exists ? 'Use Existing Output' : 'No Existing Summary' }}
+          {{ duplicate.record?.summary || duplicate.markdown_exists ? '使用已有结果' : '没有已有总结' }}
         </button>
-        <button class="primary-button" type="button" (click)="duplicateAction.emit('regenerate')">Regenerate Summary</button>
-        <button class="danger-button" type="button" (click)="duplicateAction.emit('redownload')">Re-download</button>
+        <button class="primary-button" type="button" (click)="duplicateAction.emit('regenerate')">重新生成总结</button>
+        <button class="danger-button" type="button" (click)="duplicateAction.emit('redownload')">重新下载</button>
       </div>
     </div>
   }
 
-  <div class="task-meter" aria-label="Download progress">
+  <div class="task-meter" aria-label="下载进度">
     <div class="task-phase-title">{{ vm().phaseTitle }}</div>
     <div class="task-phase-detail">{{ vm().phaseDetail }}</div>
     <div class="meter-track">
@@ -199,8 +199,8 @@
 
   <div class="run-log-block">
     <div class="panel-header compact-header">
-      <h2>Run Log</h2>
-      <span class="caption">{{ vm().logs.length }} events</span>
+      <h2>运行日志</h2>
+      <span class="caption">{{ vm().logs.length }} 条记录</span>
     </div>
     <ol class="task-log">
       @if (vm().logs.length) {
@@ -212,7 +212,7 @@
           </li>
         }
       } @else {
-        <li class="muted">Idle.</li>
+        <li class="muted">暂无运行记录。</li>
       }
     </ol>
   </div>

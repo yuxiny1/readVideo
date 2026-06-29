@@ -49,12 +49,12 @@ interface CopyTextCommand {
 
 export const ReaderDocumentStore = signalStore(
   withState<ReaderDocumentState>(() => ({
-    status: "Idle",
+    status: "空闲",
     path: "",
-    title: "Choose a Markdown note",
-    documentMeta: "Favorites and local Markdown files appear on the left.",
+    title: "选择一篇 Markdown 笔记",
+    documentMeta: "左侧会显示收藏笔记和本地 Markdown 文件。",
     rawContent: "",
-    emptyMessage: "Pick a note to start reading.",
+    emptyMessage: "请选择一篇笔记开始阅读。",
     documentQuery: "",
     error: "",
     focusMode: readFocusModeDefault(),
@@ -67,10 +67,10 @@ export const ReaderDocumentStore = signalStore(
     const sanitizer = inject(DomSanitizer);
     return {
       headings: computed(() => extractHeadings(store.rawContent())),
-      sourceUrl: computed(() => extractMetadata(store.rawContent(), "Source")),
-      generatedAt: computed(() => extractMetadata(store.rawContent(), "Generated")),
+      sourceUrl: computed(() => extractMetadata(store.rawContent(), "source")),
+      generatedAt: computed(() => extractMetadata(store.rawContent(), "generated")),
       transcriptPath: computed(() => (
-        extractMetadata(store.rawContent(), "Transcript").replace(/^`|`$/g, "")
+        extractMetadata(store.rawContent(), "transcript").replace(/^`|`$/g, "")
       )),
       searchMatchCount: computed(() => countMatches(store.rawContent(), store.documentQuery())),
       html: computed<SafeHtml>(() => {
@@ -84,7 +84,7 @@ export const ReaderDocumentStore = signalStore(
   }),
   withMethods((store) => {
     const fail = (message: string) => patchState(store, {
-      status: "Error",
+      status: "错误",
       error: message,
       rawContent: "",
       emptyMessage: message,
@@ -99,7 +99,7 @@ export const ReaderDocumentStore = signalStore(
           tapResponse({
             next: () => {
               if (store.status() === successStatus) {
-                patchState(store, {status: store.path() ? "Open" : "Idle"});
+                patchState(store, {status: store.path() ? "已打开" : "空闲"});
               }
             },
             error: (error) => fail(errorMessage(error)),
@@ -110,7 +110,7 @@ export const ReaderDocumentStore = signalStore(
 
     return {
       beginOpen(path: string): void {
-        patchState(store, {status: "Loading", path, error: ""});
+        patchState(store, {status: "正在加载", path, error: ""});
       },
 
       open(document: MarkdownDocument): void {
@@ -119,12 +119,12 @@ export const ReaderDocumentStore = signalStore(
           title: extractTitle(document.content) || fileName(document.path),
           rawContent: document.content,
           documentMeta: (
-            `${fileName(document.path)} · ${readingStats(document.content)} · ${extractHeadings(document.content).length} sections`
+            `${fileName(document.path)} · ${readingStats(document.content)} · ${extractHeadings(document.content).length} 个章节`
           ),
-          emptyMessage: "Pick a note to start reading.",
+          emptyMessage: "请选择一篇笔记开始阅读。",
           documentQuery: "",
           error: "",
-          status: "Open",
+          status: "已打开",
         });
       },
 
@@ -173,12 +173,12 @@ export const ReaderDocumentStore = signalStore(
       },
 
       copyPath(value = store.path()): void {
-        if (value) copyText({value, successStatus: "Path copied"});
+        if (value) copyText({value, successStatus: "路径已复制"});
       },
 
       copyMarkdown(): void {
         const value = store.rawContent();
-        if (value) copyText({value, successStatus: "Full Markdown copied"});
+        if (value) copyText({value, successStatus: "完整 Markdown 已复制"});
       },
 
       formatBytes(value: number): string {

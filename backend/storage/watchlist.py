@@ -103,7 +103,7 @@ class WatchlistStore:
             }
             missing_ids = set(unique_ids) - existing_ids
             if missing_ids:
-                raise ValueError(f"Unknown watch item ids: {sorted(missing_ids)}")
+                raise ValueError(f"找不到以下订阅源编号：{sorted(missing_ids)}")
 
             for index, item_id in enumerate(unique_ids, start=1):
                 conn.execute("UPDATE watchlist SET sort_order = ? WHERE id = ?", (index, item_id))

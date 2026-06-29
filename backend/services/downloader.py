@@ -38,7 +38,7 @@ def normalize_downloaded_file_path(path: str) -> str:
         counter += 1
 
     source.rename(candidate)
-    logger.info("Normalized downloaded filename from %s to %s", source, candidate)
+    logger.info("已将下载文件名从 %s 规范为 %s", source, candidate)
     return str(candidate)
 
 
@@ -69,7 +69,7 @@ def download_video(
     output_dir.mkdir(parents=True, exist_ok=True)
     files_before_download = {path.resolve() for path in output_dir.iterdir() if path.is_file()}
 
-    progress_hooks = [lambda d: logger.info("yt-dlp progress: %s", d.get("status"))]
+    progress_hooks = [lambda d: logger.info("yt-dlp 进度：%s", d.get("status"))]
     if progress_hook is not None:
         progress_hooks.append(progress_hook)
 
@@ -88,7 +88,7 @@ def download_video(
             downloaded_file = _downloaded_file_from_info(info_dict)
             if downloaded_file:
                 downloaded_file = normalize_downloaded_file_path(downloaded_file)
-                logger.info("Download completed for %s: %s", url, downloaded_file)
+                logger.info("%s 下载完成：%s", url, downloaded_file)
                 return downloaded_file
 
             prepared = ydl.prepare_filename(info_dict)
@@ -99,7 +99,7 @@ def download_video(
             for candidate in candidates:
                 if os.path.isfile(candidate):
                     candidate = normalize_downloaded_file_path(candidate)
-                    logger.info("Download completed for %s: %s", url, candidate)
+                    logger.info("%s 下载完成：%s", url, candidate)
                     return candidate
 
             files_after_download = {path.resolve() for path in output_dir.iterdir() if path.is_file()}
@@ -110,10 +110,10 @@ def download_video(
             )
             if new_files:
                 downloaded_file = normalize_downloaded_file_path(str(new_files[0]))
-                logger.info("Download completed for %s: %s", url, downloaded_file)
+                logger.info("%s 下载完成：%s", url, downloaded_file)
                 return downloaded_file
 
-            raise FileNotFoundError("yt-dlp finished but the downloaded file could not be found")
+            raise FileNotFoundError("yt-dlp 已完成，但没有找到下载后的视频文件。")
         except Exception:
-            logger.exception("Error downloading %s", url)
+            logger.exception("下载 %s 时发生错误", url)
             raise

@@ -1,6 +1,6 @@
 import {signal} from "@angular/core";
 import {TestBed} from "@angular/core/testing";
-import {of, throwError} from "rxjs";
+import {Subject, of, throwError} from "rxjs";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 
 import {ReadvideoApiService} from "../../../../core/api/readvideo-api/readvideo-api.service";
@@ -78,10 +78,10 @@ describe("TaskWorkflowService", () => {
 
   it("initializes health, model configuration, and recent tasks", () => {
     service.initialize();
-    expect(service.health()).toBe("Online");
+    expect(service.health()).toBe("在线");
     expect(models.initialize).toHaveBeenCalledWith(config);
     expect(service.recentTasks()).toEqual([completedTask]);
-    expect(service.backendLabel()).toContain("Better Local AI Notes");
+    expect(service.backendLabel()).toContain("本地 AI 笔记");
   });
 
   it("pauses processing when reusable history is found", () => {
@@ -90,7 +90,7 @@ describe("TaskWorkflowService", () => {
 
     expect(api.processVideo).not.toHaveBeenCalled();
     expect(service.duplicateUrl()).toBe("https://example.com/video");
-    expect(service.notice().text).toContain("already downloaded");
+    expect(service.notice().text).toContain("已经下载");
 
     service.useExistingDuplicateOutput();
     expect(service.latestTask()?.status).toBe("completed");
@@ -105,6 +105,20 @@ describe("TaskWorkflowService", () => {
     expect(service.latestTask()).toEqual(completedTask);
     expect(service.latestSummary()).toBe("Summary");
     expect(service.progressPercent()).toBe(100);
+  });
+
+  it("ignores repeated submissions while the first request is active", () => {
+    const response = new Subject<TaskRecord>();
+    api.processVideo.mockReturnValue(response);
+
+    service.startProcessingUrl("https://example.com/first", {skipDuplicateCheck: true});
+    service.startProcessingUrl("https://example.com/second", {skipDuplicateCheck: true});
+
+    expect(api.processVideo).toHaveBeenCalledOnce();
+    expect(service.canStart()).toBe(false);
+    response.next(completedTask);
+    response.complete();
+    expect(service.canStart()).toBe(true);
   });
 
   it("blocks processing when the local LLM is missing", () => {

@@ -44,6 +44,6 @@ describe("LatestOutputComponent", () => {
     expect(component.fileHref("markdown", completedTask)).toBe("/api/history/task%2F1/files/markdown");
     expect(component.fileHref("video", null)).toBe("");
     expect(component.taskPath(completedTask, "video_path")).toBe("-");
-    expect(component.statusLabel("organizing_notes")).toBe("organizing notes");
+    expect(component.statusLabel("organizing_notes")).toBe("正在整理笔记");
   });
 });

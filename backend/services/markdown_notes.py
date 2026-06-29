@@ -201,20 +201,22 @@ def render_markdown_note(
     lines = [
         f"# {video_title}",
         "",
-        f"- Source: {source_url}",
-        f"- Generated: {generated_at}",
+        f"- 来源：{source_url}",
+        f"- 生成时间：{generated_at}",
     ]
+    if transcript_path:
+        lines.append(f"- 转录文件：`{transcript_path}`")
 
-    lines.extend(["", "## Summary", ""])
+    lines.extend(["", "## 总结", ""])
     summary_items = list(summary_items)
     summary_paragraphs = list(summary_paragraphs or [])
     article_sections = [_coerce_section(section, index) for index, section in enumerate(sections, start=1)]
     if summary_items:
         lines.extend(f"- {item}" for item in summary_items)
     else:
-        lines.append("- No summary could be generated.")
+        lines.append("- 无法生成总结。")
     if summary_paragraphs:
-        lines.extend(["", "### Narrative Summary", ""])
+        lines.extend(["", "### 内容概览", ""])
         for paragraph in summary_paragraphs:
             lines.extend([paragraph, ""])
 
@@ -228,7 +230,7 @@ def render_markdown_note(
             article_sections,
         )
         if business_items:
-            lines.extend(["", "## Business Lens", ""])
+            lines.extend(["", "## 商业视角", ""])
             lines.extend(f"- {item}" for item in business_items[:8])
             lines.append("")
 
@@ -239,19 +241,19 @@ def render_markdown_note(
             article_sections,
         )
         if editorial_paragraphs:
-            lines.extend(["", "## Editorial Article", ""])
+            lines.extend(["", "## 商业分析", ""])
             for paragraph in editorial_paragraphs:
                 lines.extend([paragraph, ""])
 
-    lines.extend(["", "## Segmented Notes", ""])
+    lines.extend(["", "## 分段笔记", ""])
     raw_segments = original_transcript_segments_for_sections(transcript_text, article_sections)
     for index, article_section in enumerate(article_sections, start=1):
         title = article_section.title
-        heading = title if title.startswith("Section ") else f"{index}. {title}"
+        heading = title if re.match(r"^第\s*\d+\s*节$", title) else f"{index}. {title}"
         lines.extend([f"### {heading}", "", article_section.body, ""])
         original_segment = raw_segments[index - 1] if index - 1 < len(raw_segments) else ""
         if original_segment:
-            lines.extend(["#### Original Transcript", "", "```text", original_segment.strip(), "```", ""])
+            lines.extend(["#### 原文片段", "", "```text", original_segment.strip(), "```", ""])
 
     return "\n".join(lines)
 
@@ -459,4 +461,4 @@ def _phrase_score(query_text: str, candidate: str) -> int:
 def safe_filename(name: str) -> str:
     cleaned = re.sub(r"[\\/:*?\"<>|]+", "-", name).strip()
     cleaned = re.sub(r"\s+", " ", cleaned)
-    return cleaned[:180] or "readvideo-note"
+    return cleaned[:180] or "readvideo-笔记"

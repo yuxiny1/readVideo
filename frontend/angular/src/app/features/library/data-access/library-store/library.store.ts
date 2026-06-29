@@ -67,10 +67,6 @@ export const LibraryStore = signalStore(
     }));
 
     return {
-      clearFeedback(): void {
-        patchState(store, {error: "", notice: ""});
-      },
-
       loadAll: rxMethod<void>(
         pipe(
           exhaustMap(() => {
@@ -96,7 +92,7 @@ export const LibraryStore = signalStore(
           concatMap(({name, notes}) => api.addFavoriteFolder(name, notes).pipe(
             switchMap(() => api.favoriteFolders()),
             tapResponse({
-              next: (folders) => patchState(store, {folders, notice: "Folder created"}),
+                next: (folders) => patchState(store, {folders, notice: "文件夹已创建"}),
               error: failRequest,
               finalize: finishRequest,
             }),
@@ -113,7 +109,7 @@ export const LibraryStore = signalStore(
               next: ({updated, favorites}) => patchState(store, (state) => ({
                 favorites,
                 folders: state.folders.map((folder) => folder.id === updated.id ? updated : folder),
-                notice: "Folder updated",
+                notice: "文件夹已更新",
               })),
               error: failRequest,
               finalize: finishRequest,
@@ -153,7 +149,7 @@ export const LibraryStore = signalStore(
                 favorites,
                 folders,
                 tags,
-                notice: "Favorite removed",
+                notice: "收藏已移除",
               }),
               error: failRequest,
               finalize: finishRequest,
@@ -171,7 +167,7 @@ export const LibraryStore = signalStore(
               next: ({updated, allTags}) => patchState(store, (state) => ({
                 favorites: replaceFavorite(state.favorites, updated),
                 tags: allTags,
-                notice: "Tags saved",
+                notice: "标签已保存",
               })),
               error: failRequest,
               finalize: finishRequest,

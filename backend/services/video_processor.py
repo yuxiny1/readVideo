@@ -105,13 +105,13 @@ async def process_video(
                 download_status="reused",
                 download_percent=100,
                 reused_from_task_id=candidate.record.task_id,
-                log_message=f"Using existing downloaded video from task {candidate.record.task_id}: {downloaded_file_path}",
+                log_message=f"正在复用任务 {candidate.record.task_id} 已下载的视频：{downloaded_file_path}",
             )
             persist_task_history(settings.database_path, task_id)
         else:
             reuse_note = ""
             if candidate is not None:
-                reuse_note = " History had this URL, but the saved video file is missing; downloading again."
+                reuse_note = "历史记录中已有此网址，但本地视频不存在，将重新下载。"
             set_task_status(
                 task_id,
                 "downloading",
@@ -126,7 +126,7 @@ async def process_video(
                 delete_video_after_completion=delete_video_after_completion,
                 download_dir=settings.download_dir,
                 force_download=force_download,
-                log_message=f"Downloading from {url}.{reuse_note}",
+                log_message=f"正在从 {url} 下载视频。{reuse_note}",
             )
             persist_task_history(settings.database_path, task_id)
 
@@ -146,7 +146,7 @@ async def process_video(
                 delete_video_after_completion=delete_video_after_completion,
                 download_percent=100,
                 download_status="finished",
-                log_message=f"Download saved to {downloaded_file_path}",
+                log_message=f"视频已保存至：{downloaded_file_path}",
             )
             persist_task_history(settings.database_path, task_id)
 
@@ -169,12 +169,13 @@ async def process_video(
                 video_path=downloaded_file_path,
                 transcription_path=result.transcription_path,
                 transcription_backend="reused",
-                log_message=f"Using existing transcript: {result.transcription_path}",
+                log_message=f"正在复用已有转录文件：{result.transcription_path}",
             )
             append_transcript_recovery_log(task_id, result)
             persist_task_history(settings.database_path, task_id)
         else:
-            append_task_log(task_id, f"Transcribing with {settings.transcription_backend}.", status="transcribing")
+            transcription_label = "本地 Whisper" if settings.transcription_backend == "local" else "OpenAI 转录"
+            append_task_log(task_id, f"正在使用{transcription_label}。", status="transcribing")
             result = await asyncio.to_thread(transcribe_video, downloaded_file_path, settings)
             resolved_transcription_backend = settings.transcription_backend
             set_task_status(
@@ -186,20 +187,20 @@ async def process_video(
                 transcription_path=result.transcription_path,
                 transcription_backend=settings.transcription_backend,
                 chunk_count=getattr(result, "chunk_count", None),
-                log_message=f"Transcript saved to {result.transcription_path}",
+                log_message=f"转录文件已保存至：{result.transcription_path}",
             )
             append_transcript_recovery_log(task_id, result)
             persist_task_history(settings.database_path, task_id)
 
         if resolved_notes_backend == "ollama":
-            style_label = "commercial editorial article" if resolved_note_style == "commercial" else "high-detail paragraph"
+            style_label = "商业分析文章" if resolved_note_style == "commercial" else "高细节段落笔记"
             append_task_log(
                 task_id,
-                f"Writing {style_label} summary and article-style notes with Ollama model {resolved_ollama_model}.",
+                f"正在使用 Ollama 模型 {resolved_ollama_model} 生成{style_label}。",
                 status="organizing_notes",
             )
         else:
-            append_task_log(task_id, "Writing quick notes without an AI model.", status="organizing_notes")
+            append_task_log(task_id, "正在整理本地提取式笔记。", status="organizing_notes")
         note_result = await asyncio.to_thread(
             write_markdown_note,
             transcript_text=result.text,
@@ -229,14 +230,14 @@ async def process_video(
             note_style=resolved_note_style,
             chunk_count=getattr(result, "chunk_count", None),
             delete_video_after_completion=delete_video_after_completion,
-            log_message=f"Markdown note saved to {note_result.markdown_path}",
+            log_message=f"Markdown 笔记已保存至：{note_result.markdown_path}",
         )
         persist_task_history(settings.database_path, task_id)
         if delete_video_after_completion:
             delete_downloaded_video_after_completion(task_id, downloaded_file_path, settings.download_dir)
             persist_task_history(settings.database_path, task_id)
     except Exception as exc:
-        logger.exception("Task %s failed", task_id)
+        logger.exception("任务 %s 失败", task_id)
         set_task_status(task_id, "failed", url=url, error=str(exc), log_message=str(exc), log_level="error")
         if settings is not None:
             persist_task_history(settings.database_path, task_id)
@@ -245,7 +246,7 @@ async def process_video(
 def delete_downloaded_video_after_completion(task_id: str, video_path: str, download_dir: str) -> bool:
     path = resolve_existing_path(video_path, download_dir)
     if path is None:
-        message = "Delete requested, but the local video file was already missing."
+        message = "已请求删除视频，但本地视频文件不存在。"
         update_task_details(
             task_id,
             video_deleted_after_completion=False,
@@ -257,7 +258,7 @@ def delete_downloaded_video_after_completion(task_id: str, video_path: str, down
     try:
         path.unlink()
     except OSError as exc:
-        message = f"Could not delete local video {path}: {exc}"
+        message = f"无法删除本地视频 {path}：{exc}"
         update_task_details(
             task_id,
             video_deleted_after_completion=False,
@@ -273,7 +274,7 @@ def delete_downloaded_video_after_completion(task_id: str, video_path: str, down
         download_status="deleted_after_completion",
         download_filename=path.name,
     )
-    append_task_log(task_id, f"Deleted local video after completion: {path}", status="completed")
+    append_task_log(task_id, f"任务完成后已删除本地视频：{path}", status="completed")
     return True
 
 
@@ -283,8 +284,8 @@ def append_transcript_recovery_log(task_id: str, result):
     append_task_log(
         task_id,
         (
-            "Transcript contained invalid UTF-8 bytes; recovered the readable text, "
-            f"rewrote it as UTF-8, and continued: {result.transcription_path}"
+            "转录文件包含无效的 UTF-8 字节；已恢复可读内容、重新写入 UTF-8，"
+            f"并继续处理：{result.transcription_path}"
         ),
         level="warning",
         status="organizing_notes",
@@ -294,14 +295,14 @@ def append_transcript_recovery_log(task_id: str, result):
 def resolve_notes_backend(request_backend: Optional[str], default_backend: str) -> str:
     backend = (request_backend or default_backend).lower()
     if backend not in {"extractive", "ollama"}:
-        raise RuntimeError("notes_backend must be extractive or ollama.")
+        raise RuntimeError("笔记引擎无效，请选择本地提取式笔记或 Ollama 本地大模型。")
     return backend
 
 
 def resolve_note_style(request_style: Optional[str], default_style: str) -> str:
     style = (request_style or default_style).lower()
     if style not in {"detailed", "commercial"}:
-        raise RuntimeError("note_style must be detailed or commercial.")
+        raise RuntimeError("笔记风格无效，请选择详细笔记或商业分析。")
     return style
 
 
@@ -315,7 +316,7 @@ def resolve_transcription_settings(
 ) -> Settings:
     backend = (transcription_backend or settings.transcription_backend).lower()
     if backend not in {"local", "openai"}:
-        raise RuntimeError("transcription_backend must be local or openai.")
+        raise RuntimeError("转录引擎无效，请选择本地 Whisper 或 OpenAI 转录。")
 
     openai_api_key = settings.openai_api_key
     if backend == "openai" and not openai_api_key:
@@ -368,7 +369,7 @@ def build_download_progress_hook(task_id: str):
             bucket = int(percent // 10) * 10
             if bucket > last_bucket:
                 last_bucket = bucket
-                append_task_log(task_id, f"Download {percent:.1f}% complete.", status="downloading")
+                append_task_log(task_id, f"下载进度：{percent:.1f}%。", status="downloading")
 
         if status == "finished":
             update_task_details(
@@ -381,7 +382,7 @@ def build_download_progress_hook(task_id: str):
                 download_speed=progress.get("speed"),
                 download_eta=0,
             )
-            append_task_log(task_id, "Download finished; preparing transcription.", status="downloading")
+            append_task_log(task_id, "下载完成，正在准备转录。", status="downloading")
 
     return report
 

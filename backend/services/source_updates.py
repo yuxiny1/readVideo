@@ -36,7 +36,7 @@ def list_source_updates(source_url: str, limit: int = 10) -> list[SourceVideo]:
 def _entry_to_video(entry: dict[str, Any], parent: dict[str, Any]) -> SourceVideo:
     video_id = str(entry.get("id") or "")
     return SourceVideo(
-        title=str(entry.get("title") or "Untitled video"),
+        title=str(entry.get("title") or "未命名视频"),
         url=_entry_url(entry, video_id),
         video_id=video_id,
         uploader=str(entry.get("uploader") or parent.get("uploader") or parent.get("channel") or ""),

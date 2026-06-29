@@ -44,17 +44,17 @@ class LocalWhisperTranscription:
 
     def _validate(self):
         if shutil.which("ffmpeg") is None:
-            raise RuntimeError("ffmpeg was not found. Install it with: brew install ffmpeg")
+            raise RuntimeError("未找到 ffmpeg，请运行以下命令安装：brew install ffmpeg")
 
         if shutil.which(self.whisper_cli) is None:
             raise RuntimeError(
-                f"{self.whisper_cli} was not found. Install it with: brew install whisper-cpp"
+                f"未找到 {self.whisper_cli}，请运行以下命令安装：brew install whisper-cpp"
             )
 
         if not Path(self.model_path).is_file():
             raise RuntimeError(
-                f"Local Whisper model not found at {self.model_path}. "
-                "Download one from https://huggingface.co/ggerganov/whisper.cpp/tree/main"
+                f"未在 {self.model_path} 找到本地 Whisper 模型。"
+                "请从 https://huggingface.co/ggerganov/whisper.cpp/tree/main 下载模型。"
             )
 
     def process_video(self, video_file_path: str) -> LocalTranscriptionResult:
@@ -62,7 +62,7 @@ class LocalWhisperTranscription:
 
         video_path = Path(video_file_path)
         if not video_path.is_file():
-            raise FileNotFoundError(f"Video file not found: {video_file_path}")
+            raise FileNotFoundError(f"找不到视频文件：{video_file_path}")
 
         audio_path = video_path.with_suffix(".local-whisper.wav")
         output_base = video_path.with_name(f"{clean_filename_part(video_path.stem)}_transcription")
@@ -150,7 +150,7 @@ def _resolve_transcript_path(
             return _standardize_transcript_path(candidate, expected_path)
 
     checked = "\n".join(str(candidate) for candidate in dict.fromkeys(candidates))
-    raise FileNotFoundError(f"Whisper finished but transcript was not found. Checked:\n{checked}")
+    raise FileNotFoundError(f"Whisper 已完成，但没有找到转录文件。已检查：\n{checked}")
 
 
 def _standardize_transcript_path(found_path: Path, expected_path: Path) -> Path:
@@ -249,7 +249,7 @@ def _run_command(command: list[str]):
         output = _decode_process_output(result.stderr or result.stdout).strip()
         if len(output) > 2000:
             output = output[-2000:]
-        raise RuntimeError(f"Command failed: {' '.join(command[:2])}\n{output}")
+        raise RuntimeError(f"命令执行失败：{' '.join(command[:2])}\n{output}")
 
 
 def _decode_process_output(output) -> str:

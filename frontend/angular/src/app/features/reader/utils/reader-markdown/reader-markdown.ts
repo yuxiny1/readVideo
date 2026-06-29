@@ -1,9 +1,16 @@
 import {ReaderHeading} from "../../models/reader-types/reader.types";
 
-export type MarkdownMetadataLabel = "Source" | "Generated" | "Transcript";
+export type MarkdownMetadataLabel = "source" | "generated" | "transcript";
+
+const METADATA_LABELS: Readonly<Record<MarkdownMetadataLabel, readonly string[]>> = Object.freeze({
+  source: ["来源", "Source"],
+  generated: ["生成时间", "Generated"],
+  transcript: ["转录文件", "Transcript"],
+});
 
 export function extractMetadata(markdown: string, label: MarkdownMetadataLabel): string {
-  const match = markdown.match(new RegExp(`^${label}:\\s*(.+)$`, "m"));
+  const labels = METADATA_LABELS[label].join("|");
+  const match = markdown.match(new RegExp(`^\\s*-?\\s*(?:${labels})[:：]\\s*(.+)$`, "m"));
   return match?.[1]?.trim() ?? "";
 }
 
@@ -39,14 +46,14 @@ export function extractTitle(markdown: string): string {
 }
 
 export function fileName(path: string): string {
-  return path.split(/[\\/]/).filter(Boolean).pop() || path || "Markdown note";
+  return path.split(/[\\/]/).filter(Boolean).pop() || path || "Markdown 笔记";
 }
 
 export function readingStats(content: string): string {
   const words = content.trim().split(/\s+/).filter(Boolean).length;
   const cjkChars = content.match(/[\u4e00-\u9fff]/g)?.length ?? 0;
   const units = Math.max(words, Math.ceil(cjkChars / 2));
-  return `${Math.max(1, Math.ceil(units / 260))} min read`;
+  return `约 ${Math.max(1, Math.ceil(units / 260))} 分钟读完`;
 }
 
 export function renderMarkdown(markdown: string): string {

@@ -93,7 +93,7 @@ class TagStore:
     def set_task_tags(self, task_id: str, tags: list[str]) -> list[str]:
         task_id = task_id.strip()
         if not task_id:
-            raise ValueError("task_id is required.")
+            raise ValueError("必须提供任务编号。")
         cleaned_tags = normalize_tags(tags)
         now = datetime.now().isoformat(timespec="seconds")
         with self._connect() as conn:
@@ -128,7 +128,7 @@ def normalize_tags(tags: list[str]) -> list[str]:
         if not name:
             continue
         if len(name) > 32:
-            raise ValueError("Tags must be 32 characters or shorter.")
+            raise ValueError("每个标签不能超过 32 个字符。")
         key = name.casefold()
         if key in seen:
             continue
