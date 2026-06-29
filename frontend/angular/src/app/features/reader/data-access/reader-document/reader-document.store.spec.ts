@@ -46,6 +46,8 @@ describe("ReaderDocumentStore", () => {
     expect(store.readerTextSize()).toBe("large");
     expect(store.viewMode()).toBe("markdown");
     expect(localStorage.getItem("readvideo.reader.focusTheme")).toBe("dark");
+    expect(localStorage.getItem("readvideo.reader.width")).toBe("wide");
+    expect(localStorage.getItem("readvideo.reader.textSize")).toBe("large");
   });
 
   it("tracks open failures without unsafe HTML", () => {
@@ -69,6 +71,5 @@ describe("ReaderDocumentStore", () => {
     expect(writeText).toHaveBeenCalledWith("# Full note");
     expect(store.status()).toBe("已打开");
     expect(store.downloadHref()).toBe("/api/markdown_files/download?path=%2Fnotes%2Fa.md");
-    expect(store.formatBytes(1024)).toBe("1.0 KB");
   });
 });

@@ -14,7 +14,7 @@ import {
   MarkdownFile,
 } from "../../../../shared/models/readvideo-types/readvideo.types";
 import {LibraryMode, LibrarySort, ReaderLibraryItem} from "../../models/reader-types/reader.types";
-import {favoriteTitle, filterFavorites, filterFiles, libraryItems} from "../../utils/reader-library/reader-library";
+import {filterFavorites, filterFiles, libraryItems} from "../../utils/reader-library/reader-library";
 import {ReaderDocumentStore} from "../reader-document/reader-document.store";
 
 @Injectable()
@@ -244,14 +244,6 @@ export class ReaderFacade {
 
   folderId(folder: FavoriteFolder): string {
     return String(folder.id);
-  }
-
-  titleFor(item: FavoriteSummary): string {
-    return favoriteTitle(item);
-  }
-
-  tagsFor(item: FavoriteSummary): string[] {
-    return tagsFor(item);
   }
 
   tagDraft(item: FavoriteSummary): string {

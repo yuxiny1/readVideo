@@ -36,6 +36,10 @@
     grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
   }
 
+  .reader-workspace.reader-wide-layout:not(.reader-focus-mode) {
+    grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  }
+
   .reader-inspector {
     position: static;
     grid-column: 1 / -1;
@@ -64,6 +68,10 @@
   .reader-workspace {
     grid-template-columns: 1fr;
     padding: 16px;
+  }
+
+  .reader-workspace.reader-wide-layout:not(.reader-focus-mode) {
+    grid-template-columns: 1fr;
   }
 
   .reader-library {
