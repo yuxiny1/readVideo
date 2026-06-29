@@ -11,15 +11,18 @@ def read_repo_file(relative_path: str) -> str:
 
 
 class FrontendContractTest(unittest.TestCase):
-    def test_reader_exposes_all_filtered_favorite_notes(self):
+    def test_reader_exposes_title_first_unified_results(self):
         facade = read_repo_file("frontend/angular/src/app/features/reader/data-access/reader-facade/reader.facade.ts")
+        library = read_repo_file("frontend/angular/src/app/features/reader/utils/reader-library/reader-library.ts")
         template = read_repo_file("frontend/angular/src/app/features/reader/page/reader-page/reader-page.component.html")
-        styles = read_repo_file("frontend/css/partials/reader-library.css")
+        styles = read_repo_file("frontend/css/partials/reader-results.css")
 
         self.assertNotIn("visibleFavoriteNotes", facade)
         self.assertNotIn(".slice(0, 3)", facade)
-        self.assertIn("@for (item of vm.filteredFavorites(); track item.id)", template)
-        self.assertIn("favorite-note-list", styles)
+        self.assertIn("@for (item of vm.visibleLibraryItems(); track item.key)", template)
+        self.assertIn("{{ item.title }}", template)
+        self.assertIn('typeLabel: "收藏笔记"', library)
+        self.assertIn("reader-result-list", styles)
 
     def test_reader_exposes_focus_mode(self):
         document_store = read_repo_file("frontend/angular/src/app/features/reader/data-access/reader-document/reader-document.store.ts")
@@ -35,7 +38,7 @@ class FrontendContractTest(unittest.TestCase):
         self.assertIn("readvideo.reader.focusTheme", preferences)
         self.assertIn("reader-focus-mode", template)
         self.assertIn("reader-focus-dark", template)
-        self.assertIn("专注模式", template)
+        self.assertIn("进入专注阅读", template)
         self.assertIn("深色", template)
         self.assertIn("@if (!vm.document.focusMode())", template)
         self.assertIn(".reader-workspace.reader-focus-mode", library_styles)
@@ -43,6 +46,9 @@ class FrontendContractTest(unittest.TestCase):
         self.assertIn(".app-layout:has(.reader-workspace.reader-focus-mode)", library_styles)
         self.assertIn(".reader-focus-mode .modern-reader", document_styles)
         self.assertIn(".reader-focus-dark .modern-reader", document_styles)
+        self.assertIn("reader-wide-layout", template)
+        self.assertIn(".reader-workspace.reader-wide-layout", library_styles)
+        self.assertIn("104ch", document_styles)
 
     def test_saved_sources_exposes_compact_actions_menu(self):
         template = read_repo_file("frontend/angular/src/app/features/saved-sources/ui/saved-sources/saved-sources.component.html")

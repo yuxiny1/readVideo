@@ -7,7 +7,6 @@ import {concatMap, defer, pipe, switchMap, timer} from "rxjs";
 
 import {MarkdownDocument} from "../../../../shared/models/readvideo-types/readvideo.types";
 import {errorMessage} from "../../../../shared/utils/errors/errors";
-import {formatBytes} from "../../../../shared/utils/format/format";
 import {
   countMatches,
   escapeHtml,
@@ -21,8 +20,12 @@ import {
 import {
   persistFocusModeDefault,
   persistFocusThemeDefault,
+  persistReaderTextSizeDefault,
+  persistReaderWidthDefault,
   readFocusModeDefault,
   readFocusThemeDefault,
+  readReaderTextSizeDefault,
+  readReaderWidthDefault,
 } from "../../utils/reader-preferences/reader-preferences";
 import {ReaderFocusTheme, ReaderTextSize, ReaderViewMode, ReaderWidth} from "../../models/reader-types/reader.types";
 
@@ -59,8 +62,8 @@ export const ReaderDocumentStore = signalStore(
     error: "",
     focusMode: readFocusModeDefault(),
     focusTheme: readFocusThemeDefault(),
-    readerWidth: "standard",
-    readerTextSize: "standard",
+    readerWidth: readReaderWidthDefault(),
+    readerTextSize: readReaderTextSizeDefault(),
     viewMode: "rendered",
   })),
   withComputed((store) => {
@@ -151,10 +154,12 @@ export const ReaderDocumentStore = signalStore(
 
       setReaderWidth(readerWidth: ReaderWidth): void {
         patchState(store, {readerWidth});
+        persistReaderWidthDefault(readerWidth);
       },
 
       setReaderTextSize(readerTextSize: ReaderTextSize): void {
         patchState(store, {readerTextSize});
+        persistReaderTextSizeDefault(readerTextSize);
       },
 
       setViewMode(viewMode: ReaderViewMode): void {
@@ -179,10 +184,6 @@ export const ReaderDocumentStore = signalStore(
       copyMarkdown(): void {
         const value = store.rawContent();
         if (value) copyText({value, successStatus: "完整 Markdown 已复制"});
-      },
-
-      formatBytes(value: number): string {
-        return formatBytes(value);
       },
 
       downloadHref(path = store.path()): string {

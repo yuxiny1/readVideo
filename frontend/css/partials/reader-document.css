@@ -46,6 +46,10 @@
   flex-wrap: wrap;
 }
 
+.reader-width-toggle {
+  min-width: 188px;
+}
+
 .reader-findbar {
   padding: 12px 18px;
   display: grid;
@@ -164,6 +168,11 @@
 .modern-reader.reader-copy-wide blockquote,
 .modern-reader.reader-copy-wide hr {
   max-width: 104ch;
+}
+
+.modern-reader.reader-copy-wide {
+  padding-left: clamp(24px, 3vw, 44px);
+  padding-right: clamp(24px, 3vw, 44px);
 }
 
 .modern-reader.reader-copy-large {
@@ -304,6 +313,21 @@
   padding: 0;
   background: transparent;
   color: inherit;
+}
+
+.modern-reader > :is(h1, h2, h3, h4, p, ul, ol, blockquote, hr, pre) {
+  max-width: 72ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.modern-reader.reader-copy-wide > :is(h1, h2, h3, h4, p, ul, ol, blockquote, hr, pre),
+.reader-focus-mode .modern-reader.reader-copy-wide > :is(h1, h2, h3, h4, p, ul, ol, blockquote, hr, pre) {
+  max-width: 104ch;
+}
+
+.reader-focus-mode .modern-reader:not(.reader-copy-wide) > :is(h1, h2, h3, h4, p, ul, ol, blockquote, hr, pre) {
+  max-width: 72ch;
 }
 
 .reader-empty {

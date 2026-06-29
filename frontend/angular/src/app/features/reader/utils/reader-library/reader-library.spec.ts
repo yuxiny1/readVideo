@@ -53,10 +53,30 @@ describe("reader library selectors", () => {
   });
 
   it("builds library rows for each mode", () => {
-    expect(libraryItems("all", [favorite()], [file()]).map((item) => item.kind))
+    const rows = libraryItems("all", [favorite()], [file()]);
+    expect(rows.map((item) => item.kind))
       .toEqual(["favorite", "file"]);
+    expect(rows[0]).toMatchObject({
+      title: "Angular Signals",
+      typeLabel: "收藏笔记",
+      context: "未分类",
+      preview: "A practical signals lesson",
+      tags: ["frontend"],
+    });
+    expect(rows[1]).toMatchObject({
+      title: "reader.md",
+      typeLabel: "本地文件",
+      context: "100 B · 2026-01-03T00:00:00Z",
+      preview: "/notes/reader.md",
+      tags: [],
+    });
     expect(libraryItems("favorites", [favorite()], [file()])).toHaveLength(1);
     expect(libraryItems("files", [favorite()], [file()])[0].path).toBe("/notes/reader.md");
+  });
+
+  it("condenses multiline summaries into a readable preview", () => {
+    const row = libraryItems("favorites", [favorite({summary: "First line\n\nSecond   line"})], [])[0];
+    expect(row.preview).toBe("First line Second line");
   });
 
   it("deduplicates favorite and file rows with the same path in combined mode", () => {

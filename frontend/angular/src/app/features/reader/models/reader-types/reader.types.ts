@@ -14,8 +14,14 @@ export interface ReaderHeading {
 }
 
 export interface ReaderLibraryItem {
+  key: string;
   kind: "favorite" | "file";
   path: string;
+  title: string;
+  typeLabel: string;
+  context: string;
+  preview: string;
+  tags: string[];
   favorite: FavoriteSummary | null;
   file: MarkdownFile | null;
 }

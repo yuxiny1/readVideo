@@ -14,6 +14,15 @@
   <div class="button-row">
     <button class="secondary-button small-button" type="button" [disabled]="!vm.canOpenPrevious()" (click)="vm.openAdjacent(-1)">上一篇</button>
     <button class="secondary-button small-button" type="button" [disabled]="!vm.canOpenNext()" (click)="vm.openAdjacent(1)">下一篇</button>
+    <button
+      class="primary-button small-button focus-mode-launch"
+      type="button"
+      [disabled]="!vm.document.path()"
+      [attr.aria-pressed]="vm.document.focusMode()"
+      (click)="vm.document.toggleFocusMode()"
+    >
+      {{ vm.document.focusMode() ? '退出专注阅读' : '进入专注阅读' }}
+    </button>
     <a class="quiet-link small-link" routerLink="/favorites">收藏</a>
   </div>
 </header>
@@ -22,6 +31,7 @@
   class="reader-workspace"
   [class.reader-focus-mode]="vm.document.focusMode()"
   [class.reader-focus-dark]="vm.document.focusMode() && vm.document.focusTheme() === 'dark'"
+  [class.reader-wide-layout]="vm.document.readerWidth() === 'wide'"
 >
   @if (!vm.document.focusMode()) {
     <aside class="reader-library">
@@ -61,7 +71,22 @@
         </section>
 
         @if (vm.libraryMode() !== 'files') {
-          <section class="reader-section reader-tags-section">
+          <section class="reader-section reader-library-filters">
+            <div>
+              <label for="reader-favorite-folder">收藏文件夹</label>
+              <select
+                id="reader-favorite-folder"
+                name="reader-favorite-folder"
+                [ngModel]="vm.activeFolderId()"
+                (ngModelChange)="vm.setActiveFavoriteFolder($event)"
+              >
+                <option value="all">全部（{{ vm.folderCount("all") }}）</option>
+                <option value="unfiled">未分类（{{ vm.folderCount("unfiled") }}）</option>
+                @for (folder of vm.folders(); track folder.id) {
+                  <option [value]="vm.folderId(folder)">{{ folder.name }}（{{ vm.folderCount(folder.id) }}）</option>
+                }
+              </select>
+            </div>
             <div class="section-heading-row">
               <h3>标签</h3>
               <span class="caption">{{ vm.visibleTags().length }}</span>
@@ -81,53 +106,44 @@
               }
             </div>
           </section>
-
-          <section class="reader-section">
-            <h3>收藏文件夹</h3>
-            <div class="reader-folder-grid">
-              <button class="folder-chip" [ngClass]="vm.activeFolderId() === 'all' ? 'active' : ''" type="button" (click)="vm.setActiveFavoriteFolder('all')">
-                <span>全部</span><span>{{ vm.folderCount("all") }}</span>
-              </button>
-              <button class="folder-chip" [ngClass]="vm.activeFolderId() === 'unfiled' ? 'active' : ''" type="button" (click)="vm.setActiveFavoriteFolder('unfiled')">
-                <span>未分类</span><span>{{ vm.folderCount("unfiled") }}</span>
-              </button>
-              @for (folder of vm.folders(); track folder.id) {
-                <button class="folder-chip" [ngClass]="vm.activeFolderId() === vm.folderId(folder) ? 'active' : ''" type="button" (click)="vm.setActiveFavoriteFolder(vm.folderId(folder))">
-                  <span>{{ folder.name }}</span><span>{{ vm.folderCount(folder.id) }}</span>
-                </button>
-              }
-            </div>
-          </section>
-
-          <section class="reader-section">
-            <div class="section-heading-row">
-              <h3>收藏笔记</h3>
-              <span class="caption">{{ vm.filteredFavorites().length }} 篇</span>
-            </div>
-            <div class="reader-note-list favorite-note-list">
-              @if (!vm.filteredFavorites().length) {
-                <div class="empty-state">没有符合当前文件夹或搜索条件的收藏笔记。</div>
-              } @else {
-                @for (item of vm.filteredFavorites(); track item.id) {
-                  <button class="reader-note-item" [ngClass]="vm.isActivePath(item.markdown_path) ? 'active' : ''" type="button" (click)="vm.openFavorite(item)">
-                    <strong>{{ vm.titleFor(item) }}</strong>
-                    <span>{{ item.folder_name || "未分类" }}</span>
-                    @if (vm.tagsFor(item).length) {
-                      <small>#{{ vm.tagsFor(item).join(" #") }}</small>
-                    }
-                    <code>{{ item.markdown_path || "没有 Markdown 路径" }}</code>
-                  </button>
-                }
-              }
-            </div>
-          </section>
         }
 
+        <section class="reader-section reader-results-section">
+          <div class="section-heading-row">
+            <h3>笔记结果</h3>
+            <span class="caption">{{ vm.visibleLibraryItems().length }} 项</span>
+          </div>
+          <div class="reader-result-list">
+            @if (!vm.visibleLibraryItems().length) {
+              <div class="empty-state">没有符合当前筛选条件的笔记。</div>
+            } @else {
+              @for (item of vm.visibleLibraryItems(); track item.key) {
+                <button
+                  class="reader-result-item"
+                  [class.active]="vm.isActivePath(item.path)"
+                  type="button"
+                  (click)="vm.openLibraryItem(item)"
+                >
+                  <span class="reader-result-heading">
+                    <strong>{{ item.title }}</strong>
+                    <span class="reader-result-kind" [class.file-kind]="item.kind === 'file'">{{ item.typeLabel }}</span>
+                  </span>
+                  <span class="reader-result-context">{{ item.context }}</span>
+                  <span class="reader-result-preview">{{ item.preview }}</span>
+                  @if (item.tags.length) {
+                    <span class="reader-result-tags">#{{ item.tags.join(" #") }}</span>
+                  }
+                </button>
+              }
+            }
+          </div>
+        </section>
+
         @if (vm.libraryMode() !== 'favorites') {
-          <section class="reader-section">
+          <section class="reader-section reader-file-location">
             <div class="section-heading-row">
-              <h3>Markdown 文件</h3>
-              <span class="caption">显示 {{ vm.filteredFiles().length }} 个</span>
+              <h3>本地文件位置</h3>
+              <span class="caption">{{ vm.filteredFiles().length }} 个文件</span>
             </div>
             <form class="stack compact" (ngSubmit)="vm.loadMarkdownFiles(vm.markdownFolder, true)">
               <div>
@@ -139,20 +155,6 @@
                 <button class="secondary-button" type="button" (click)="vm.loadMarkdownFiles(vm.defaultNotesDir(), true)">默认路径</button>
               </div>
             </form>
-
-            <div class="reader-file-list">
-              @if (!vm.filteredFiles().length) {
-                <div class="empty-state">没有符合当前文件夹或搜索条件的 Markdown 文件。</div>
-              } @else {
-                @for (file of vm.filteredFiles(); track file.path) {
-                  <button class="reader-file-item" [ngClass]="vm.isActivePath(file.path) ? 'active' : ''" type="button" (click)="vm.openFile(file)">
-                    <strong>{{ file.name }}</strong>
-                    <span>{{ vm.document.formatBytes(file.size_bytes) }} · {{ file.modified_at }}</span>
-                    <code>{{ file.path }}</code>
-                  </button>
-                }
-              }
-            </div>
           </section>
         }
       </section>
@@ -191,12 +193,13 @@
         </div>
       </div>
       <div class="reader-document-actions">
-        <button class="secondary-button small-button focus-mode-button" type="button" [ngClass]="vm.document.focusMode() ? 'active' : ''" (click)="vm.document.toggleFocusMode()">
-          {{ vm.document.focusMode() ? '退出专注' : '专注模式' }}
-        </button>
         <div class="segmented-control compact-segmented" aria-label="阅读视图">
           <button type="button" [ngClass]="vm.document.viewMode() === 'rendered' ? 'active' : ''" (click)="vm.document.setViewMode('rendered')">阅读</button>
           <button type="button" [ngClass]="vm.document.viewMode() === 'markdown' ? 'active' : ''" (click)="vm.document.setViewMode('markdown')">源码</button>
+        </div>
+        <div class="segmented-control compact-segmented reader-width-toggle" aria-label="正文宽度">
+          <button type="button" [ngClass]="vm.document.readerWidth() === 'standard' ? 'active' : ''" (click)="vm.document.setReaderWidth('standard')">标准宽度</button>
+          <button type="button" [ngClass]="vm.document.readerWidth() === 'wide' ? 'active' : ''" (click)="vm.document.setReaderWidth('wide')">宽版阅读</button>
         </div>
         @if (vm.document.focusMode()) {
           <div class="segmented-control compact-segmented focus-theme-toggle" aria-label="专注模式主题">
@@ -254,13 +257,19 @@
 
         <section class="reader-section">
           <h3>阅读设置</h3>
-          <div class="segmented-control" aria-label="阅读宽度">
-            <button type="button" [ngClass]="vm.document.readerWidth() === 'standard' ? 'active' : ''" (click)="vm.document.setReaderWidth('standard')">标准</button>
-            <button type="button" [ngClass]="vm.document.readerWidth() === 'wide' ? 'active' : ''" (click)="vm.document.setReaderWidth('wide')">宽版</button>
+          <div class="reader-setting-row">
+            <span>正文宽度</span>
+            <div class="segmented-control" aria-label="正文宽度">
+              <button type="button" [ngClass]="vm.document.readerWidth() === 'standard' ? 'active' : ''" (click)="vm.document.setReaderWidth('standard')">标准</button>
+              <button type="button" [ngClass]="vm.document.readerWidth() === 'wide' ? 'active' : ''" (click)="vm.document.setReaderWidth('wide')">宽版</button>
+            </div>
           </div>
-          <div class="segmented-control" aria-label="字号">
-            <button type="button" [ngClass]="vm.document.readerTextSize() === 'standard' ? 'active' : ''" (click)="vm.document.setReaderTextSize('standard')">标准</button>
-            <button type="button" [ngClass]="vm.document.readerTextSize() === 'large' ? 'active' : ''" (click)="vm.document.setReaderTextSize('large')">大号</button>
+          <div class="reader-setting-row">
+            <span>正文字号</span>
+            <div class="segmented-control" aria-label="正文字号">
+              <button type="button" [ngClass]="vm.document.readerTextSize() === 'standard' ? 'active' : ''" (click)="vm.document.setReaderTextSize('standard')">标准</button>
+              <button type="button" [ngClass]="vm.document.readerTextSize() === 'large' ? 'active' : ''" (click)="vm.document.setReaderTextSize('large')">大号</button>
+            </div>
           </div>
         </section>
 

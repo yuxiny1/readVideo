@@ -1,4 +1,5 @@
 import {FavoriteSummary, MarkdownFile} from "../../../../shared/models/readvideo-types/readvideo.types";
+import {formatBytes} from "../../../../shared/utils/format/format";
 import {hasTag, tagsFor} from "../../../../shared/utils/tags/tags";
 import {LibraryMode, LibrarySort, ReaderLibraryItem} from "../../models/reader-types/reader.types";
 
@@ -43,8 +44,14 @@ export function libraryItems(
 ): ReaderLibraryItem[] {
   const favoriteItems = mode === "all" || mode === "favorites"
     ? favorites.map((favorite) => ({
+      key: `favorite:${favorite.id}`,
       kind: "favorite" as const,
       path: favorite.markdown_path || "",
+      title: favoriteTitle(favorite),
+      typeLabel: "收藏笔记",
+      context: favorite.folder_name || "未分类",
+      preview: summaryPreview(favorite.summary) || favorite.url || "尚无内容摘要",
+      tags: tagsFor(favorite),
       favorite,
       file: null,
     }))
@@ -53,7 +60,18 @@ export function libraryItems(
   const fileItems = mode === "all" || mode === "files"
     ? files
       .filter((file) => mode === "files" || !favoritePaths.has(file.path))
-      .map((file) => ({kind: "file" as const, path: file.path, favorite: null, file}))
+      .map((file) => ({
+        key: `file:${file.path}`,
+        kind: "file" as const,
+        path: file.path,
+        title: file.name,
+        typeLabel: "本地文件",
+        context: `${formatBytes(file.size_bytes)} · ${file.modified_at}`,
+        preview: file.path,
+        tags: [],
+        favorite: null,
+        file,
+      }))
     : [];
   return [
     ...favoriteItems,
@@ -63,6 +81,10 @@ export function libraryItems(
 
 export function favoriteTitle(item: FavoriteSummary): string {
   return item.title || item.url || item.task_id;
+}
+
+function summaryPreview(summary: string): string {
+  return summary.replace(/\s+/g, " ").trim();
 }
 
 function sortFavorites(items: FavoriteSummary[], sort: LibrarySort): FavoriteSummary[] {
