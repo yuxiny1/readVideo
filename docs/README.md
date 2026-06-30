@@ -21,6 +21,7 @@ For local transcription quality, `ggml-large-v3-turbo.bin` is the recommended de
 - Shows recent task status, elapsed time, and generated output paths in the browser.
 - Persists processed video history in SQLite, including source URL, video, transcript, and Markdown paths.
 - Lets you favorite valuable summaries and keep their Markdown locations in one page.
+- Uses a stable eight-color palette for tags across Favorites, History, and Reader so the same tag remains easy to recognize.
 - Lets you favorite a summary from either the History page or the current Latest Output panel after a download finishes.
 - Lets you open favorite Markdown notes in a dedicated built-in reader without leaving the browser.
 - Lets you create virtual note folders for favorite Markdown notes without moving the original files on disk.

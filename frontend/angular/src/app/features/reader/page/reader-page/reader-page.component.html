@@ -99,7 +99,7 @@
                 <span class="tag-chip muted">暂无标签</span>
               } @else {
                 @for (tag of vm.visibleTags(); track tag.id) {
-                  <button class="tag-chip" [ngClass]="vm.activeTag() === tag.name ? 'active' : ''" type="button" (click)="vm.setActiveTag(tag.name)">
+                  <button class="tag-chip" [rvTagTone]="tag.name" [ngClass]="vm.activeTag() === tag.name ? 'active' : ''" type="button" (click)="vm.setActiveTag(tag.name)">
                     #{{ tag.name }} <span>{{ vm.tagCount(tag.name) }}</span>
                   </button>
                 }
@@ -131,7 +131,11 @@
                   <span class="reader-result-context">{{ item.context }}</span>
                   <span class="reader-result-preview">{{ item.preview }}</span>
                   @if (item.tags.length) {
-                    <span class="reader-result-tags">#{{ item.tags.join(" #") }}</span>
+                    <span class="reader-result-tags">
+                      @for (tag of item.tags; track tag) {
+                        <span class="tag-chip mini" [rvTagTone]="tag">#{{ tag }}</span>
+                      }
+                    </span>
                   }
                 </button>
               }
@@ -174,7 +178,7 @@
           @if (vm.activeDocumentTags().length) {
             <div class="tag-strip reader-document-tags">
               @for (tag of vm.activeDocumentTags(); track tag) {
-                <button class="tag-chip" type="button" (click)="vm.setActiveTag(tag)">#{{ tag }}</button>
+                <button class="tag-chip" [rvTagTone]="tag" type="button" (click)="vm.setActiveTag(tag)">#{{ tag }}</button>
               }
             </div>
           } @else {
