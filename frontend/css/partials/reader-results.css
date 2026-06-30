@@ -78,6 +78,16 @@
   white-space: nowrap;
 }
 
+.reader-result-tags {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.reader-result-tags .tag-chip {
+  flex: 0 0 auto;
+}
+
 .reader-result-preview {
   display: -webkit-box;
   overflow: hidden;

@@ -155,6 +155,7 @@ class FrontendContractTest(unittest.TestCase):
         reader_template = read_repo_file("frontend/angular/src/app/features/reader/page/reader-page/reader-page.component.html")
         history_facade = read_repo_file("frontend/angular/src/app/features/history/data-access/history-facade/history.facade.ts")
         history_template = read_repo_file("frontend/angular/src/app/features/history/page/history-page/history-page.component.html")
+        tag_tone = read_repo_file("frontend/angular/src/app/shared/ui/tag-tone/tag-tone.directive.ts")
 
         self.assertIn("TagSummary", types)
         self.assertIn("tags?: string[]", types)
@@ -184,6 +185,10 @@ class FrontendContractTest(unittest.TestCase):
         self.assertIn("activeDocumentTags", reader_template)
         self.assertIn("filteredRecords", history_facade)
         self.assertIn("vm.saveTags(record)", history_template)
+        self.assertIn("tagToneClass", tag_tone)
+        self.assertIn("rvTagTone", favorites_template)
+        self.assertIn("rvTagTone", reader_template)
+        self.assertIn("rvTagTone", history_template)
 
     def test_angular_architecture_uses_scoped_signals_and_observable_boundaries(self):
         app_root = PROJECT_ROOT / "frontend/angular/src/app"

@@ -37,7 +37,7 @@
         全部 <span>{{ vm.tagCount("all") }}</span>
       </button>
       @for (tag of vm.tags(); track tag.id) {
-        <button class="tag-chip" [ngClass]="vm.activeTag() === tag.name ? 'active' : ''" type="button" (click)="vm.setActiveTag(tag.name)">
+        <button class="tag-chip" [rvTagTone]="tag.name" [ngClass]="vm.activeTag() === tag.name ? 'active' : ''" type="button" (click)="vm.setActiveTag(tag.name)">
           #{{ tag.name }} <span>{{ tag.task_count }}</span>
         </button>
       }
@@ -70,7 +70,7 @@
                 <span class="tag-chip muted">暂无标签</span>
               } @else {
                 @for (tag of vm.tagsFor(record); track tag) {
-                  <button class="tag-chip" type="button" (click)="vm.setActiveTag(tag)">#{{ tag }}</button>
+                  <button class="tag-chip" [rvTagTone]="tag" type="button" (click)="vm.setActiveTag(tag)">#{{ tag }}</button>
                 }
               }
             </div>

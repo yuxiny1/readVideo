@@ -61,12 +61,95 @@ button.tag-chip {
   font-weight: 800;
 }
 
+.tag-chip.tag-tone-1 {
+  --tag-bg: #eaf4ff;
+  --tag-border: #b9d9fb;
+  --tag-text: #145a9c;
+  --tag-active: #dcecff;
+  --tag-dark-text: #a9d4ff;
+}
+
+.tag-chip.tag-tone-2 {
+  --tag-bg: #e9f9f6;
+  --tag-border: #aae1d7;
+  --tag-text: #127469;
+  --tag-active: #d8f3ed;
+  --tag-dark-text: #8ee0d3;
+}
+
+.tag-chip.tag-tone-3 {
+  --tag-bg: #eef8ec;
+  --tag-border: #beddb8;
+  --tag-text: #3d7338;
+  --tag-active: #e0f1dc;
+  --tag-dark-text: #b4dda9;
+}
+
+.tag-chip.tag-tone-4 {
+  --tag-bg: #fff6df;
+  --tag-border: #ead39a;
+  --tag-text: #805a08;
+  --tag-active: #ffedc1;
+  --tag-dark-text: #f2cf7d;
+}
+
+.tag-chip.tag-tone-5 {
+  --tag-bg: #fff0ea;
+  --tag-border: #efc1b2;
+  --tag-text: #9a4c34;
+  --tag-active: #ffe3d9;
+  --tag-dark-text: #f0b29f;
+}
+
+.tag-chip.tag-tone-6 {
+  --tag-bg: #fff0f5;
+  --tag-border: #e9b9ca;
+  --tag-text: #923e61;
+  --tag-active: #ffe1ec;
+  --tag-dark-text: #e8a5bf;
+}
+
+.tag-chip.tag-tone-7 {
+  --tag-bg: #f4f0fb;
+  --tag-border: #cfc2e6;
+  --tag-text: #655087;
+  --tag-active: #e9e1f7;
+  --tag-dark-text: #c9b5ed;
+}
+
+.tag-chip.tag-tone-8 {
+  --tag-bg: #eef2fa;
+  --tag-border: #bdcae3;
+  --tag-text: #435d91;
+  --tag-active: #e0e7f6;
+  --tag-dark-text: #acbfea;
+}
+
+.tag-chip[class*="tag-tone-"] {
+  border-color: var(--tag-border);
+  background: var(--tag-bg);
+  color: var(--tag-text);
+}
+
+.tag-chip[class*="tag-tone-"] span {
+  color: inherit;
+  opacity: 0.72;
+}
+
 .tag-chip:hover,
 .tag-chip.active {
   border-color: rgba(10, 132, 255, 0.3);
   background: rgba(244, 250, 255, 0.96);
   color: #0b4f9f;
   box-shadow: 0 8px 18px rgba(10, 132, 255, 0.08);
+}
+
+.tag-chip[class*="tag-tone-"]:hover,
+.tag-chip[class*="tag-tone-"].active {
+  border-color: var(--tag-text);
+  background: var(--tag-active);
+  color: var(--tag-text);
+  box-shadow: 0 7px 16px color-mix(in srgb, var(--tag-text) 16%, transparent);
 }
 
 .tag-chip.muted {
@@ -109,4 +192,18 @@ button.tag-chip {
   border-color: rgba(245, 205, 128, 0.28);
   background: rgba(245, 205, 128, 0.13);
   color: #ffe2a3;
+}
+
+.reader-workspace.reader-focus-dark .tag-chip[class*="tag-tone-"],
+.reader-topbar.reader-focus-dark .tag-chip[class*="tag-tone-"] {
+  border-color: color-mix(in srgb, var(--tag-dark-text) 38%, transparent);
+  background: color-mix(in srgb, var(--tag-dark-text) 12%, transparent);
+  color: var(--tag-dark-text);
+}
+
+.reader-workspace.reader-focus-dark .tag-chip[class*="tag-tone-"]:hover,
+.reader-workspace.reader-focus-dark .tag-chip[class*="tag-tone-"].active {
+  border-color: color-mix(in srgb, var(--tag-dark-text) 68%, transparent);
+  background: color-mix(in srgb, var(--tag-dark-text) 20%, transparent);
+  color: var(--tag-dark-text);
 }

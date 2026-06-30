@@ -61,7 +61,7 @@
           <span class="caption">可以在笔记中添加标签。</span>
         } @else {
           @for (tag of vm.visibleTags(); track tag.id) {
-            <button class="tag-chip" [ngClass]="vm.activeTag() === tag.name ? 'active' : ''" type="button" (click)="vm.setActiveTag(tag.name)">
+            <button class="tag-chip" [rvTagTone]="tag.name" [ngClass]="vm.activeTag() === tag.name ? 'active' : ''" type="button" (click)="vm.setActiveTag(tag.name)">
               #{{ tag.name }} <span>{{ vm.tagCount(tag.name) }}</span>
             </button>
           }
@@ -99,7 +99,7 @@
               @if (vm.tagsFor(item).length) {
                 <div class="tag-strip note-tag-strip">
                   @for (tag of vm.tagsFor(item); track tag) {
-                    <button class="tag-chip" type="button" (click)="vm.setActiveTag(tag)">#{{ tag }}</button>
+                    <button class="tag-chip" [rvTagTone]="tag" type="button" (click)="vm.setActiveTag(tag)">#{{ tag }}</button>
                   }
                 </div>
               }
@@ -170,7 +170,7 @@
           <span class="caption">请先在笔记中保存标签。</span>
         } @else {
           @for (tag of vm.visibleTags(); track tag.id) {
-            <button class="tag-chip" [ngClass]="vm.activeTag() === tag.name ? 'active' : ''" type="button" (click)="vm.setActiveTag(tag.name)">
+            <button class="tag-chip" [rvTagTone]="tag.name" [ngClass]="vm.activeTag() === tag.name ? 'active' : ''" type="button" (click)="vm.setActiveTag(tag.name)">
               #{{ tag.name }} <span>{{ vm.tagCount(tag.name) }}</span>
             </button>
           }
@@ -231,7 +231,7 @@
             @if (vm.folderTags(folder.id).length) {
               <div class="tag-strip folder-mini-tags">
                 @for (tag of vm.folderTags(folder.id); track tag) {
-                  <button class="tag-chip mini" type="button" (click)="vm.setActiveTag(tag)">#{{ tag }}</button>
+                  <button class="tag-chip mini" [rvTagTone]="tag" type="button" (click)="vm.setActiveTag(tag)">#{{ tag }}</button>
                 }
               </div>
             }
