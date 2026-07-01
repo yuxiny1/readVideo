@@ -14,8 +14,8 @@ class FrontendContractTest(unittest.TestCase):
     def test_reader_exposes_title_first_unified_results(self):
         facade = read_repo_file("frontend/angular/src/app/features/reader/data-access/reader-facade/reader.facade.ts")
         library = read_repo_file("frontend/angular/src/app/features/reader/utils/reader-library/reader-library.ts")
-        template = read_repo_file("frontend/angular/src/app/features/reader/page/reader-page/reader-page.component.html")
-        styles = read_repo_file("frontend/css/partials/reader-results.css")
+        template = read_repo_file("frontend/angular/src/app/features/reader/ui/reader-library/reader-library.component.html")
+        styles = read_repo_file("frontend/angular/src/app/features/reader/ui/reader-library/reader-library.component.scss")
 
         self.assertNotIn("visibleFavoriteNotes", facade)
         self.assertNotIn(".slice(0, 3)", facade)
@@ -28,8 +28,10 @@ class FrontendContractTest(unittest.TestCase):
         document_store = read_repo_file("frontend/angular/src/app/features/reader/data-access/reader-document/reader-document.store.ts")
         preferences = read_repo_file("frontend/angular/src/app/features/reader/utils/reader-preferences/reader-preferences.ts")
         template = read_repo_file("frontend/angular/src/app/features/reader/page/reader-page/reader-page.component.html")
-        library_styles = read_repo_file("frontend/css/partials/reader-library.css")
-        document_styles = read_repo_file("frontend/css/partials/reader-document.css")
+        document_template = read_repo_file("frontend/angular/src/app/features/reader/ui/reader-document-toolbar/reader-document-toolbar.component.html")
+        page_styles = read_repo_file("frontend/angular/src/app/features/reader/page/reader-page/reader-page.component.scss")
+        document_styles = read_repo_file("frontend/angular/src/app/features/reader/ui/reader-content/reader-content.component.scss")
+        global_styles = read_repo_file("frontend/angular/src/styles.css")
 
         self.assertIn("focusMode", document_store)
         self.assertIn("toggleFocusMode", document_store)
@@ -39,21 +41,21 @@ class FrontendContractTest(unittest.TestCase):
         self.assertIn("reader-focus-mode", template)
         self.assertIn("reader-focus-dark", template)
         self.assertIn("进入专注阅读", template)
-        self.assertIn("深色", template)
+        self.assertIn("深色", document_template)
         self.assertIn("@if (!vm.document.focusMode())", template)
-        self.assertIn(".reader-workspace.reader-focus-mode", library_styles)
-        self.assertIn(".reader-workspace.reader-focus-dark", library_styles)
-        self.assertIn(".app-layout:has(.reader-workspace.reader-focus-mode)", library_styles)
-        self.assertIn(".reader-focus-mode .modern-reader", document_styles)
-        self.assertIn(".reader-focus-dark .modern-reader", document_styles)
+        self.assertIn(".reader-workspace.reader-focus-mode", page_styles)
+        self.assertIn(".reader-topbar.reader-focus-dark", page_styles)
+        self.assertIn(".app-layout:has(.reader-workspace.reader-focus-mode)", global_styles)
+        self.assertIn(":host-context(.reader-focus-mode) ::ng-deep .modern-reader", document_styles)
+        self.assertIn(":host-context(.reader-focus-dark) ::ng-deep .modern-reader", document_styles)
         self.assertIn("reader-wide-layout", template)
-        self.assertIn(".reader-workspace.reader-wide-layout", library_styles)
+        self.assertIn(".reader-workspace.reader-wide-layout", page_styles)
         self.assertIn("104ch", document_styles)
 
     def test_saved_sources_exposes_compact_actions_menu(self):
         template = read_repo_file("frontend/angular/src/app/features/saved-sources/ui/saved-sources/saved-sources.component.html")
         component = read_repo_file("frontend/angular/src/app/features/saved-sources/ui/saved-sources/saved-sources.component.ts")
-        styles = read_repo_file("frontend/css/partials/saved-sources.css")
+        styles = read_repo_file("frontend/angular/src/app/features/saved-sources/ui/saved-sources/saved-sources.component.scss")
 
         self.assertIn("openActionsId", component)
         self.assertIn("action-menu-panel", template)
@@ -135,7 +137,7 @@ class FrontendContractTest(unittest.TestCase):
     def test_copy_buttons_copy_full_markdown_notes(self):
         latest_template = read_repo_file("frontend/angular/src/app/features/new-video/ui/latest-output/latest-output.component.html")
         workflow = read_repo_file("frontend/angular/src/app/features/new-video/data-access/task-workflow/task-workflow.service.ts")
-        reader_template = read_repo_file("frontend/angular/src/app/features/reader/page/reader-page/reader-page.component.html")
+        reader_template = read_repo_file("frontend/angular/src/app/features/reader/ui/reader-document-toolbar/reader-document-toolbar.component.html")
         reader_document = read_repo_file("frontend/angular/src/app/features/reader/data-access/reader-document/reader-document.store.ts")
 
         self.assertIn("复制完整笔记", latest_template)
@@ -152,10 +154,11 @@ class FrontendContractTest(unittest.TestCase):
         favorites_facade = read_repo_file("frontend/angular/src/app/features/favorites/data-access/favorites-facade/favorites.facade.ts")
         favorites_template = read_repo_file("frontend/angular/src/app/features/favorites/page/favorites-page/favorites-page.component.html")
         reader_facade = read_repo_file("frontend/angular/src/app/features/reader/data-access/reader-facade/reader.facade.ts")
-        reader_template = read_repo_file("frontend/angular/src/app/features/reader/page/reader-page/reader-page.component.html")
+        reader_library_template = read_repo_file("frontend/angular/src/app/features/reader/ui/reader-library/reader-library.component.html")
+        reader_document_template = read_repo_file("frontend/angular/src/app/features/reader/ui/reader-document-toolbar/reader-document-toolbar.component.html")
         history_facade = read_repo_file("frontend/angular/src/app/features/history/data-access/history-facade/history.facade.ts")
         history_template = read_repo_file("frontend/angular/src/app/features/history/page/history-page/history-page.component.html")
-        tag_tone = read_repo_file("frontend/angular/src/app/shared/ui/tag-tone/tag-tone.directive.ts")
+        tag_chip = read_repo_file("frontend/angular/src/app/shared/ui/tag-chip/tag-chip.component.ts")
 
         self.assertIn("TagSummary", types)
         self.assertIn("tags?: string[]", types)
@@ -177,18 +180,20 @@ class FrontendContractTest(unittest.TestCase):
         self.assertIn("saveActiveTags", reader_facade)
         self.assertIn("updateFavoriteTags", library_store)
         self.assertIn("this.library.updateTags", reader_facade)
-        self.assertIn("reader-document-tags-row", reader_template)
-        self.assertIn("reader-tag-edit-row", reader_template)
-        self.assertIn("保存标签", reader_template)
-        self.assertIn("暂无标签", reader_template)
-        self.assertIn("reader-tag-filter", reader_template)
-        self.assertIn("activeDocumentTags", reader_template)
+        self.assertIn("reader-document-tags-row", reader_document_template)
+        self.assertIn("reader-tag-edit-row", reader_document_template)
+        self.assertIn("保存标签", reader_document_template)
+        self.assertIn("暂无标签", reader_document_template)
+        self.assertIn("reader-tag-filter", reader_library_template)
+        self.assertIn("activeDocumentTags", reader_document_template)
         self.assertIn("filteredRecords", history_facade)
         self.assertIn("vm.saveTags(record)", history_template)
-        self.assertIn("tagToneClass", tag_tone)
-        self.assertIn("rvTagTone", favorites_template)
-        self.assertIn("rvTagTone", reader_template)
-        self.assertIn("rvTagTone", history_template)
+        self.assertIn("tagToneClass", tag_chip)
+        self.assertIn("selector: \"rv-tag-chip\"", tag_chip)
+        self.assertIn("rv-tag-chip", favorites_template)
+        self.assertIn("rv-tag-chip", reader_library_template)
+        self.assertIn("rv-tag-chip", reader_document_template)
+        self.assertIn("rv-tag-chip", history_template)
 
     def test_angular_architecture_uses_scoped_signals_and_observable_boundaries(self):
         app_root = PROJECT_ROOT / "frontend/angular/src/app"
@@ -311,6 +316,21 @@ class FrontendContractTest(unittest.TestCase):
             self.assertIn(
                 f'styleUrl: "./{stem}.component.scss"',
                 component.read_text(encoding="utf-8"),
+            )
+
+    def test_feature_styles_are_owned_by_angular_components(self):
+        workspace = json.loads(read_repo_file("angular.json"))
+        styles = workspace["projects"]["readvideo"]["architect"]["build"]["options"]["styles"]
+
+        self.assertEqual(styles, ["frontend/angular/src/styles.css"])
+        self.assertFalse((PROJECT_ROOT / "frontend/css/partials").exists())
+        for component in (PROJECT_ROOT / "frontend/angular/src/app").rglob("*.component.ts"):
+            stem = component.name.removesuffix(".component.ts")
+            component_styles = component.with_name(f"{stem}.component.scss")
+            self.assertTrue(component_styles.is_file())
+            self.assertNotIn(
+                "Component-owned styles can move here",
+                component_styles.read_text(encoding="utf-8"),
             )
 
     def test_frontend_typescript_modules_stay_focused(self):

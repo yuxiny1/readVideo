@@ -1,0 +1,126 @@
+@let vm = reader;
+<aside class="reader-library">
+  <section class="tool-panel reader-library-panel">
+    <div class="panel-header">
+      <h2>笔记库</h2>
+      <button class="secondary-button small-button" type="button" (click)="vm.initialize()">刷新</button>
+    </div>
+
+    @if (vm.error()) {
+      <div class="empty-state">{{ vm.error() }}</div>
+    }
+
+    <section class="reader-section reader-search-section">
+      <label for="reader-search">搜索</label>
+      <input
+        id="reader-search"
+        name="reader-search"
+        placeholder="搜索标题、总结或路径……"
+        [ngModel]="vm.searchQuery()"
+        (ngModelChange)="vm.setSearchQuery($event)"
+      >
+      <div class="segmented-control" aria-label="笔记库视图">
+        <button type="button" [ngClass]="vm.libraryMode() === 'all' ? 'active' : ''" (click)="vm.setLibraryMode('all')">全部</button>
+        <button type="button" [ngClass]="vm.libraryMode() === 'favorites' ? 'active' : ''" (click)="vm.setLibraryMode('favorites')">收藏</button>
+        <button type="button" [ngClass]="vm.libraryMode() === 'files' ? 'active' : ''" (click)="vm.setLibraryMode('files')">文件</button>
+      </div>
+      <div>
+        <label for="reader-sort">排序</label>
+        <select id="reader-sort" name="reader-sort" [ngModel]="vm.librarySort()" (ngModelChange)="vm.setLibrarySort($event)">
+          <option value="recent">最新</option>
+          <option value="title">标题</option>
+          <option value="folder">文件夹</option>
+          <option value="path">路径</option>
+        </select>
+      </div>
+    </section>
+
+    @if (vm.libraryMode() !== 'files') {
+      <section class="reader-section reader-library-filters">
+        <div>
+          <label for="reader-favorite-folder">收藏文件夹</label>
+          <select
+            id="reader-favorite-folder"
+            name="reader-favorite-folder"
+            [ngModel]="vm.activeFolderId()"
+            (ngModelChange)="vm.setActiveFavoriteFolder($event)"
+          >
+            <option value="all">全部（{{ vm.folderCount("all") }}）</option>
+            <option value="unfiled">未分类（{{ vm.folderCount("unfiled") }}）</option>
+            @for (folder of vm.folders(); track folder.id) {
+              <option [value]="vm.folderId(folder)">{{ folder.name }}（{{ vm.folderCount(folder.id) }}）</option>
+            }
+          </select>
+        </div>
+        <div class="section-heading-row">
+          <h3>标签</h3>
+          <span class="caption">{{ vm.visibleTags().length }}</span>
+        </div>
+        <div class="tag-strip reader-tag-filter">
+          <rv-tag-chip label="全部" [count]="vm.tagCount('all')" [active]="vm.activeTag() === 'all'" [colored]="false" [prefix]="false" (selected)="vm.setActiveTag('all')" />
+          @if (!vm.visibleTags().length) {
+            <rv-tag-chip label="暂无标签" [interactive]="false" [colored]="false" [prefix]="false" [muted]="true" />
+          } @else {
+            @for (tag of vm.visibleTags(); track tag.id) {
+              <rv-tag-chip [label]="tag.name" [count]="vm.tagCount(tag.name)" [active]="vm.activeTag() === tag.name" (selected)="vm.setActiveTag(tag.name)" />
+            }
+          }
+        </div>
+      </section>
+    }
+
+    <section class="reader-section reader-results-section">
+      <div class="section-heading-row">
+        <h3>笔记结果</h3>
+        <span class="caption">{{ vm.visibleLibraryItems().length }} 项</span>
+      </div>
+      <div class="reader-result-list">
+        @if (!vm.visibleLibraryItems().length) {
+          <div class="empty-state">没有符合当前筛选条件的笔记。</div>
+        } @else {
+          @for (item of vm.visibleLibraryItems(); track item.key) {
+            <button
+              class="reader-result-item"
+              [class.active]="vm.isActivePath(item.path)"
+              type="button"
+              (click)="vm.openLibraryItem(item)"
+            >
+              <span class="reader-result-heading">
+                <strong>{{ item.title }}</strong>
+                <span class="reader-result-kind" [class.file-kind]="item.kind === 'file'">{{ item.typeLabel }}</span>
+              </span>
+              <span class="reader-result-context">{{ item.context }}</span>
+              <span class="reader-result-preview">{{ item.preview }}</span>
+              @if (item.tags.length) {
+                <span class="reader-result-tags">
+                  @for (tag of item.tags; track tag) {
+                    <rv-tag-chip [label]="tag" [mini]="true" [interactive]="false" />
+                  }
+                </span>
+              }
+            </button>
+          }
+        }
+      </div>
+    </section>
+
+    @if (vm.libraryMode() !== 'favorites') {
+      <section class="reader-section reader-file-location">
+        <div class="section-heading-row">
+          <h3>本地文件位置</h3>
+          <span class="caption">{{ vm.filteredFiles().length }} 个文件</span>
+        </div>
+        <form class="stack compact" (ngSubmit)="vm.loadMarkdownFiles(vm.markdownFolder, true)">
+          <div>
+            <label for="reader-md-folder">文件夹路径</label>
+            <input id="reader-md-folder" name="reader-md-folder" placeholder="notes" [(ngModel)]="vm.markdownFolder">
+          </div>
+          <div class="button-row">
+            <button class="secondary-button" type="submit">加载</button>
+            <button class="secondary-button" type="button" (click)="vm.loadMarkdownFiles(vm.defaultNotesDir(), true)">默认路径</button>
+          </div>
+        </form>
+      </section>
+    }
+  </section>
+</aside>

@@ -1,1 +1,96 @@
-/* Component-owned styles can move here as the shared feature stylesheet is decomposed. */
+.output-list {
+  margin: 0 0 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.output-list div {
+  padding: 9px 0;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  border-bottom: 1px solid rgba(111, 129, 153, 0.16);
+}
+
+.output-list dt {
+  color: var(--muted);
+  font-weight: 750;
+}
+
+.output-list dd {
+  margin: 0;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.summary-box {
+  min-height: 220px;
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(246, 252, 255, 0.72));
+  color: #1d1d1f;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.recent-block {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.compact-header {
+  margin-bottom: 10px;
+}
+
+.recent-tasks {
+  display: grid;
+  gap: 8px;
+}
+
+.task-row {
+  width: 100%;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.68);
+  text-align: left;
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.task-row:hover {
+  border-color: rgba(0, 166, 184, 0.3);
+  box-shadow: 0 12px 28px rgba(9, 44, 84, 0.08);
+}
+
+.task-row strong,
+.task-row span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.task-row strong {
+  font-size: 13px;
+}
+
+.task-row span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+@media (max-width: 880px) {
+  .output-list div {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,1 +1,345 @@
-/* Component-owned styles can move here as the shared feature stylesheet is decomposed. */
+:host {
+  display: block;
+}
+
+.favorites-workspace {
+  width: min(1320px, 100%);
+  margin: 0 auto;
+  padding: 24px 28px 32px;
+  display: grid;
+  grid-template-columns: minmax(500px, 1fr) clamp(320px, 30vw, 390px);
+  gap: 20px;
+}
+
+.favorites-panel,
+.notebook-notes-panel,
+.notebook-sidebar {
+  min-width: 0;
+}
+
+.favorites-side {
+  display: grid;
+  gap: 20px;
+  align-self: start;
+}
+
+.filter-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 260px);
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 12px;
+}
+
+.tag-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+.favorite-tag-filter-card {
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  border: 1px solid rgba(10, 132, 255, 0.14);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(241, 248, 255, 0.78));
+}
+
+.section-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.favorite-tag-filter-card .section-heading-row,
+.favorite-tag-filter-card h3 {
+  margin: 0;
+}
+
+.favorite-tag-filter-card .caption {
+  display: none;
+}
+
+.favorite-list {
+  display: grid;
+  gap: 12px;
+}
+
+.favorite-card {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(247, 251, 255, 0.72));
+  box-shadow: 0 10px 28px rgba(9, 44, 84, 0.05);
+}
+
+.favorite-card:hover {
+  border-color: rgba(0, 166, 184, 0.24);
+  box-shadow: 0 16px 36px rgba(9, 44, 84, 0.09);
+}
+
+.notebook-note-card {
+  display: grid;
+  gap: 12px;
+}
+
+.history-card-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.history-card-header h2 {
+  margin-bottom: 4px;
+  overflow-wrap: anywhere;
+}
+
+.note-tag-manager {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 8px;
+  align-items: center;
+  padding: 7px 8px;
+  border: 1px solid rgba(10, 132, 255, 0.16);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(242, 249, 255, 0.78));
+}
+
+.note-tag-manager .section-heading-row {
+  min-height: 24px;
+  justify-content: flex-start;
+}
+
+.note-tag-manager .tag-input-row {
+  grid-column: 1 / -1;
+}
+
+.tag-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: start;
+}
+
+.tag-input-row input {
+  min-height: 32px;
+  padding: 6px 9px;
+  font-size: 12px;
+}
+
+.summary-preview {
+  max-height: 190px;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #1d1d1f;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.path-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.path-list div {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(111, 129, 153, 0.16);
+}
+
+.path-list dt {
+  color: var(--muted);
+  font-weight: 750;
+}
+
+.path-list dd {
+  margin: 0;
+  word-break: break-word;
+}
+
+.favorite-management-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 280px);
+  gap: 10px;
+  align-items: end;
+}
+
+.card-actions {
+  margin-top: 0;
+}
+
+.notebook-tag-panel,
+.notebook-folder-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.priority-tag-panel {
+  padding: 8px;
+  gap: 6px;
+  border-color: rgba(10, 132, 255, 0.2);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(241, 248, 255, 0.86));
+}
+
+.priority-tag-panel .panel-header {
+  margin-bottom: 0;
+}
+
+.priority-tag-panel h2 {
+  font-size: 14px;
+}
+
+.tag-management-list {
+  align-items: flex-start;
+}
+
+.panel-subtitle {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 680;
+  line-height: 1.45;
+}
+
+.notebook-folder-panel {
+  gap: 14px;
+}
+
+.folder-board {
+  display: grid;
+  gap: 10px;
+}
+
+.folder-visual-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(247, 251, 255, 0.72));
+}
+
+.folder-visual-card.active {
+  border-color: rgba(10, 132, 255, 0.28);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(239, 249, 255, 0.88));
+  box-shadow: 0 14px 32px rgba(10, 132, 255, 0.1);
+}
+
+.folder-visual-main {
+  width: 100%;
+  min-height: 58px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 11px;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.folder-visual-main:hover {
+  transform: none;
+}
+
+.folder-visual-main strong,
+.folder-visual-main small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-visual-main strong {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.folder-visual-main small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.folder-glyph {
+  width: 48px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(10, 132, 255, 0.18);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f8fbff, #e8f4ff);
+  color: #0b4f9f;
+  font-size: 13px;
+  font-weight: 850;
+  box-shadow: 0 8px 18px rgba(10, 132, 255, 0.08);
+}
+
+.all-glyph {
+  color: #19784f;
+  background: linear-gradient(135deg, #f7fffb, #e8f8f0);
+}
+
+.unfiled-glyph {
+  color: #7a4b00;
+  background: linear-gradient(135deg, #fffdf7, #fff3dc);
+}
+
+.folder-action-row {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.folder-edit-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.folder-create-form {
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+@media (max-width: 880px) {
+  .favorites-workspace,
+  .filter-toolbar,
+  .tag-input-row,
+  .path-list div {
+    grid-template-columns: 1fr;
+  }
+
+  .favorites-workspace {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 560px) {
+  .history-card-header,
+  .favorite-tag-filter-card,
+  .note-tag-manager {
+    grid-template-columns: 1fr;
+  }
+}

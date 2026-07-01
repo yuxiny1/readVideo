@@ -225,7 +225,7 @@ python -m unittest discover -s tests
 - `backend/services/`: Download, transcription, video processing, note generation, Markdown file listing, and saved source update discovery.
 - `backend/storage/`: SQLite-backed watchlist, processing history, and favorite summary storage.
 - `frontend/angular/`: Angular TypeScript application source.
-- `frontend/css/`: Shared Angular styles. `styles.css` is only the import manifest; page and component styles live in `frontend/css/partials/`.
+- `frontend/angular/src/styles.css`: Global design tokens and native control primitives. Each feature component owns its HTML, TypeScript, tests, and SCSS in one folder.
 - `config/`: Environment examples and local env files.
 - `docs/`: Project documentation.
 - `tests/`: Unit tests.

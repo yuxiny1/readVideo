@@ -1,46 +1,16 @@
-.panel-subtitle {
-  margin: 4px 0 0;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 680;
-  line-height: 1.45;
-}
-
-.filter-toolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(190px, 260px);
-  gap: 10px;
-  align-items: end;
-  margin-bottom: 12px;
-}
-
-.search-field {
-  min-width: 0;
-}
-
-.tag-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  align-items: center;
-}
-
-.compact-tag-strip {
-  margin-bottom: 0;
-}
-
-.note-tag-strip {
-  margin-top: 10px;
+:host {
+  max-width: 100%;
+  display: inline-flex;
 }
 
 .tag-chip {
   width: auto;
+  max-width: 100%;
   min-height: 28px;
   display: inline-flex;
-  gap: 6px;
+  gap: 3px;
   align-items: center;
   justify-content: center;
-  max-width: 100%;
   padding: 4px 9px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -56,12 +26,14 @@ button.tag-chip {
   cursor: pointer;
 }
 
-.tag-chip span {
-  color: var(--muted);
+.tag-count {
+  margin-left: 3px;
+  color: inherit;
   font-weight: 800;
+  opacity: 0.72;
 }
 
-.tag-chip.tag-tone-1 {
+.tag-tone-1 {
   --tag-bg: #eaf4ff;
   --tag-border: #b9d9fb;
   --tag-text: #145a9c;
@@ -69,7 +41,7 @@ button.tag-chip {
   --tag-dark-text: #a9d4ff;
 }
 
-.tag-chip.tag-tone-2 {
+.tag-tone-2 {
   --tag-bg: #e9f9f6;
   --tag-border: #aae1d7;
   --tag-text: #127469;
@@ -77,7 +49,7 @@ button.tag-chip {
   --tag-dark-text: #8ee0d3;
 }
 
-.tag-chip.tag-tone-3 {
+.tag-tone-3 {
   --tag-bg: #eef8ec;
   --tag-border: #beddb8;
   --tag-text: #3d7338;
@@ -85,7 +57,7 @@ button.tag-chip {
   --tag-dark-text: #b4dda9;
 }
 
-.tag-chip.tag-tone-4 {
+.tag-tone-4 {
   --tag-bg: #fff6df;
   --tag-border: #ead39a;
   --tag-text: #805a08;
@@ -93,7 +65,7 @@ button.tag-chip {
   --tag-dark-text: #f2cf7d;
 }
 
-.tag-chip.tag-tone-5 {
+.tag-tone-5 {
   --tag-bg: #fff0ea;
   --tag-border: #efc1b2;
   --tag-text: #9a4c34;
@@ -101,7 +73,7 @@ button.tag-chip {
   --tag-dark-text: #f0b29f;
 }
 
-.tag-chip.tag-tone-6 {
+.tag-tone-6 {
   --tag-bg: #fff0f5;
   --tag-border: #e9b9ca;
   --tag-text: #923e61;
@@ -109,7 +81,7 @@ button.tag-chip {
   --tag-dark-text: #e8a5bf;
 }
 
-.tag-chip.tag-tone-7 {
+.tag-tone-7 {
   --tag-bg: #f4f0fb;
   --tag-border: #cfc2e6;
   --tag-text: #655087;
@@ -117,7 +89,7 @@ button.tag-chip {
   --tag-dark-text: #c9b5ed;
 }
 
-.tag-chip.tag-tone-8 {
+.tag-tone-8 {
   --tag-bg: #eef2fa;
   --tag-border: #bdcae3;
   --tag-text: #435d91;
@@ -125,15 +97,10 @@ button.tag-chip {
   --tag-dark-text: #acbfea;
 }
 
-.tag-chip[class*="tag-tone-"] {
+[class*="tag-tone-"] {
   border-color: var(--tag-border);
   background: var(--tag-bg);
   color: var(--tag-text);
-}
-
-.tag-chip[class*="tag-tone-"] span {
-  color: inherit;
-  opacity: 0.72;
 }
 
 .tag-chip:hover,
@@ -144,65 +111,46 @@ button.tag-chip {
   box-shadow: 0 8px 18px rgba(10, 132, 255, 0.08);
 }
 
-.tag-chip[class*="tag-tone-"]:hover,
-.tag-chip[class*="tag-tone-"].active {
+[class*="tag-tone-"]:hover,
+[class*="tag-tone-"].active {
   border-color: var(--tag-text);
   background: var(--tag-active);
   color: var(--tag-text);
   box-shadow: 0 7px 16px color-mix(in srgb, var(--tag-text) 16%, transparent);
 }
 
-.tag-chip.muted {
+.muted {
   color: var(--muted);
   background: rgba(255, 255, 255, 0.55);
 }
 
-.tag-chip.mini {
+.mini {
   min-height: 24px;
   padding: 3px 7px;
   font-size: 11px;
 }
 
-.tag-editor {
-  min-width: 0;
-}
-
-.tag-input-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 6px;
-  align-items: start;
-}
-
-.tag-input-row input {
-  min-height: 32px;
-  padding: 6px 9px;
-  font-size: 12px;
-}
-
-.reader-workspace.reader-focus-dark .tag-chip,
-.reader-topbar.reader-focus-dark .tag-chip {
+:host-context(.reader-focus-dark) .tag-chip {
   border-color: rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.07);
   color: #f1eadf;
 }
 
-.reader-workspace.reader-focus-dark .tag-chip.active,
-.reader-workspace.reader-focus-dark .tag-chip:hover {
+:host-context(.reader-focus-dark) .tag-chip.active,
+:host-context(.reader-focus-dark) .tag-chip:hover {
   border-color: rgba(245, 205, 128, 0.28);
   background: rgba(245, 205, 128, 0.13);
   color: #ffe2a3;
 }
 
-.reader-workspace.reader-focus-dark .tag-chip[class*="tag-tone-"],
-.reader-topbar.reader-focus-dark .tag-chip[class*="tag-tone-"] {
+:host-context(.reader-focus-dark) [class*="tag-tone-"] {
   border-color: color-mix(in srgb, var(--tag-dark-text) 38%, transparent);
   background: color-mix(in srgb, var(--tag-dark-text) 12%, transparent);
   color: var(--tag-dark-text);
 }
 
-.reader-workspace.reader-focus-dark .tag-chip[class*="tag-tone-"]:hover,
-.reader-workspace.reader-focus-dark .tag-chip[class*="tag-tone-"].active {
+:host-context(.reader-focus-dark) [class*="tag-tone-"]:hover,
+:host-context(.reader-focus-dark) [class*="tag-tone-"].active {
   border-color: color-mix(in srgb, var(--tag-dark-text) 68%, transparent);
   background: color-mix(in srgb, var(--tag-dark-text) 20%, transparent);
   color: var(--tag-dark-text);
