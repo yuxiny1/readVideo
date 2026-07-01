@@ -109,6 +109,27 @@ class MainAppTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
 
+    def test_process_video_endpoint_records_queue_failures(self):
+        with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
+            "os.environ",
+            {
+                "READVIDEO_TRANSCRIPTION_BACKEND": "local",
+                "READVIDEO_DATABASE_PATH": str(Path(tmpdir) / "history.sqlite3"),
+            },
+        ), patch.object(routes, "enqueue_video_processing", side_effect=RuntimeError("Redis 已断开")):
+            client = TestClient(app)
+            response = client.post(
+                "/process_video/",
+                json={
+                    "task_id": "queue-failure",
+                    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                },
+            )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(TASKS["queue-failure"]["status"], "failed")
+        self.assertIn("任务队列暂时不可用", TASKS["queue-failure"]["error"])
+
     def test_index_serves_frontend(self):
         client = TestClient(app)
         response = client.get("/")

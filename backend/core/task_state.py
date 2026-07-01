@@ -1,8 +1,11 @@
 from datetime import datetime
 from typing import Any
 
+from backend.core.task_repository import TaskRepository
+
 
 TASKS: dict[str, dict[str, Any]] = {}
+TASK_REPOSITORY = TaskRepository(TASKS)
 MAX_TASK_LOGS = 120
 
 
@@ -14,7 +17,7 @@ def set_task_status(
     **details,
 ):
     now = datetime.now().isoformat(timespec="seconds")
-    previous = TASKS.get(task_id, {})
+    previous = TASK_REPOSITORY.get(task_id) or {}
     logs = list(previous.get("logs") or [])
     if log_message or previous.get("status") != status:
         logs = _append_log(
@@ -37,24 +40,24 @@ def set_task_status(
     }
     if status in {"completed", "failed"}:
         task["completed_at"] = now
-    TASKS[task_id] = task
+    TASK_REPOSITORY.save(task)
 
 
 def update_task_details(task_id: str, **details):
     now = datetime.now().isoformat(timespec="seconds")
-    previous = TASKS.get(task_id, {})
-    TASKS[task_id] = {
+    previous = TASK_REPOSITORY.get(task_id) or {}
+    TASK_REPOSITORY.save({
         **previous,
         "task_id": task_id,
         "created_at": previous.get("created_at", now),
         "updated_at": now,
         **details,
-    }
+    })
 
 
 def append_task_log(task_id: str, message: str, level: str = "info", status: str | None = None):
     now = datetime.now().isoformat(timespec="seconds")
-    previous = TASKS.get(task_id, {})
+    previous = TASK_REPOSITORY.get(task_id) or {}
     logs = _append_log(
         list(previous.get("logs") or []),
         {
@@ -64,29 +67,25 @@ def append_task_log(task_id: str, message: str, level: str = "info", status: str
             "message": message,
         },
     )
-    TASKS[task_id] = {
+    TASK_REPOSITORY.save({
         **previous,
         "task_id": task_id,
         "created_at": previous.get("created_at", now),
         "updated_at": now,
         "logs": logs,
-    }
+    })
 
 
 def get_task(task_id: str) -> dict[str, Any] | None:
-    return TASKS.get(task_id)
+    return TASK_REPOSITORY.get(task_id)
 
 
 def list_tasks() -> list[dict[str, Any]]:
-    return sorted(
-        TASKS.values(),
-        key=lambda task: task.get("updated_at", ""),
-        reverse=True,
-    )
+    return TASK_REPOSITORY.list()
 
 
 def clear_tasks():
-    TASKS.clear()
+    TASK_REPOSITORY.clear()
 
 
 def _append_log(logs: list[dict[str, Any]], entry: dict[str, Any]) -> list[dict[str, Any]]:

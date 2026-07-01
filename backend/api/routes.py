@@ -1,7 +1,7 @@
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Response
 from fastapi.responses import FileResponse
 
 from backend.api.schemas import (
@@ -28,7 +28,9 @@ from backend.services.ollama_models import (
     pull_ollama_model,
     recommended_models,
 )
+from backend.services.platform_health import inspect_platform
 from backend.services.source_updates import list_source_updates
+from backend.services.task_queue import enqueue_video_processing
 from backend.services.video_processor import process_video, resolve_note_style, resolve_notes_backend, resolve_transcription_settings
 from backend.services.whisper_models import (
     download_whisper_model,
@@ -112,27 +114,38 @@ async def create_task(request: ProcessVideoRequest, background_tasks: Background
     queued_task = get_task(task_id)
     if queued_task is not None:
         HistoryStore(settings.database_path).upsert_task(queued_task)
-    background_tasks.add_task(
-        process_video,
-        task_id,
-        str(request.url),
-        request.notes_dir,
-        request.notes_backend,
-        request.note_style,
-        request.ollama_model,
-        request.reuse_task_id,
-        request.force_download,
-        request.delete_video_after_completion,
-        request.transcription_backend,
-        request.transcription_model,
-        request.transcription_prompt,
-        request.local_whisper_model,
-        request.local_whisper_language,
-    )
+    try:
+        queue_backend = enqueue_video_processing(
+            background_tasks,
+            process_video,
+            settings,
+            task_id,
+            str(request.url),
+            request.notes_dir,
+            request.notes_backend,
+            request.note_style,
+            request.ollama_model,
+            request.reuse_task_id,
+            request.force_download,
+            request.delete_video_after_completion,
+            request.transcription_backend,
+            request.transcription_model,
+            request.transcription_prompt,
+            request.local_whisper_model,
+            request.local_whisper_language,
+        )
+    except Exception as exc:
+        message = f"任务队列暂时不可用：{exc}"
+        set_task_status(task_id, "failed", message, log_level="error", error=message)
+        failed_task = get_task(task_id)
+        if failed_task is not None:
+            HistoryStore(settings.database_path).upsert_task(failed_task)
+        raise HTTPException(status_code=503, detail=message) from exc
 
     return {
         "task_id": task_id,
         "status": "queued",
+        "queue_backend": queue_backend,
         "status_url": f"/task_status/{task_id}",
     }
 
@@ -414,6 +427,14 @@ async def list_watch_item_updates(item_id: int, limit: int = Query(default=8, ge
 @router.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@router.get("/health/ready")
+async def readiness(response: Response):
+    result = inspect_platform(load_settings())
+    if result["status"] == "unavailable":
+        response.status_code = 503
+    return result
 
 
 @router.get("/app_config")

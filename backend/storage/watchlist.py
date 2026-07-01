@@ -1,8 +1,10 @@
-import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
 from typing import Optional
+
+from sqlalchemy import delete, func, select, update
+
+from backend.storage.database import Database, watchlist
 
 
 @dataclass(frozen=True)
@@ -18,67 +20,49 @@ class WatchItem:
 class WatchlistStore:
     def __init__(self, database_path: str = "readvideo.sqlite3"):
         self.database_path = database_path
-        self._ensure_schema()
-
-    def _connect(self):
-        Path(self.database_path).parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(self.database_path)
-        conn.row_factory = sqlite3.Row
-        return conn
-
-    def _ensure_schema(self):
-        with self._connect() as conn:
-            conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS watchlist (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL,
-                    url TEXT NOT NULL,
-                    notes TEXT NOT NULL DEFAULT '',
-                    created_at TEXT NOT NULL,
-                    sort_order INTEGER NOT NULL DEFAULT 0
-                )
-                """
-            )
-            columns = {row["name"] for row in conn.execute("PRAGMA table_info(watchlist)").fetchall()}
-            if "sort_order" not in columns:
-                conn.execute("ALTER TABLE watchlist ADD COLUMN sort_order INTEGER")
-            conn.execute("UPDATE watchlist SET sort_order = id WHERE sort_order IS NULL OR sort_order <= 0")
+        self.database = Database(database_path)
 
     def list_items(self) -> list[WatchItem]:
-        with self._connect() as conn:
-            rows = conn.execute(
-                """
-                SELECT id, name, url, notes, created_at, sort_order
-                FROM watchlist
-                ORDER BY sort_order ASC, created_at DESC
-                """
-            ).fetchall()
+        statement = select(watchlist).order_by(watchlist.c.sort_order.asc(), watchlist.c.created_at.desc())
+        with self.database.begin() as connection:
+            rows = connection.execute(statement).mappings().all()
         return [_row_to_item(row) for row in rows]
 
     def add_item(self, name: str, url: str, notes: str = "") -> WatchItem:
         created_at = datetime.now().isoformat(timespec="seconds")
-        with self._connect() as conn:
-            sort_order = conn.execute("SELECT COALESCE(MAX(sort_order), 0) + 1 FROM watchlist").fetchone()[0]
-            cursor = conn.execute(
-                "INSERT INTO watchlist (name, url, notes, created_at, sort_order) VALUES (?, ?, ?, ?, ?)",
-                (name.strip(), url.strip(), notes.strip(), created_at, sort_order),
+        clean_name = name.strip()
+        clean_url = url.strip()
+        clean_notes = notes.strip()
+        with self.database.begin() as connection:
+            sort_order = connection.execute(
+                select(func.coalesce(func.max(watchlist.c.sort_order), 0) + 1),
+            ).scalar_one()
+            result = connection.execute(
+                watchlist.insert().values(
+                    name=clean_name,
+                    url=clean_url,
+                    notes=clean_notes,
+                    created_at=created_at,
+                    sort_order=sort_order,
+                ),
             )
-            item_id = cursor.lastrowid
-        return WatchItem(item_id, name.strip(), url.strip(), notes.strip(), created_at, sort_order)
+            item_id = int(result.inserted_primary_key[0])
+        return WatchItem(item_id, clean_name, clean_url, clean_notes, created_at, sort_order)
 
     def delete_item(self, item_id: int) -> bool:
-        with self._connect() as conn:
-            cursor = conn.execute("DELETE FROM watchlist WHERE id = ?", (item_id,))
-            return cursor.rowcount > 0
+        with self.database.begin() as connection:
+            result = connection.execute(delete(watchlist).where(watchlist.c.id == item_id))
+            return result.rowcount > 0
 
     def update_item(self, item_id: int, name: str, url: str, notes: str = "") -> Optional[WatchItem]:
-        with self._connect() as conn:
-            cursor = conn.execute(
-                "UPDATE watchlist SET name = ?, url = ?, notes = ? WHERE id = ?",
-                (name.strip(), url.strip(), notes.strip(), item_id),
-            )
-            if cursor.rowcount == 0:
+        statement = (
+            update(watchlist)
+            .where(watchlist.c.id == item_id)
+            .values(name=name.strip(), url=url.strip(), notes=notes.strip())
+        )
+        with self.database.begin() as connection:
+            result = connection.execute(statement)
+            if result.rowcount == 0:
                 return None
         return self.get_item(item_id)
 
@@ -86,47 +70,36 @@ class WatchlistStore:
         if not item_ids:
             return self.list_items()
 
-        unique_ids = []
-        seen = set()
-        for item_id in item_ids:
-            if item_id not in seen:
-                unique_ids.append(item_id)
-                seen.add(item_id)
-
-        with self._connect() as conn:
-            existing_ids = {
-                row["id"]
-                for row in conn.execute(
-                    "SELECT id FROM watchlist WHERE id IN ({})".format(",".join("?" for _ in unique_ids)),
-                    tuple(unique_ids),
-                ).fetchall()
-            }
+        unique_ids = list(dict.fromkeys(item_ids))
+        with self.database.begin() as connection:
+            existing_ids = set(
+                connection.execute(select(watchlist.c.id).where(watchlist.c.id.in_(unique_ids))).scalars().all(),
+            )
             missing_ids = set(unique_ids) - existing_ids
             if missing_ids:
                 raise ValueError(f"找不到以下订阅源编号：{sorted(missing_ids)}")
 
             for index, item_id in enumerate(unique_ids, start=1):
-                conn.execute("UPDATE watchlist SET sort_order = ? WHERE id = ?", (index, item_id))
+                connection.execute(
+                    update(watchlist).where(watchlist.c.id == item_id).values(sort_order=index),
+                )
 
-            trailing = conn.execute(
-                """
-                SELECT id FROM watchlist
-                WHERE id NOT IN ({})
-                ORDER BY sort_order ASC, created_at DESC
-                """.format(",".join("?" for _ in unique_ids)),
-                tuple(unique_ids),
-            ).fetchall()
-            for offset, row in enumerate(trailing, start=len(unique_ids) + 1):
-                conn.execute("UPDATE watchlist SET sort_order = ? WHERE id = ?", (offset, row["id"]))
-
+            trailing = connection.execute(
+                select(watchlist.c.id)
+                .where(watchlist.c.id.not_in(unique_ids))
+                .order_by(watchlist.c.sort_order.asc(), watchlist.c.created_at.desc()),
+            ).scalars().all()
+            for offset, item_id in enumerate(trailing, start=len(unique_ids) + 1):
+                connection.execute(
+                    update(watchlist).where(watchlist.c.id == item_id).values(sort_order=offset),
+                )
         return self.list_items()
 
     def get_item(self, item_id: int) -> Optional[WatchItem]:
-        with self._connect() as conn:
-            row = conn.execute(
-                "SELECT id, name, url, notes, created_at, sort_order FROM watchlist WHERE id = ?",
-                (item_id,),
-            ).fetchone()
+        with self.database.begin() as connection:
+            row = connection.execute(
+                select(watchlist).where(watchlist.c.id == item_id),
+            ).mappings().first()
         return _row_to_item(row) if row else None
 
 

@@ -102,6 +102,8 @@ The Google OAuth helper in `backend/services/google_auth.py` is optional and onl
 
 ## Run
 
+For the complete container platform with PostgreSQL, Redis, a separate worker, Ollama, and Portainer, follow [Container Platform](container-platform.md). The local process mode below remains available for lightweight development.
+
 ```bash
 python main.py
 ```
@@ -223,7 +225,9 @@ python -m unittest discover -s tests
 - `backend/api/`: HTTP routes and request schemas.
 - `backend/core/`: Settings and task state.
 - `backend/services/`: Download, transcription, video processing, note generation, Markdown file listing, and saved source update discovery.
-- `backend/storage/`: SQLite-backed watchlist, processing history, and favorite summary storage.
+- `backend/storage/`: SQLAlchemy-backed watchlist, history, favorites, and tags for SQLite or PostgreSQL.
+- `compose.yml`: Full container platform definition.
+- `deploy/`: Container images, Nginx routing, and environment template.
 - `frontend/angular/`: Angular TypeScript application source.
 - `frontend/angular/src/styles.css`: Global design tokens and native control primitives. Each feature component owns its HTML, TypeScript, tests, and SCSS in one folder.
 - `config/`: Environment examples and local env files.
