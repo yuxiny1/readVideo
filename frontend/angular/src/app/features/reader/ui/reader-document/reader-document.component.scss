@@ -1,0 +1,23 @@
+:host {
+  min-width: 0;
+  display: block;
+}
+
+.reader-stage {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: var(--shadow), var(--panel-glow);
+}
+
+:host-context(.reader-focus-mode) .reader-stage {
+  min-height: calc(100vh - 134px);
+}
+
+:host-context(.reader-focus-dark) .reader-stage {
+  border-color: rgba(255, 255, 255, 0.11);
+  background: #121315;
+  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.34);
+}

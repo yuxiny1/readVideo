@@ -1,0 +1,28 @@
+@let vm = reader;
+@if (vm.document.path()) {
+  <div class="reader-findbar">
+    <input
+      name="reader-find"
+      placeholder="在笔记中查找"
+      [ngModel]="vm.document.documentQuery()"
+      (ngModelChange)="vm.document.setDocumentQuery($event)"
+    >
+    <span class="caption">{{ vm.document.searchMatchCount() }} 处匹配</span>
+    <button class="secondary-button small-button" type="button" [disabled]="!vm.document.documentQuery().trim()" (click)="vm.document.findInDocument()">查找</button>
+  </div>
+}
+
+@if (vm.document.viewMode() === 'rendered') {
+  <article
+    class="markdown-reader modern-reader"
+    [class.reader-copy-wide]="vm.document.readerWidth() === 'wide'"
+    [class.reader-copy-large]="vm.document.readerTextSize() === 'large'"
+    [innerHTML]="vm.document.html()"
+  ></article>
+} @else {
+  <pre
+    class="markdown-source"
+    [class.reader-copy-wide]="vm.document.readerWidth() === 'wide'"
+    [class.reader-copy-large]="vm.document.readerTextSize() === 'large'"
+  >{{ vm.document.rawContent() || vm.document.emptyMessage() }}</pre>
+}

@@ -1,1 +1,111 @@
-/* Component-owned styles can move here as the shared feature stylesheet is decomposed. */
+:host {
+  display: block;
+}
+
+.reader-topbar {
+  justify-content: space-between;
+}
+
+.reader-topbar.reader-focus-topbar {
+  min-height: 64px;
+  padding: 14px 24px;
+}
+
+.reader-topbar.reader-focus-dark {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+  background: rgba(18, 19, 22, 0.84);
+  color: #f4efe4;
+}
+
+.reader-topbar.reader-focus-dark .pill {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.reader-topbar.reader-focus-dark .pill.muted,
+.reader-topbar.reader-focus-dark .quiet-link {
+  color: #b7b0a4;
+}
+
+.reader-topbar.reader-focus-dark .secondary-button,
+.reader-topbar.reader-focus-dark .quiet-link {
+  border-color: rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.07);
+  color: #f1eadf;
+}
+
+.reader-topbar.reader-focus-dark .secondary-button:hover,
+.reader-topbar.reader-focus-dark .quiet-link:hover {
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.focus-mode-launch {
+  min-width: 118px;
+}
+
+.reader-topbar.reader-focus-dark .focus-mode-launch {
+  background: #f5cd80;
+  color: #17130d;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
+}
+
+.reader-workspace {
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  padding: 24px 28px 34px;
+  display: grid;
+  grid-template-columns: clamp(300px, 24vw, 380px) minmax(0, 1fr) clamp(250px, 20vw, 310px);
+  gap: 22px;
+  align-items: start;
+}
+
+rv-reader-library,
+rv-reader-document,
+rv-reader-inspector {
+  min-width: 0;
+  display: block;
+}
+
+.reader-workspace.reader-wide-layout:not(.reader-focus-mode) {
+  width: min(1580px, 100%);
+  grid-template-columns: clamp(280px, 22vw, 340px) minmax(0, 1fr);
+}
+
+.reader-workspace.reader-wide-layout:not(.reader-focus-mode) rv-reader-inspector {
+  display: none;
+}
+
+.reader-workspace.reader-focus-mode {
+  width: min(1040px, 100%);
+  grid-template-columns: minmax(0, 1fr);
+  padding: 18px clamp(18px, 4vw, 42px) 42px;
+}
+
+@media (max-width: 1120px) {
+  .reader-workspace {
+    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  }
+
+  .reader-workspace.reader-wide-layout:not(.reader-focus-mode) {
+    grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  }
+
+  rv-reader-inspector {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 880px) {
+  .reader-workspace,
+  .reader-workspace.reader-wide-layout:not(.reader-focus-mode) {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+}
+
+@media (max-width: 560px) {
+  .reader-topbar {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 18px 16px;
+  }
+}

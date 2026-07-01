@@ -1,0 +1,272 @@
+:host {
+  display: block;
+}
+
+.reader-findbar {
+  padding: 12px 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  background: rgba(247, 251, 255, 0.7);
+}
+
+:host-context(.reader-focus-mode) .reader-findbar {
+  background: rgba(255, 255, 255, 0.86);
+}
+
+:host-context(.reader-focus-dark) .reader-findbar {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+  background: rgba(22, 23, 26, 0.9);
+}
+
+:host-context(.reader-focus-dark) .reader-findbar input {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f4efe4;
+}
+
+:host ::ng-deep .markdown-reader {
+  max-height: 620px;
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+:host ::ng-deep .modern-reader {
+  max-height: none;
+  min-height: calc(100vh - 210px);
+  padding: clamp(26px, 5vw, 58px);
+  border: 0;
+  border-radius: 0;
+  color: #1d1d1f;
+  font-size: 16px;
+  line-height: 1.76;
+}
+
+:host-context(.reader-focus-mode) ::ng-deep .modern-reader {
+  min-height: calc(100vh - 214px);
+  padding: clamp(34px, 6vw, 76px);
+}
+
+:host-context(.reader-focus-mode) ::ng-deep .modern-reader::selection,
+:host-context(.reader-focus-mode) .markdown-source::selection {
+  color: #081014;
+  background: rgba(245, 205, 128, 0.55);
+}
+
+:host-context(.reader-focus-dark) ::ng-deep .modern-reader {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 160px), #121315;
+  color: #f4efe4;
+}
+
+:host-context(.reader-focus-dark) ::ng-deep .modern-reader h1,
+:host-context(.reader-focus-dark) ::ng-deep .modern-reader h2,
+:host-context(.reader-focus-dark) ::ng-deep .modern-reader h3,
+:host-context(.reader-focus-dark) ::ng-deep .modern-reader h4 {
+  color: #fff7e8;
+}
+
+:host-context(.reader-focus-dark) ::ng-deep .modern-reader h2 {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+:host-context(.reader-focus-dark) ::ng-deep .modern-reader p,
+:host-context(.reader-focus-dark) ::ng-deep .modern-reader li {
+  color: #ddd5c8;
+}
+
+:host-context(.reader-focus-dark) ::ng-deep .modern-reader blockquote {
+  border-left-color: #f5cd80;
+  background: rgba(245, 205, 128, 0.08);
+  color: #ece1d2;
+}
+
+:host-context(.reader-focus-dark) ::ng-deep .modern-reader code {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffe2a3;
+}
+
+:host-context(.reader-focus-dark) ::ng-deep .modern-reader pre,
+:host-context(.reader-focus-dark) .markdown-source {
+  background: #0c0d0f;
+  color: #f1eadf;
+}
+
+:host ::ng-deep .modern-reader.reader-copy-wide {
+  padding-right: clamp(24px, 3vw, 44px);
+  padding-left: clamp(24px, 3vw, 44px);
+}
+
+:host ::ng-deep .modern-reader.reader-copy-large,
+:host ::ng-deep .modern-reader.reader-copy-large p,
+:host ::ng-deep .modern-reader.reader-copy-large li {
+  font-size: 18px;
+}
+
+:host ::ng-deep .modern-reader.reader-copy-large p,
+:host ::ng-deep .modern-reader.reader-copy-large li {
+  line-height: 1.82;
+}
+
+:host ::ng-deep .markdown-reader :is(h1, h2, h3) {
+  margin: 16px 0 8px;
+  color: var(--text);
+  text-transform: none;
+}
+
+:host ::ng-deep .modern-reader h1 {
+  margin-bottom: 18px;
+  font-size: clamp(28px, 4vw, 42px);
+  line-height: 1.12;
+  font-weight: 780;
+}
+
+:host ::ng-deep .modern-reader h2 {
+  margin-top: 34px;
+  padding-top: 10px;
+  font-size: 24px;
+  line-height: 1.24;
+}
+
+:host ::ng-deep .modern-reader h3 {
+  margin-top: 28px;
+  color: #2c2c2e;
+  font-size: 18px;
+  font-weight: 760;
+  text-transform: none;
+}
+
+:host ::ng-deep .modern-reader h4 {
+  margin: 24px 0 8px;
+  color: #3a3a3c;
+  font-size: 15px;
+}
+
+:host ::ng-deep .modern-reader :is(h1, h2, h3, h4) {
+  scroll-margin-top: 110px;
+}
+
+:host ::ng-deep .modern-reader p,
+:host ::ng-deep .modern-reader li {
+  color: #2c2c2e;
+  font-size: 16px;
+  line-height: 1.78;
+}
+
+:host ::ng-deep .modern-reader p {
+  margin-bottom: 16px;
+}
+
+:host ::ng-deep .modern-reader :is(ul, ol) {
+  margin: 0 0 18px;
+  padding-left: 24px;
+}
+
+:host ::ng-deep .modern-reader li {
+  margin: 6px 0;
+}
+
+:host ::ng-deep .modern-reader blockquote {
+  margin-top: 20px;
+  margin-bottom: 20px;
+  padding: 14px 18px;
+  border-left: 3px solid var(--blue);
+  border-radius: 0 8px 8px 0;
+  background: rgba(245, 249, 255, 0.9);
+  color: #3a3a3c;
+}
+
+:host ::ng-deep .modern-reader hr {
+  margin-top: 28px;
+  margin-bottom: 28px;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+:host ::ng-deep .modern-reader code {
+  padding: 2px 5px;
+  border-radius: 5px;
+  background: #f2f2f5;
+  color: #1d1d1f;
+}
+
+:host ::ng-deep .markdown-reader pre {
+  overflow: auto;
+  padding: 12px;
+  border-radius: 6px;
+  background: #121922;
+  color: #f5f5f7;
+}
+
+:host ::ng-deep .modern-reader pre {
+  max-width: 100%;
+  margin-top: 18px;
+  margin-bottom: 18px;
+  padding: 18px;
+  border-radius: 8px;
+}
+
+:host ::ng-deep .modern-reader pre code {
+  padding: 0;
+  background: transparent;
+  color: inherit;
+}
+
+:host ::ng-deep .modern-reader > :is(h1, h2, h3, h4, p, ul, ol, blockquote, hr, pre) {
+  max-width: 72ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+:host ::ng-deep .modern-reader.reader-copy-wide > :is(h1, h2, h3, h4, p, ul, ol, blockquote, hr, pre),
+:host-context(.reader-focus-mode) ::ng-deep .modern-reader.reader-copy-wide > :is(h1, h2, h3, h4, p, ul, ol, blockquote, hr, pre) {
+  max-width: 104ch;
+}
+
+:host ::ng-deep .reader-empty {
+  min-height: 360px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.markdown-source {
+  min-height: calc(100vh - 252px);
+  margin: 0;
+  padding: clamp(22px, 4vw, 46px);
+  overflow: auto;
+  border: 0;
+  background: rgba(18, 25, 34, 0.96);
+  color: #f6fbff;
+  font: 13px/1.72 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.markdown-source.reader-copy-wide {
+  font-size: 14px;
+}
+
+.markdown-source.reader-copy-large {
+  font-size: 15px;
+  line-height: 1.82;
+}
+
+@media (max-width: 880px) {
+  .reader-findbar {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  :host ::ng-deep .modern-reader {
+    padding: 22px 18px;
+  }
+}

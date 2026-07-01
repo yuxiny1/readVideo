@@ -1,0 +1,85 @@
+@let vm = reader;
+<aside class="reader-inspector">
+  <section class="tool-panel reader-inspector-panel">
+    <div class="panel-header">
+      <h2>笔记信息</h2>
+      <span class="pill muted">{{ vm.document.headings().length }} 个章节</span>
+    </div>
+
+    <section class="reader-section">
+      <h3>阅读设置</h3>
+      <div class="reader-setting-row">
+        <span>正文宽度</span>
+        <div class="segmented-control" aria-label="正文宽度">
+          <button type="button" [ngClass]="vm.document.readerWidth() === 'standard' ? 'active' : ''" (click)="vm.document.setReaderWidth('standard')">标准</button>
+          <button type="button" [ngClass]="vm.document.readerWidth() === 'wide' ? 'active' : ''" (click)="vm.document.setReaderWidth('wide')">宽版</button>
+        </div>
+      </div>
+      <div class="reader-setting-row">
+        <span>正文字号</span>
+        <div class="segmented-control" aria-label="正文字号">
+          <button type="button" [ngClass]="vm.document.readerTextSize() === 'standard' ? 'active' : ''" (click)="vm.document.setReaderTextSize('standard')">标准</button>
+          <button type="button" [ngClass]="vm.document.readerTextSize() === 'large' ? 'active' : ''" (click)="vm.document.setReaderTextSize('large')">大号</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="reader-section">
+      <div class="section-heading-row">
+        <h3>目录</h3>
+        <span class="caption">{{ vm.document.headings().length }}</span>
+      </div>
+      <div class="reader-outline-list">
+        @if (!vm.document.headings().length) {
+          <div class="empty-state">这篇笔记没有章节标题。</div>
+        } @else {
+          @for (heading of vm.document.headings(); track heading.id) {
+            <button
+              class="reader-outline-item"
+              [class.level-2]="heading.level === 2"
+              [class.level-3]="heading.level === 3"
+              type="button"
+              (click)="vm.document.scrollToHeading(heading.id)"
+            >
+              {{ heading.title }}
+            </button>
+          }
+        }
+      </div>
+    </section>
+
+    <section class="reader-section">
+      <h3>详细信息</h3>
+      <dl class="reader-detail-list">
+        <div>
+          <dt>路径</dt>
+          <dd>
+            @if (vm.document.path()) {
+              <button class="path-copy-button" type="button" (click)="vm.document.copyPath()">{{ vm.document.path() }}</button>
+            } @else {<span>-</span>}
+          </dd>
+        </div>
+        <div>
+          <dt>来源</dt>
+          <dd>
+            @if (vm.document.sourceUrl()) {
+              @if (vm.document.sourceUrl().startsWith('http')) {
+                <a class="path-anchor" [href]="vm.document.sourceUrl()" target="_blank" rel="noreferrer">{{ vm.document.sourceUrl() }}</a>
+              } @else {<code>{{ vm.document.sourceUrl() }}</code>}
+            } @else {<span>-</span>}
+          </dd>
+        </div>
+        <div><dt>生成时间</dt><dd>{{ vm.document.generatedAt() || "-" }}</dd></div>
+        <div><dt>标签</dt><dd>{{ vm.activeDocumentTags().length ? vm.activeDocumentTags().join(", ") : "-" }}</dd></div>
+        <div>
+          <dt>转录文件</dt>
+          <dd>
+            @if (vm.document.transcriptPath()) {
+              <button class="path-copy-button" type="button" (click)="vm.document.copyPath(vm.document.transcriptPath())">{{ vm.document.transcriptPath() }}</button>
+            } @else {<span>-</span>}
+          </dd>
+        </div>
+      </dl>
+    </section>
+  </section>
+</aside>

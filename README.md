@@ -173,7 +173,7 @@ python -m unittest
 - `backend/services/`: Download, transcription, video processing, Ollama model checks, note generation, Markdown file listing, and saved source update discovery.
 - `backend/storage/`: SQLite-backed watchlist, processing history, and favorite summary storage.
 - `frontend/angular/`: Angular TypeScript application source.
-- `frontend/css/`: Shared app styles imported by Angular.
+- `frontend/angular/src/styles.css`: Global design tokens and native control primitives; feature styles are colocated with their Angular components.
 - `config/`: Environment examples and local env files.
 - `docs/`: Project documentation.
 - `tests/`: Unit tests.

@@ -1,1 +1,115 @@
-/* Component-owned styles can move here as the shared shell stylesheet is decomposed. */
+.app-layout {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 244px minmax(0, 1fr);
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 22px 16px;
+  border-right: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(242, 248, 252, 0.86)),
+    linear-gradient(90deg, rgba(0, 166, 184, 0.08), transparent 36%);
+  backdrop-filter: saturate(180%) blur(22px);
+}
+
+.brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 22px;
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 820;
+  letter-spacing: 0;
+  text-decoration: none;
+}
+
+.brand-link::before {
+  content: "";
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--cyan), var(--mint));
+  box-shadow: 0 0 18px rgba(0, 166, 184, 0.42);
+}
+
+.side-nav {
+  display: grid;
+  gap: 8px;
+}
+
+.side-link {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #263241;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.side-link:hover,
+.side-link.active {
+  border-color: rgba(0, 166, 184, 0.22);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 10px 26px rgba(9, 44, 84, 0.08), var(--panel-glow);
+}
+
+.side-link:hover {
+  transform: translateX(2px);
+}
+
+.side-link.active::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  width: 3px;
+  height: 18px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--cyan), var(--blue));
+}
+
+.page-content {
+  min-width: 0;
+}
+
+@media (max-width: 1120px) {
+  .app-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+    height: auto;
+    padding: 14px 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .brand-link {
+    margin-bottom: 10px;
+  }
+
+  .side-nav {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .side-link {
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .side-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

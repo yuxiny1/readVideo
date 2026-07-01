@@ -1,0 +1,25 @@
+@if (interactive()) {
+  <button
+    class="tag-chip"
+    [ngClass]="toneClass()"
+    [class.active]="active()"
+    [class.muted]="muted()"
+    [class.mini]="mini()"
+    type="button"
+    (click)="selected.emit()"
+  >
+    @if (prefix()) {<span aria-hidden="true">#</span>}{{ label() }}
+    @if (count() !== null) {<span class="tag-count">{{ count() }}</span>}
+  </button>
+} @else {
+  <span
+    class="tag-chip"
+    [ngClass]="toneClass()"
+    [class.active]="active()"
+    [class.muted]="muted()"
+    [class.mini]="mini()"
+  >
+    @if (prefix()) {<span aria-hidden="true">#</span>}{{ label() }}
+    @if (count() !== null) {<span class="tag-count">{{ count() }}</span>}
+  </span>
+}

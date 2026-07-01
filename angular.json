@@ -20,7 +20,6 @@
             "tsConfig": "tsconfig.app.json",
             "assets": [],
             "styles": [
-              "frontend/css/styles.css",
               "frontend/angular/src/styles.css"
             ]
           },

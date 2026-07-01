@@ -1,1 +1,50 @@
-/* Component-owned styles can move here as the shared feature stylesheet is decomposed. */
+.workspace {
+  width: min(1240px, 100%);
+  margin: 0 auto;
+  padding: 26px 28px 36px;
+  display: grid;
+  grid-template-columns: minmax(520px, 1fr) clamp(340px, 29vw, 400px);
+  grid-template-areas:
+    "process watch"
+    "output watch";
+  gap: 20px;
+}
+
+rv-process-panel,
+rv-latest-output,
+rv-saved-sources {
+  min-width: 0;
+  display: block;
+}
+
+rv-process-panel {
+  grid-area: process;
+}
+
+rv-latest-output {
+  grid-area: output;
+}
+
+rv-saved-sources {
+  grid-area: watch;
+  align-self: start;
+  position: sticky;
+  top: 20px;
+}
+
+@media (max-width: 1120px) {
+  rv-saved-sources {
+    position: static;
+  }
+}
+
+@media (max-width: 880px) {
+  .workspace {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "process"
+      "output"
+      "watch";
+    padding: 16px;
+  }
+}

@@ -1,1 +1,242 @@
-/* Component-owned styles can move here as the shared feature stylesheet is decomposed. */
+.progress-strip {
+  margin-top: 18px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(247, 251, 255, 0.74);
+}
+
+.field-status {
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.field-status.muted {
+  color: var(--muted);
+}
+
+.field-status.ok {
+  color: var(--green);
+}
+
+.field-status.pending {
+  color: var(--amber);
+}
+
+.field-status.error {
+  color: var(--red);
+}
+
+.checkbox-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.checkbox-option input {
+  margin-top: 2px;
+}
+
+.checkbox-option label {
+  margin-bottom: 3px;
+  color: var(--text);
+  font-weight: 760;
+}
+
+.checkbox-option p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.step {
+  min-height: 30px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.66);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.step.active {
+  border-color: rgba(25, 120, 79, 0.18);
+  background: rgba(231, 246, 238, 0.86);
+  color: var(--green);
+  box-shadow: 0 0 0 3px rgba(47, 191, 143, 0.08);
+}
+
+.step.pending {
+  border-color: rgba(181, 93, 0, 0.18);
+  background: #fff7ed;
+  color: var(--amber);
+}
+
+.step.failed {
+  color: var(--red);
+  background: #fff1f0;
+}
+
+.duplicate-panel {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid #f6c586;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #fffaf0, rgba(255, 255, 255, 0.84));
+}
+
+.duplicate-message {
+  margin: 6px 0 12px;
+  color: #3a3a3c;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.duplicate-actions {
+  justify-content: flex-start;
+}
+
+.compact-output {
+  margin-bottom: 12px;
+}
+
+.task-meter {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.task-phase-title {
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.task-phase-detail {
+  min-height: 20px;
+  margin-top: 4px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.meter-track {
+  height: 10px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(42, 58, 82, 0.1);
+}
+
+.meter-fill {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--blue), var(--cyan), var(--mint));
+  transition: width 180ms ease;
+}
+
+.run-log-block {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.task-log {
+  max-height: 260px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  list-style: none;
+}
+
+.task-log li {
+  padding: 8px 10px;
+  display: grid;
+  grid-template-columns: 142px 112px minmax(0, 1fr);
+  gap: 8px;
+  border-bottom: 1px solid #edf1f7;
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.task-log li:last-child {
+  border-bottom: 0;
+}
+
+.task-log li.error {
+  color: var(--red);
+  background: rgba(255, 248, 247, 0.86);
+}
+
+.task-log li.muted {
+  display: block;
+  color: var(--muted);
+}
+
+.task-log time,
+.task-log span {
+  color: var(--muted);
+  font-weight: 750;
+}
+
+.task-log p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.output-list {
+  margin: 0 0 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.output-list div {
+  padding: 9px 0;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  border-bottom: 1px solid rgba(111, 129, 153, 0.16);
+}
+
+.output-list dt {
+  color: var(--muted);
+  font-weight: 750;
+}
+
+.output-list dd {
+  margin: 0;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.compact-header {
+  margin-bottom: 10px;
+}
+
+@media (max-width: 880px) {
+  .task-log li,
+  .output-list div {
+    grid-template-columns: 1fr;
+  }
+}

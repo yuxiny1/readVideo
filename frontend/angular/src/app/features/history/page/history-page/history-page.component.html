@@ -33,13 +33,21 @@
     </div>
 
     <div class="tag-strip compact-tag-strip" aria-label="历史标签筛选">
-      <button class="tag-chip" [ngClass]="vm.activeTag() === 'all' ? 'active' : ''" type="button" (click)="vm.setActiveTag('all')">
-        全部 <span>{{ vm.tagCount("all") }}</span>
-      </button>
+      <rv-tag-chip
+        label="全部"
+        [count]="vm.tagCount('all')"
+        [active]="vm.activeTag() === 'all'"
+        [colored]="false"
+        [prefix]="false"
+        (selected)="vm.setActiveTag('all')"
+      />
       @for (tag of vm.tags(); track tag.id) {
-        <button class="tag-chip" [rvTagTone]="tag.name" [ngClass]="vm.activeTag() === tag.name ? 'active' : ''" type="button" (click)="vm.setActiveTag(tag.name)">
-          #{{ tag.name }} <span>{{ tag.task_count }}</span>
-        </button>
+        <rv-tag-chip
+          [label]="tag.name"
+          [count]="tag.task_count"
+          [active]="vm.activeTag() === tag.name"
+          (selected)="vm.setActiveTag(tag.name)"
+        />
       }
     </div>
 
@@ -67,10 +75,10 @@
 
             <div class="tag-strip note-tag-strip">
               @if (!vm.tagsFor(record).length) {
-                <span class="tag-chip muted">暂无标签</span>
+                <rv-tag-chip label="暂无标签" [interactive]="false" [colored]="false" [prefix]="false" [muted]="true" />
               } @else {
                 @for (tag of vm.tagsFor(record); track tag) {
-                  <button class="tag-chip" [rvTagTone]="tag" type="button" (click)="vm.setActiveTag(tag)">#{{ tag }}</button>
+                  <rv-tag-chip [label]="tag" (selected)="vm.setActiveTag(tag)" />
                 }
               }
             </div>
