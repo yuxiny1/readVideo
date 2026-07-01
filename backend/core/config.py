@@ -30,6 +30,8 @@ class Settings:
     ollama_model: str = "qwen2.5:32b"
     ollama_url: str = "http://127.0.0.1:11434/api/generate"
     database_path: str = "readvideo.sqlite3"
+    redis_url: str = ""
+    task_queue_name: str = "readvideo"
 
 
 def load_openai_api_key(config_path: str = "apiKey.json", required: bool = True) -> Optional[str]:
@@ -115,5 +117,7 @@ def load_settings() -> Settings:
         note_style=note_style,
         ollama_model=os.getenv("READVIDEO_OLLAMA_MODEL", "qwen2.5:32b"),
         ollama_url=os.getenv("READVIDEO_OLLAMA_URL", "http://127.0.0.1:11434/api/generate"),
-        database_path=os.getenv("READVIDEO_DATABASE_PATH", "readvideo.sqlite3"),
+        database_path=os.getenv("READVIDEO_DATABASE_URL") or os.getenv("READVIDEO_DATABASE_PATH", "readvideo.sqlite3"),
+        redis_url=os.getenv("READVIDEO_REDIS_URL", ""),
+        task_queue_name=os.getenv("READVIDEO_TASK_QUEUE", "readvideo"),
     )

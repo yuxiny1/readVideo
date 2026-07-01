@@ -1,8 +1,10 @@
 import re
-import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
+
+from sqlalchemy import delete, func, select, update
+
+from backend.storage.database import Database, dialect_insert, tags, task_tags
 
 
 @dataclass(frozen=True)
@@ -17,53 +19,23 @@ class TagSummary:
 class TagStore:
     def __init__(self, database_path: str = "readvideo.sqlite3"):
         self.database_path = database_path
-        self._ensure_schema()
-
-    def _connect(self):
-        Path(self.database_path).parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(self.database_path)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON")
-        return conn
-
-    def _ensure_schema(self):
-        with self._connect() as conn:
-            conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS tags (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL
-                )
-                """
-            )
-            conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS task_tags (
-                    task_id TEXT NOT NULL,
-                    tag_id INTEGER NOT NULL,
-                    created_at TEXT NOT NULL,
-                    PRIMARY KEY (task_id, tag_id),
-                    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
-                )
-                """
-            )
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_task_tags_task_id ON task_tags(task_id)")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_task_tags_tag_id ON task_tags(tag_id)")
+        self.database = Database(database_path)
 
     def list_tags(self) -> list[TagSummary]:
-        with self._connect() as conn:
-            rows = conn.execute(
-                """
-                SELECT tags.id, tags.name, tags.created_at, tags.updated_at,
-                       COUNT(task_tags.task_id) AS task_count
-                FROM tags
-                LEFT JOIN task_tags ON task_tags.tag_id = tags.id
-                GROUP BY tags.id
-                ORDER BY tags.name COLLATE NOCASE
-                """
-            ).fetchall()
+        statement = (
+            select(
+                tags.c.id,
+                tags.c.name,
+                tags.c.created_at,
+                tags.c.updated_at,
+                func.count(task_tags.c.task_id).label("task_count"),
+            )
+            .select_from(tags.outerjoin(task_tags, task_tags.c.tag_id == tags.c.id))
+            .group_by(tags.c.id)
+            .order_by(func.lower(tags.c.name))
+        )
+        with self.database.begin() as connection:
+            rows = connection.execute(statement).mappings().all()
         return [_row_to_tag(row) for row in rows]
 
     def tags_for_task(self, task_id: str) -> list[str]:
@@ -73,57 +45,61 @@ class TagStore:
         ids = [task_id for task_id in dict.fromkeys(task_ids) if task_id]
         if not ids:
             return {}
-        placeholders = ",".join("?" for _ in ids)
-        with self._connect() as conn:
-            rows = conn.execute(
-                f"""
-                SELECT task_tags.task_id, tags.name
-                FROM task_tags
-                JOIN tags ON tags.id = task_tags.tag_id
-                WHERE task_tags.task_id IN ({placeholders})
-                ORDER BY tags.name COLLATE NOCASE
-                """,
-                ids,
-            ).fetchall()
+        statement = (
+            select(task_tags.c.task_id, tags.c.name)
+            .join(tags, tags.c.id == task_tags.c.tag_id)
+            .where(task_tags.c.task_id.in_(ids))
+            .order_by(func.lower(tags.c.name))
+        )
+        with self.database.begin() as connection:
+            rows = connection.execute(statement).mappings().all()
         grouped = {task_id: [] for task_id in ids}
         for row in rows:
             grouped.setdefault(row["task_id"], []).append(row["name"])
         return grouped
 
-    def set_task_tags(self, task_id: str, tags: list[str]) -> list[str]:
+    def set_task_tags(self, task_id: str, tag_names: list[str]) -> list[str]:
         task_id = task_id.strip()
         if not task_id:
             raise ValueError("必须提供任务编号。")
-        cleaned_tags = normalize_tags(tags)
+        cleaned_tags = normalize_tags(tag_names)
         now = datetime.now().isoformat(timespec="seconds")
-        with self._connect() as conn:
+        with self.database.begin() as connection:
             tag_ids = []
             for name in cleaned_tags:
-                conn.execute(
-                    """
-                    INSERT INTO tags (name, created_at, updated_at)
-                    VALUES (?, ?, ?)
-                    ON CONFLICT(name) DO UPDATE SET updated_at = excluded.updated_at
-                    """,
-                    (name, now, now),
-                )
-                row = conn.execute("SELECT id FROM tags WHERE name = ? COLLATE NOCASE", (name,)).fetchone()
-                tag_ids.append(row["id"])
+                row = connection.execute(
+                    select(tags.c.id).where(func.lower(tags.c.name) == name.lower()),
+                ).first()
+                if row is None:
+                    result = connection.execute(
+                        tags.insert().values(name=name, created_at=now, updated_at=now),
+                    )
+                    tag_id = int(result.inserted_primary_key[0])
+                else:
+                    tag_id = int(row.id)
+                    connection.execute(
+                        update(tags).where(tags.c.id == tag_id).values(updated_at=now),
+                    )
+                tag_ids.append(tag_id)
 
-            conn.execute("DELETE FROM task_tags WHERE task_id = ?", (task_id,))
+            connection.execute(delete(task_tags).where(task_tags.c.task_id == task_id))
             for tag_id in tag_ids:
-                conn.execute(
-                    "INSERT OR IGNORE INTO task_tags (task_id, tag_id, created_at) VALUES (?, ?, ?)",
-                    (task_id, tag_id, now),
+                statement = dialect_insert(connection, task_tags).values(
+                    task_id=task_id,
+                    tag_id=tag_id,
+                    created_at=now,
                 )
-            conn.execute("DELETE FROM tags WHERE id NOT IN (SELECT tag_id FROM task_tags)")
+                connection.execute(statement.on_conflict_do_nothing())
+            connection.execute(
+                delete(tags).where(tags.c.id.not_in(select(task_tags.c.tag_id))),
+            )
         return cleaned_tags
 
 
-def normalize_tags(tags: list[str]) -> list[str]:
+def normalize_tags(tag_names: list[str]) -> list[str]:
     cleaned = []
     seen = set()
-    for tag in tags:
+    for tag in tag_names:
         name = re.sub(r"\s+", " ", str(tag).strip().lstrip("#")).strip()
         if not name:
             continue

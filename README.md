@@ -77,6 +77,22 @@ The Google OAuth helper in `google_auth.py` is optional and only needed if you e
 
 ## Run
 
+### Container platform
+
+The recommended full-stack setup runs Angular, FastAPI, the task worker, PostgreSQL, Redis, Ollama, and Portainer together:
+
+```bash
+cp deploy/container.env.example .container-env
+npm run containers:up
+npm run containers:migrate
+npm run containers:pull-model -- qwen2.5:32b
+```
+
+Open `http://localhost:8080` for readVideo and `https://localhost:9443` for Portainer. See [Container Platform](docs/container-platform.md) for GPU VM deployment, management, migration, and backup instructions.
+On macOS with an existing native Ollama installation, use `npm run containers:up:host-ollama` to keep Metal acceleration and reuse installed models.
+
+### Local process
+
 ```bash
 python main.py
 ```
@@ -171,7 +187,9 @@ python -m unittest
 - `backend/api/`: HTTP routes and request schemas.
 - `backend/core/`: Settings and task state.
 - `backend/services/`: Download, transcription, video processing, Ollama model checks, note generation, Markdown file listing, and saved source update discovery.
-- `backend/storage/`: SQLite-backed watchlist, processing history, and favorite summary storage.
+- `backend/storage/`: SQLAlchemy-backed history, favorites, tags, and watchlist storage for SQLite or PostgreSQL.
+- `compose.yml`: Full application platform and persistent services.
+- `deploy/`: Backend/frontend images, Nginx routing, and container environment example.
 - `frontend/angular/`: Angular TypeScript application source.
 - `frontend/angular/src/styles.css`: Global design tokens and native control primitives; feature styles are colocated with their Angular components.
 - `config/`: Environment examples and local env files.

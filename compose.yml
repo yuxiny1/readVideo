@@ -1,0 +1,163 @@
+name: readvideo
+
+x-backend-environment: &backend-environment
+  HOME: /tmp
+  READVIDEO_DATABASE_URL: postgresql+psycopg://readvideo:${READVIDEO_POSTGRES_PASSWORD:-readvideo-local}@postgres:5432/readvideo
+  READVIDEO_REDIS_URL: redis://redis:6379/0
+  READVIDEO_TASK_QUEUE: readvideo
+  READVIDEO_DOWNLOAD_DIR: /data/downloads/youtube_videos
+  READVIDEO_NOTES_DIR: /data/notes
+  READVIDEO_LOCAL_WHISPER_CLI: /usr/local/bin/whisper-cli
+  READVIDEO_LOCAL_WHISPER_MODEL: /models/ggml-large-v3-turbo.bin
+  READVIDEO_LOCAL_WHISPER_LANGUAGE: auto
+  READVIDEO_NOTES_BACKEND: ollama
+  READVIDEO_OLLAMA_MODEL: ${READVIDEO_OLLAMA_MODEL:-qwen2.5:32b}
+  READVIDEO_OLLAMA_URL: http://ollama:11434/api/generate
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+
+x-backend-volumes: &backend-volumes
+  - ./downloads:/data/downloads
+  - ./notes:/data/notes
+  - ./models:/models:ro
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: deploy/frontend.Dockerfile
+    image: readvideo/frontend:local
+    restart: unless-stopped
+    ports:
+      - "${READVIDEO_HTTP_PORT:-8080}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: deploy/backend.Dockerfile
+    image: readvideo/backend:local
+    restart: unless-stopped
+    user: "${READVIDEO_UID:-1000}:${READVIDEO_GID:-1000}"
+    environment: *backend-environment
+    volumes: *backend-volumes
+    ports:
+      - "${READVIDEO_API_PORT:-8001}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    image: readvideo/backend:local
+    restart: unless-stopped
+    user: "${READVIDEO_UID:-1000}:${READVIDEO_GID:-1000}"
+    command: ["rq", "worker", "--url", "redis://redis:6379/0", "readvideo", "--with-scheduler"]
+    environment: *backend-environment
+    volumes: *backend-volumes
+    healthcheck:
+      test: ["CMD", "python", "-c", "from redis import Redis; assert Redis.from_url('redis://redis:6379/0').ping()"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: readvideo
+      POSTGRES_USER: readvideo
+      POSTGRES_PASSWORD: ${READVIDEO_POSTGRES_PASSWORD:-readvideo-local}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U readvideo -d readvideo"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  ollama:
+    image: ${READVIDEO_OLLAMA_IMAGE:-ollama/ollama:latest}
+    restart: unless-stopped
+    volumes:
+      - ollama-data:/root/.ollama
+    ports:
+      - "${READVIDEO_OLLAMA_PORT:-11435}:11434"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 20s
+      timeout: 10s
+      start_period: 20s
+      retries: 10
+
+  portainer:
+    image: portainer/portainer-ce:lts
+    restart: unless-stopped
+    command: ["--host", "unix:///var/run/docker.sock"]
+    ports:
+      - "${READVIDEO_PORTAINER_PORT:-9443}:9443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer-data:/data
+
+  pgadmin:
+    image: dpage/pgadmin4:9
+    restart: unless-stopped
+    profiles: ["management"]
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${READVIDEO_PGADMIN_EMAIL:-admin@readvideo.local}
+      PGADMIN_DEFAULT_PASSWORD: ${READVIDEO_PGADMIN_PASSWORD:-readvideo-local}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "${READVIDEO_PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  migrate:
+    image: readvideo/backend:local
+    profiles: ["migration"]
+    command:
+      - python
+      - -m
+      - backend.storage.migrate
+      - --source
+      - /migration/readvideo.sqlite3
+      - --target
+      - postgresql+psycopg://readvideo:${READVIDEO_POSTGRES_PASSWORD:-readvideo-local}@postgres:5432/readvideo
+    volumes:
+      - ./readvideo.sqlite3:/migration/readvideo.sqlite3:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  redis-data:
+  ollama-data:
+  portainer-data:
+  pgadmin-data:

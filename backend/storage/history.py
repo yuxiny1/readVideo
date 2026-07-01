@@ -1,8 +1,11 @@
-import sqlite3
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import parse_qs, urlparse
+
+from sqlalchemy import select
+
+from backend.storage.database import Database, dialect_insert, task_history
 
 
 @dataclass(frozen=True)
@@ -27,152 +30,68 @@ class HistoryRecord:
 class HistoryStore:
     def __init__(self, database_path: str = "readvideo.sqlite3"):
         self.database_path = database_path
-        self._ensure_schema()
-
-    def _connect(self):
-        Path(self.database_path).parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(self.database_path)
-        conn.row_factory = sqlite3.Row
-        return conn
-
-    def _ensure_schema(self):
-        with self._connect() as conn:
-            conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS task_history (
-                    task_id TEXT PRIMARY KEY,
-                    status TEXT NOT NULL,
-                    url TEXT NOT NULL DEFAULT '',
-                    source_key TEXT NOT NULL DEFAULT '',
-                    title TEXT NOT NULL DEFAULT '',
-                    video_path TEXT NOT NULL DEFAULT '',
-                    transcription_path TEXT NOT NULL DEFAULT '',
-                    markdown_path TEXT NOT NULL DEFAULT '',
-                    summary TEXT NOT NULL DEFAULT '',
-                    error TEXT NOT NULL DEFAULT '',
-                    transcription_backend TEXT NOT NULL DEFAULT '',
-                    summary_backend TEXT NOT NULL DEFAULT '',
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL,
-                    completed_at TEXT
-                )
-                """
-            )
-            self._ensure_column(conn, "source_key", "TEXT NOT NULL DEFAULT ''")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_task_history_source_key ON task_history(source_key)")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_task_history_url ON task_history(url)")
-
-    def _ensure_column(self, conn, column_name: str, column_definition: str):
-        columns = {row["name"] for row in conn.execute("PRAGMA table_info(task_history)").fetchall()}
-        if column_name not in columns:
-            conn.execute(f"ALTER TABLE task_history ADD COLUMN {column_name} {column_definition}")
+        self.database = Database(database_path)
 
     def upsert_task(self, task: dict[str, Any]) -> HistoryRecord:
         record = _task_to_record(task)
-        with self._connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO task_history (
-                    task_id, status, url, source_key, title, video_path, transcription_path,
-                    markdown_path, summary, error, transcription_backend,
-                    summary_backend, created_at, updated_at, completed_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(task_id) DO UPDATE SET
-                    status = excluded.status,
-                    url = excluded.url,
-                    source_key = excluded.source_key,
-                    title = excluded.title,
-                    video_path = excluded.video_path,
-                    transcription_path = excluded.transcription_path,
-                    markdown_path = excluded.markdown_path,
-                    summary = excluded.summary,
-                    error = excluded.error,
-                    transcription_backend = excluded.transcription_backend,
-                    summary_backend = excluded.summary_backend,
-                    updated_at = excluded.updated_at,
-                    completed_at = excluded.completed_at
-                """,
-                _record_values(record),
+        values = asdict(record)
+        with self.database.begin() as connection:
+            statement = dialect_insert(connection, task_history).values(**values)
+            statement = statement.on_conflict_do_update(
+                index_elements=[task_history.c.task_id],
+                set_={
+                    key: statement.excluded[key]
+                    for key in values
+                    if key not in {"task_id", "created_at"}
+                },
             )
+            connection.execute(statement)
         return record
 
     def list_records(self, limit: int = 100) -> list[HistoryRecord]:
-        with self._connect() as conn:
-            rows = conn.execute(
-                """
-                SELECT task_id, status, url, title, video_path, transcription_path,
-                       source_key, markdown_path, summary, error, transcription_backend,
-                       summary_backend, created_at, updated_at, completed_at
-                FROM task_history
-                ORDER BY updated_at DESC
-                LIMIT ?
-                """,
-                (limit,),
-            ).fetchall()
+        statement = select(task_history).order_by(task_history.c.updated_at.desc()).limit(limit)
+        with self.database.begin() as connection:
+            rows = connection.execute(statement).mappings().all()
         return [_row_to_record(row) for row in rows]
 
     def get_record(self, task_id: str) -> Optional[HistoryRecord]:
-        with self._connect() as conn:
-            row = conn.execute(
-                """
-                SELECT task_id, status, url, title, video_path, transcription_path,
-                       source_key, markdown_path, summary, error, transcription_backend,
-                       summary_backend, created_at, updated_at, completed_at
-                FROM task_history
-                WHERE task_id = ?
-                """,
-                (task_id,),
-            ).fetchone()
+        with self.database.begin() as connection:
+            row = connection.execute(
+                select(task_history).where(task_history.c.task_id == task_id),
+            ).mappings().first()
         return _row_to_record(row) if row else None
 
     def find_latest_by_url(self, url: str) -> Optional[HistoryRecord]:
         source_key = source_key_for_url(url)
-        with self._connect() as conn:
+        with self.database.begin() as connection:
             if source_key:
-                row = conn.execute(
-                    """
-                    SELECT task_id, status, url, source_key, title, video_path, transcription_path,
-                           markdown_path, summary, error, transcription_backend,
-                           summary_backend, created_at, updated_at, completed_at
-                    FROM task_history
-                    WHERE source_key = ?
-                    ORDER BY updated_at DESC
-                    LIMIT 1
-                    """,
-                    (source_key,),
-                ).fetchone()
+                row = connection.execute(
+                    select(task_history)
+                    .where(task_history.c.source_key == source_key)
+                    .order_by(task_history.c.updated_at.desc())
+                    .limit(1),
+                ).mappings().first()
                 if row:
                     return _row_to_record(row)
 
-            row = conn.execute(
-                """
-                SELECT task_id, status, url, source_key, title, video_path, transcription_path,
-                       markdown_path, summary, error, transcription_backend,
-                       summary_backend, created_at, updated_at, completed_at
-                FROM task_history
-                WHERE url = ?
-                ORDER BY updated_at DESC
-                LIMIT 1
-                """,
-                (url,),
-            ).fetchone()
+            row = connection.execute(
+                select(task_history)
+                .where(task_history.c.url == url)
+                .order_by(task_history.c.updated_at.desc())
+                .limit(1),
+            ).mappings().first()
             if row:
                 return _row_to_record(row)
 
+            rows = []
             if source_key:
-                rows = conn.execute(
-                    """
-                    SELECT task_id, status, url, source_key, title, video_path, transcription_path,
-                           markdown_path, summary, error, transcription_backend,
-                           summary_backend, created_at, updated_at, completed_at
-                    FROM task_history
-                    WHERE url != ''
-                    ORDER BY updated_at DESC
-                    LIMIT 500
-                    """
-                ).fetchall()
-        for row in rows if source_key else []:
+                rows = connection.execute(
+                    select(task_history)
+                    .where(task_history.c.url != "")
+                    .order_by(task_history.c.updated_at.desc())
+                    .limit(500),
+                ).mappings().all()
+        for row in rows:
             if source_key_for_url(row["url"]) == source_key:
                 return _row_to_record(row)
         return None
@@ -208,7 +127,7 @@ def _row_to_record(row) -> HistoryRecord:
         task_id=row["task_id"],
         status=row["status"],
         url=row["url"],
-        source_key=row["source_key"] if "source_key" in row.keys() else source_key_for_url(row["url"]),
+        source_key=row["source_key"] or source_key_for_url(row["url"]),
         title=row["title"],
         video_path=row["video_path"],
         transcription_path=row["transcription_path"],
@@ -220,26 +139,6 @@ def _row_to_record(row) -> HistoryRecord:
         created_at=row["created_at"],
         updated_at=row["updated_at"],
         completed_at=row["completed_at"],
-    )
-
-
-def _record_values(record: HistoryRecord) -> tuple:
-    return (
-        record.task_id,
-        record.status,
-        record.url,
-        record.source_key,
-        record.title,
-        record.video_path,
-        record.transcription_path,
-        record.markdown_path,
-        record.summary,
-        record.error,
-        record.transcription_backend,
-        record.summary_backend,
-        record.created_at,
-        record.updated_at,
-        record.completed_at,
     )
 
 

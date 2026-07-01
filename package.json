@@ -17,7 +17,17 @@
     "test:frontend": "ng test --watch=false",
     "test:frontend:coverage": "ng test --watch=false --coverage",
     "test": ".venv/bin/python -m unittest -v",
-    "test:coverage": ".venv/bin/python -m coverage run -m unittest discover -v && .venv/bin/python -m coverage report --fail-under=80"
+    "test:coverage": ".venv/bin/python -m coverage run -m unittest discover -v && .venv/bin/python -m coverage report --fail-under=80",
+    "containers:up": "./scripts/containers.sh up",
+    "containers:up:gpu": "./scripts/containers.sh up-gpu",
+    "containers:up:host-ollama": "./scripts/containers.sh up-host-ollama",
+    "containers:management": "./scripts/containers.sh management",
+    "containers:down": "./scripts/containers.sh down",
+    "containers:logs": "./scripts/containers.sh logs",
+    "containers:ps": "./scripts/containers.sh ps",
+    "containers:migrate": "./scripts/containers.sh migrate",
+    "containers:pull-model": "./scripts/containers.sh pull-model",
+    "containers:backup": "./scripts/containers.sh backup"
   },
   "dependencies": {
     "@angular/common": "21.2.13",
