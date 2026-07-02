@@ -185,6 +185,7 @@ python -m unittest
 - `main.py`: Thin backwards-compatible entrypoint for `uvicorn main:app`.
 - `backend/app.py`: FastAPI app, Angular static mounting, page routes, and router registration.
 - `backend/api/`: HTTP routes and request schemas.
+- `backend/application/`: CQRS Commands, Queries, Handlers, and Mediator dispatch.
 - `backend/core/`: Settings and task state.
 - `backend/services/`: Download, transcription, video processing, Ollama model checks, note generation, Markdown file listing, and saved source update discovery.
 - `backend/storage/`: SQLAlchemy-backed history, favorites, tags, and watchlist storage for SQLite or PostgreSQL.

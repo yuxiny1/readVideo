@@ -52,6 +52,52 @@ class MarkdownFilesTest(unittest.TestCase):
         self.assertEqual(document.name, "note.md")
         self.assertEqual(document.content, "# Note\n\nBody")
 
+    def test_resolves_relative_notes_path_against_configured_container_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            notes_dir = Path(tmpdir) / "mounted-notes"
+            notes_dir.mkdir()
+            note = notes_dir / "note.md"
+            note.write_text("# Container note", encoding="utf-8")
+
+            document = read_markdown_file("notes/note.md", str(notes_dir))
+
+        self.assertEqual(document.path, str(note.resolve()))
+        self.assertEqual(document.content, "# Container note")
+
+    def test_resolves_legacy_absolute_notes_path_by_filename(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            notes_dir = Path(tmpdir) / "current-notes"
+            notes_dir.mkdir()
+            note = notes_dir / "legacy.md"
+            note.write_text("# Legacy", encoding="utf-8")
+
+            resolved = resolve_markdown_file(
+                "/Users/example/readVideo/notes/legacy.md",
+                str(notes_dir),
+            )
+
+        self.assertEqual(resolved, note.resolve())
+
+    def test_maps_legacy_notes_directory_to_configured_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            notes_dir = Path(tmpdir) / "mounted-notes"
+            notes_dir.mkdir()
+
+            resolved = list_markdown_files("notes", str(notes_dir))
+
+        self.assertEqual(resolved, [])
+
+    def test_maps_legacy_absolute_notes_directory_to_configured_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            notes_dir = Path(tmpdir) / "notes"
+            notes_dir.mkdir()
+            note = notes_dir / "legacy.md"
+            note.write_text("# Legacy", encoding="utf-8")
+
+            files = list_markdown_files("/Users/example/readVideo/notes", str(notes_dir))
+
+        self.assertEqual([item.name for item in files], ["legacy.md"])
+
 
 if __name__ == "__main__":
     unittest.main()

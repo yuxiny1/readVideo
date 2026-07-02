@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend.api.routes import router
+from backend.application.errors import ApplicationError
 from backend.core.config import load_settings
 from backend.storage.database import Database
 
@@ -16,6 +17,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 FRONTEND_DIR = PROJECT_ROOT / "frontend"
 ANGULAR_DIST_DIR = FRONTEND_DIR / "dist" / "readvideo" / "browser"
 ANGULAR_INDEX = ANGULAR_DIST_DIR / "index.html"
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -29,6 +31,11 @@ if FRONTEND_DIR.exists():
 if ANGULAR_DIST_DIR.exists():
     app.mount("/app", StaticFiles(directory=ANGULAR_DIST_DIR), name="angular")
 app.include_router(router)
+
+
+@app.exception_handler(ApplicationError)
+async def application_error(_request: Request, exc: ApplicationError):
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.message})
 
 
 @app.exception_handler(RequestValidationError)

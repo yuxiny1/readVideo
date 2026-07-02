@@ -5,7 +5,6 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from backend.api import routes
 from backend.app import angular_index, app
 from backend.core.task_state import TASKS, clear_tasks, set_task_status
 from backend.storage.history import HistoryStore
@@ -122,7 +121,10 @@ class ApiErrorPathTest(unittest.TestCase):
             missing_delete = client.delete("/watchlist/999")
             missing_updates = client.get("/watchlist/999/updates")
             bad_reorder = client.patch("/watchlist/reorder", json={"item_ids": [999]})
-            with patch.object(routes, "list_source_updates", side_effect=RuntimeError("yt-dlp failed")):
+            with patch(
+                "backend.application.handlers.watchlist.list_source_updates",
+                side_effect=RuntimeError("yt-dlp failed"),
+            ):
                 failed_updates = client.get(f"/watchlist/{created['id']}/updates")
 
         self.assertEqual(updated.status_code, 200)
@@ -136,24 +138,34 @@ class ApiErrorPathTest(unittest.TestCase):
     def test_model_management_endpoint_error_paths(self):
         with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}, clear=True):
             client = TestClient(app)
-            with patch.object(routes, "pull_ollama_model", side_effect=RuntimeError("api down")), patch.object(
-                routes,
-                "pull_model",
+            with patch(
+                "backend.application.handlers.models.pull_ollama_model",
+                side_effect=RuntimeError("api down"),
+            ), patch(
+                "backend.application.handlers.models.pull_model",
                 return_value="installed locally",
             ):
                 fallback = client.post("/api/ollama/pull", json={"model": "qwen2.5:3b"})
 
-            with patch.object(routes, "pull_ollama_model", side_effect=RuntimeError("api down")), patch.object(
-                routes,
-                "pull_model",
+            with patch(
+                "backend.application.handlers.models.pull_ollama_model",
+                side_effect=RuntimeError("api down"),
+            ), patch(
+                "backend.application.handlers.models.pull_model",
                 side_effect=RuntimeError("cli down"),
             ):
                 failed_pull = client.post("/api/ollama/pull", json={"model": "qwen2.5:3b"})
 
-            with patch.object(routes, "download_whisper_model", side_effect=ValueError("unknown model")):
+            with patch(
+                "backend.application.handlers.models.download_whisper_model",
+                side_effect=ValueError("unknown model"),
+            ):
                 missing_whisper = client.post("/api/transcription/models/download", json={"model": "missing.bin"})
 
-            with patch.object(routes, "download_whisper_model", side_effect=OSError("disk full")):
+            with patch(
+                "backend.application.handlers.models.download_whisper_model",
+                side_effect=OSError("disk full"),
+            ):
                 failed_whisper = client.post("/api/transcription/models/download", json={"model": "ggml-base.bin"})
 
         self.assertEqual(fallback.status_code, 200)

@@ -17,6 +17,10 @@ import {LibraryMode, LibrarySort, ReaderLibraryItem} from "../../models/reader-t
 import {filterFavorites, filterFiles, libraryItems} from "../../utils/reader-library/reader-library";
 import {ReaderDocumentStore} from "../reader-document/reader-document.store";
 
+type DocumentRequest =
+  | {kind: "path"; path: string; updateRoute: boolean}
+  | {kind: "favorite"; itemId: number; updateRoute: boolean};
+
 @Injectable()
 export class ReaderFacade {
   private readonly route = inject(ActivatedRoute);
@@ -24,7 +28,7 @@ export class ReaderFacade {
   private readonly api = inject(ReadvideoApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly markdownFileRequests = new Subject<{directory: string; updateRoute: boolean}>();
-  private readonly documentRequests = new Subject<{path: string; updateRoute: boolean}>();
+  private readonly documentRequests = new Subject<DocumentRequest>();
   readonly document = inject(ReaderDocumentStore);
   readonly library = inject(LibraryStore);
 
@@ -33,6 +37,7 @@ export class ReaderFacade {
   readonly tags = this.library.tags;
   readonly activeFolderId = signal("all");
   readonly activeTag = signal("all");
+  readonly selectedFavoriteId = signal<number | null>(null);
   readonly files = signal<MarkdownFile[]>([]);
   readonly fileCount = signal("0 个文件");
   readonly defaultNotesDir = signal("notes");
@@ -64,7 +69,9 @@ export class ReaderFacade {
   ));
   readonly libraryCount = computed(() => `${this.filteredFavorites().length} 篇收藏 · ${this.fileCount()}`);
   readonly activeFavorite = computed(() => (
-    this.favorites().find((item) => item.markdown_path === this.document.path()) ?? null
+    this.favorites().find((item) => item.id === this.selectedFavoriteId())
+      ?? this.favorites().find((item) => this.pathsReferToSameDocument(item.markdown_path, this.document.path()))
+      ?? null
   ));
   readonly activeDocumentTags = computed(() => tagsFor(this.activeFavorite() ?? {}));
   readonly activeLibraryIndex = computed(() => {
@@ -133,15 +140,20 @@ export class ReaderFacade {
     ).subscribe();
 
     this.documentRequests.pipe(
-      switchMap(({path, updateRoute}) => this.api.markdownDocument(path).pipe(
-        tap((document) => this.applyDocument(document, updateRoute)),
-        catchError((error) => {
-          const message = errorMessage(error);
-          this.localError.set(message);
-          this.document.fail(message);
-          return EMPTY;
-        }),
-      )),
+      switchMap((request) => {
+        const document$ = request.kind === "favorite"
+          ? this.api.favoriteMarkdown(request.itemId)
+          : this.api.markdownDocument(request.path);
+        return document$.pipe(
+          tap((document) => this.applyDocument(document, request.updateRoute)),
+          catchError((error) => {
+            const message = errorMessage(error);
+            this.localError.set(message);
+            this.document.fail(message);
+            return EMPTY;
+          }),
+        );
+      }),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe();
   }
@@ -168,22 +180,24 @@ export class ReaderFacade {
   }
 
   openFavorite(item: FavoriteSummary): void {
+    this.selectedFavoriteId.set(item.id);
     if (item.notes_dir && item.notes_dir !== this.markdownFolder) this.loadMarkdownFiles(item.notes_dir);
-    if (item.markdown_path) {
-      this.openPath(item.markdown_path);
-      return;
-    }
-    this.runOnce(this.api.favoriteMarkdown(item.id), (document) => this.applyDocument(document, true));
+    this.document.beginOpen(item.markdown_path || item.title);
+    this.localError.set("");
+    this.documentRequests.next({kind: "favorite", itemId: item.id, updateRoute: true});
   }
 
   openFile(file: MarkdownFile): void {
+    this.selectedFavoriteId.set(null);
     this.openPath(file.path);
   }
 
   openPath(path: string, updateRoute = true): void {
+    const matchingFavorite = this.favorites().find((item) => this.pathsReferToSameDocument(item.markdown_path, path));
+    this.selectedFavoriteId.set(matchingFavorite?.id ?? null);
     this.document.beginOpen(path);
     this.localError.set("");
-    this.documentRequests.next({path, updateRoute});
+    this.documentRequests.next({kind: "path", path, updateRoute});
   }
 
   openAdjacent(direction: -1 | 1): void {
@@ -280,6 +294,14 @@ export class ReaderFacade {
 
   private availableLibraryItems(): ReaderLibraryItem[] {
     return this.visibleLibraryItems().filter((item) => item.path || item.favorite);
+  }
+
+  private pathsReferToSameDocument(left: string, right: string): boolean {
+    if (!left || !right) return false;
+    if (left === right) return true;
+    const leftName = left.split(/[\\/]/).pop();
+    const rightName = right.split(/[\\/]/).pop();
+    return Boolean(leftName && rightName && leftName === rightName);
   }
 
   private recover<T>(source$: Observable<T>, fallback: T): Observable<T> {

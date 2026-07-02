@@ -7,7 +7,6 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from backend.api import routes
 from backend.app import app
 from backend.core.config import load_openai_api_key, load_settings
 from backend.core.task_state import TASKS, clear_tasks, set_task_status
@@ -79,7 +78,7 @@ class MainAppTest(unittest.TestCase):
                 "READVIDEO_TRANSCRIPTION_BACKEND": "local",
                 "READVIDEO_DATABASE_PATH": str(Path(tmpdir) / "history.sqlite3"),
             },
-        ), patch.object(routes, "process_video", fake_process_video):
+        ), patch("backend.application.handlers.tasks.process_video", fake_process_video):
             client = TestClient(app)
             response = client.post(
                 "/process_video/",
@@ -116,7 +115,10 @@ class MainAppTest(unittest.TestCase):
                 "READVIDEO_TRANSCRIPTION_BACKEND": "local",
                 "READVIDEO_DATABASE_PATH": str(Path(tmpdir) / "history.sqlite3"),
             },
-        ), patch.object(routes, "enqueue_video_processing", side_effect=RuntimeError("Redis 已断开")):
+        ), patch(
+            "backend.application.handlers.tasks.enqueue_video_processing",
+            side_effect=RuntimeError("Redis 已断开"),
+        ):
             client = TestClient(app)
             response = client.post(
                 "/process_video/",
@@ -182,9 +184,8 @@ class MainAppTest(unittest.TestCase):
             parameter_size="3.1B",
             quantization_level="Q4_K_M",
         )
-        with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}, clear=True), patch.object(
-            routes,
-            "list_ollama_models",
+        with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}, clear=True), patch(
+            "backend.application.handlers.models.list_ollama_models",
             return_value=[model],
         ):
             client = TestClient(app)
@@ -196,9 +197,8 @@ class MainAppTest(unittest.TestCase):
         self.assertEqual(data["models"][0]["name"], "qwen2.5:3b")
 
     def test_ollama_models_endpoint_reports_connection_error(self):
-        with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}, clear=True), patch.object(
-            routes,
-            "list_ollama_models",
+        with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}, clear=True), patch(
+            "backend.application.handlers.models.list_ollama_models",
             side_effect=RuntimeError("Could not reach Ollama."),
         ):
             client = TestClient(app)
@@ -334,6 +334,36 @@ class MainAppTest(unittest.TestCase):
         self.assertEqual(response.json()["notes_dir"], "notes")
         self.assertEqual(list_response.json()[0]["task_id"], "favorite-task")
 
+    def test_reader_opens_favorite_with_legacy_path_from_configured_notes_mount(self):
+        with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
+            "os.environ",
+            {
+                "READVIDEO_DATABASE_PATH": str(Path(tmpdir) / "history.sqlite3"),
+                "READVIDEO_NOTES_DIR": str(Path(tmpdir) / "mounted-notes"),
+            },
+            clear=True,
+        ):
+            notes_dir = Path(tmpdir) / "mounted-notes"
+            notes_dir.mkdir()
+            (notes_dir / "legacy.md").write_text("# 可阅读正文\n\n容器路径已经恢复。", encoding="utf-8")
+            set_task_status(
+                "legacy-reader-task",
+                "completed",
+                title="旧路径笔记",
+                markdown_path="notes/legacy.md",
+                summary="可阅读",
+            )
+            from backend.storage.history import HistoryStore
+
+            HistoryStore(str(Path(tmpdir) / "history.sqlite3")).upsert_task(TASKS["legacy-reader-task"])
+            client = TestClient(app)
+            favorite = client.post("/api/favorites", json={"task_id": "legacy-reader-task"}).json()
+            response = client.get(f"/api/favorites/{favorite['id']}/markdown")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("容器路径已经恢复", response.json()["content"])
+        self.assertEqual(response.json()["path"], str((notes_dir / "legacy.md").resolve()))
+
     def test_tag_endpoints_share_tags_between_history_and_favorites(self):
         with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
             "os.environ",
@@ -443,7 +473,7 @@ class MainAppTest(unittest.TestCase):
             "os.environ",
             {"READVIDEO_DATABASE_PATH": str(Path(tmpdir) / "watchlist.sqlite3")},
             clear=True,
-        ), patch.object(routes, "list_source_updates", return_value=updates):
+        ), patch("backend.application.handlers.watchlist.list_source_updates", return_value=updates):
             client = TestClient(app)
             created = client.post(
                 "/watchlist",
