@@ -124,7 +124,7 @@ export class LocalModelsService {
     }
     if (model) {
       this.whisperStatus.set({
-        text: `尚未安装：${model.label}（${model.size}）。请点击下载，或运行：curl -L -o ${model.path} ${model.url}`,
+        text: `尚未安装：${model.label}（${model.size}）。请点击下载，模型会保存到当前运行环境的模型目录。`,
         kind: "error",
       });
       return false;

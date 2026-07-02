@@ -57,34 +57,37 @@ RECOMMENDED_WHISPER_MODELS = [
 ]
 
 
-def recommended_whisper_models() -> list[dict]:
-    installed = installed_model_paths()
-    return [
-        {
+def recommended_whisper_models(configured_model_path: str | None = None) -> list[dict]:
+    installed = installed_model_paths(configured_model_path)
+    models = []
+    for option in RECOMMENDED_WHISPER_MODELS:
+        resolved_path = _resolve_model_path(option.path, configured_model_path)
+        models.append({
             **asdict(option),
-            "installed": _resolve_model_path(option.path) in installed,
-        }
-        for option in RECOMMENDED_WHISPER_MODELS
-    ]
+            "path": _display_model_path(resolved_path),
+            "installed": resolved_path in installed,
+        })
+    return models
 
 
-def installed_model_paths() -> set[Path]:
-    if not MODEL_DIR.exists():
+def installed_model_paths(configured_model_path: str | None = None) -> set[Path]:
+    model_dir = _model_directory(configured_model_path)
+    if not model_dir.exists():
         return set()
-    return {path.resolve() for path in MODEL_DIR.glob("ggml-*.bin") if path.is_file()}
+    return {path.resolve() for path in model_dir.glob("ggml-*.bin") if path.is_file()}
 
 
-def list_installed_whisper_models() -> list[str]:
-    return [str(path.relative_to(PROJECT_ROOT)) for path in sorted(installed_model_paths())]
+def list_installed_whisper_models(configured_model_path: str | None = None) -> list[str]:
+    return [_display_model_path(path) for path in sorted(installed_model_paths(configured_model_path))]
 
 
-def download_whisper_model(model_name: str) -> dict:
+def download_whisper_model(model_name: str, configured_model_path: str | None = None) -> dict:
     option = _find_model(model_name)
-    target = _resolve_model_path(option.path)
+    target = _resolve_model_path(option.path, configured_model_path)
     target.parent.mkdir(parents=True, exist_ok=True)
 
     if target.exists():
-        return {"model": option.name, "path": str(target.relative_to(PROJECT_ROOT)), "downloaded": False}
+        return {"model": option.name, "path": _display_model_path(target), "downloaded": False}
 
     tmp_path = target.with_suffix(target.suffix + ".part")
     try:
@@ -94,7 +97,7 @@ def download_whisper_model(model_name: str) -> dict:
         if tmp_path.exists():
             tmp_path.unlink()
 
-    return {"model": option.name, "path": str(target.relative_to(PROJECT_ROOT)), "downloaded": True}
+    return {"model": option.name, "path": _display_model_path(target), "downloaded": True}
 
 
 def _find_model(model_name: str) -> WhisperModelOption:
@@ -104,8 +107,26 @@ def _find_model(model_name: str) -> WhisperModelOption:
     raise ValueError(f"找不到 Whisper 模型：{model_name}")
 
 
-def _resolve_model_path(path: str) -> Path:
+def _resolve_model_path(path: str, configured_model_path: str | None = None) -> Path:
+    if configured_model_path:
+        return (_model_directory(configured_model_path) / Path(path).name).resolve()
     model_path = Path(path)
     if not model_path.is_absolute():
         model_path = PROJECT_ROOT / model_path
     return model_path.resolve()
+
+
+def _model_directory(configured_model_path: str | None) -> Path:
+    if not configured_model_path:
+        return MODEL_DIR.resolve()
+    configured = Path(configured_model_path).expanduser()
+    if not configured.is_absolute():
+        configured = PROJECT_ROOT / configured
+    return configured.resolve().parent
+
+
+def _display_model_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(PROJECT_ROOT.resolve()))
+    except ValueError:
+        return str(path)

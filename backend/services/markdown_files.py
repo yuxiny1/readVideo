@@ -3,6 +3,9 @@ from datetime import datetime
 from pathlib import Path
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
 @dataclass(frozen=True)
 class MarkdownFile:
     name: str
@@ -21,8 +24,8 @@ class MarkdownDocument:
     modified_at: str
 
 
-def list_markdown_files(directory: str) -> list[MarkdownFile]:
-    folder = Path(directory).expanduser()
+def list_markdown_files(directory: str, notes_dir: str | None = None) -> list[MarkdownFile]:
+    folder = resolve_markdown_directory(directory, notes_dir)
     if not folder.exists():
         raise FileNotFoundError(f"Markdown 文件夹不存在：{directory}")
     if not folder.is_dir():
@@ -32,17 +35,46 @@ def list_markdown_files(directory: str) -> list[MarkdownFile]:
     return [_file_to_record(path) for path in files if path.is_file()]
 
 
-def resolve_markdown_file(path: str) -> Path:
-    markdown_path = Path(path).expanduser()
+def resolve_markdown_directory(directory: str, notes_dir: str | None = None) -> Path:
+    requested = Path(directory).expanduser()
+    candidates = [requested]
+    if not requested.is_absolute():
+        candidates.append(PROJECT_ROOT / requested)
+    if notes_dir:
+        notes_root = Path(notes_dir).expanduser()
+        if not notes_root.is_absolute():
+            notes_root = PROJECT_ROOT / notes_root
+        if directory in {"", ".", "notes", notes_root.name} or requested.name in {"notes", notes_root.name}:
+            candidates.insert(0, notes_root)
+    for candidate in candidates:
+        if candidate.is_dir():
+            return candidate.resolve()
+    return candidates[0]
+
+
+def resolve_markdown_file(path: str, notes_dir: str | None = None) -> Path:
+    requested = Path(path).expanduser()
+    markdown_path = requested
     if markdown_path.suffix.lower() != ".md":
         raise ValueError("只能下载 Markdown 文件。")
-    if not markdown_path.exists() or not markdown_path.is_file():
-        raise FileNotFoundError(f"Markdown 文件不存在：{path}")
-    return markdown_path
+
+    candidates = [requested]
+    if not requested.is_absolute():
+        candidates.append(PROJECT_ROOT / requested)
+    if notes_dir:
+        notes_root = Path(notes_dir).expanduser()
+        if not notes_root.is_absolute():
+            notes_root = PROJECT_ROOT / notes_root
+        candidates.append(notes_root / _notes_relative_path(requested, notes_root.name))
+
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate.resolve()
+    raise FileNotFoundError(f"Markdown 文件不存在：{path}")
 
 
-def read_markdown_file(path: str) -> MarkdownDocument:
-    markdown_path = resolve_markdown_file(path)
+def read_markdown_file(path: str, notes_dir: str | None = None) -> MarkdownDocument:
+    markdown_path = resolve_markdown_file(path, notes_dir)
     stats = markdown_path.stat()
     return MarkdownDocument(
         name=markdown_path.name,
@@ -62,3 +94,11 @@ def _file_to_record(path: Path) -> MarkdownFile:
         size_bytes=stats.st_size,
         modified_at=datetime.fromtimestamp(stats.st_mtime).isoformat(timespec="seconds"),
     )
+
+
+def _notes_relative_path(path: Path, notes_root_name: str) -> Path:
+    parts = list(path.parts)
+    marker_indexes = [index for index, part in enumerate(parts) if part in {"notes", notes_root_name}]
+    relative_parts = parts[marker_indexes[-1] + 1:] if marker_indexes else [path.name]
+    safe_parts = [part for part in relative_parts if part not in {"", ".", "..", path.anchor}]
+    return Path(*safe_parts) if safe_parts else Path(path.name)

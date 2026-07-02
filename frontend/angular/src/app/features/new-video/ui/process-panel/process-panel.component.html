@@ -40,10 +40,10 @@
           <option value="local">本地 Whisper</option>
           <option value="openai">OpenAI 转录</option>
         </select>
-        <p class="field-status muted">本地 Whisper 在这台电脑上运行。小模型出现重复语句时，请使用大型 v3 Turbo 模型。</p>
+        <p class="field-status muted">Whisper 只负责把音频转成文字；小模型出现重复语句时，请使用大型 v3 Turbo。</p>
       </div>
       <div>
-        <label for="local-whisper-model">本地 Whisper 模型</label>
+        <label for="local-whisper-model">Whisper 语音转录模型</label>
         <div class="input-action-row">
           <select
             id="local-whisper-model"
@@ -111,7 +111,7 @@
         </p>
       </div>
       <div>
-        <label for="ollama-model">本地 AI 模型</label>
+        <label for="ollama-model">本地 AI 总结模型</label>
         <div class="input-action-row">
           <select
             id="ollama-model"

@@ -42,6 +42,20 @@ class WhisperModelsTest(unittest.TestCase):
         self.assertEqual(first["path"], "models/ggml-medium.bin")
         self.assertTrue(target_exists)
 
+    def test_uses_configured_container_model_directory_for_inventory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            configured = Path(tmpdir) / "mounted-models" / "ggml-large-v3-turbo.bin"
+            configured.parent.mkdir()
+            configured.write_text("large", encoding="utf-8")
+
+            models = whisper_models.recommended_whisper_models(str(configured))
+            installed = whisper_models.list_installed_whisper_models(str(configured))
+
+        large = next(item for item in models if item["name"] == "ggml-large-v3-turbo.bin")
+        self.assertTrue(large["installed"])
+        self.assertEqual(large["path"], str(configured.resolve()))
+        self.assertEqual(installed, [str(configured.resolve())])
+
 
 if __name__ == "__main__":
     unittest.main()

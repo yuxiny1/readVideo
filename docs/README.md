@@ -117,6 +117,7 @@ Starting readVideo on http://127.0.0.1:8000
 If port `8000` is already in use, it automatically falls back to the next available port.
 
 The frontend is an Angular TypeScript app under `frontend/angular/`. This repo pins Node 24 through `.nvmrc`, `.node-version`, and `package.json` engines; use that version for local servers, web app builds, command-line tools, and npm scripts. FastAPI serves the built app and the frontend calls the same FastAPI process for task status, history, favorites, Markdown output, and saved YouTube sources. Main navigation lives in the left sidebar. See [Frontend Architecture](frontend-architecture.md) for the Signals, RxJS, facade, and SOLID boundaries used by the app.
+The backend uses CQRS with a Mediator and an RQ background worker. See [Backend Architecture](backend-architecture.md) for the Controller, Command/Query, Handler, and worker boundaries.
 Open `/history` to review previously downloaded/transcribed videos and their saved file paths.
 Open `/favorites` to review favorite summaries and organize them into note folders.
 Open `/reader` to search favorite notes and local Markdown files in one title-first result list, switch favorite folders, read `.md` files, and download notes. Wide reading hides the inspector and expands the document column. The persistent top-bar Focus Reading action hides the library, inspector, and global sidebar; inside Focus Reading you can switch between Light and Dark themes.
@@ -222,7 +223,8 @@ python -m unittest discover -s tests
 
 - `main.py`: Thin backwards-compatible entrypoint for `uvicorn main:app`.
 - `backend/app.py`: FastAPI app factory surface, frontend mounting, router registration.
-- `backend/api/`: HTTP routes and request schemas.
+- `backend/api/controllers/`: Thin feature Controllers that send Commands and Queries.
+- `backend/application/`: CQRS Messages, Handlers, Mediator, errors, and registrations.
 - `backend/core/`: Settings and task state.
 - `backend/services/`: Download, transcription, video processing, note generation, Markdown file listing, and saved source update discovery.
 - `backend/storage/`: SQLAlchemy-backed watchlist, history, favorites, and tags for SQLite or PostgreSQL.

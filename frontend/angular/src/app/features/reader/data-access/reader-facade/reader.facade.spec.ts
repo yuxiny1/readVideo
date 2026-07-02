@@ -100,6 +100,18 @@ describe("ReaderFacade", () => {
     expect(facade.tagCount("reader")).toBe(1);
   });
 
+  it("opens favorites through the favorite document query instead of a stale stored path", () => {
+    facade.initialize();
+    TestBed.tick();
+
+    facade.openFavorite(favorite({markdown_path: "notes/a.md", notes_dir: "notes"}));
+    TestBed.tick();
+
+    expect(api.favoriteMarkdown).toHaveBeenCalledWith(1);
+    expect(documentStore.path()).toBe("/notes/generated.md");
+    expect(facade.activeFavorite()?.id).toBe(1);
+  });
+
   it("saves tags for the active favorite", () => {
     facade.initialize();
     TestBed.tick();
@@ -131,5 +143,20 @@ describe("ReaderFacade", () => {
 
     expect(documentStore.path()).toBe("/notes/second.md");
     expect(documentStore.title()).toBe("第二篇");
+  });
+
+  it("keeps the newest favorite when an older favorite request finishes later", () => {
+    const first = new Subject<{path: string; content: string}>();
+    const second = new Subject<{path: string; content: string}>();
+    api.favoriteMarkdown.mockImplementation((id: number) => id === 1 ? first : second);
+
+    facade.openFavorite(favorite({id: 1, markdown_path: "notes/first.md"}));
+    facade.openFavorite(favorite({id: 2, markdown_path: "notes/second.md"}));
+    second.next({path: "/data/notes/second.md", content: "# 第二篇收藏"});
+    first.next({path: "/data/notes/first.md", content: "# 第一篇收藏"});
+
+    expect(documentStore.path()).toBe("/data/notes/second.md");
+    expect(documentStore.title()).toBe("第二篇收藏");
+    expect(facade.selectedFavoriteId()).toBe(2);
   });
 });

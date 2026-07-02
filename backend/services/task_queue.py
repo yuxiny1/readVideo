@@ -1,8 +1,6 @@
 import asyncio
 from collections.abc import Callable
 
-from fastapi import BackgroundTasks
-
 from backend.core.config import Settings
 
 
@@ -10,13 +8,13 @@ DEFAULT_JOB_TIMEOUT_SECONDS = 60 * 60 * 6
 
 
 def enqueue_video_processing(
-    background_tasks: BackgroundTasks,
+    local_scheduler: Callable[..., None],
     processor: Callable,
     settings: Settings,
     *args,
 ) -> str:
     if not settings.redis_url:
-        background_tasks.add_task(processor, *args)
+        local_scheduler(processor, *args)
         return "local"
 
     from redis import Redis
@@ -36,6 +34,14 @@ def enqueue_video_processing(
 
 
 def run_video_job(*args) -> None:
-    from backend.services.video_processor import process_video
+    from backend.application.container import get_mediator
+    from backend.application.messages.tasks import RunVideoProcessingCommand
 
-    asyncio.run(process_video(*args))
+    asyncio.run(get_mediator().send(RunVideoProcessingCommand(tuple(args))))
+
+
+def run_worker_probe(value: str) -> dict:
+    from backend.application.container import get_mediator
+    from backend.application.messages.tasks import WorkerProbeCommand
+
+    return asyncio.run(get_mediator().send(WorkerProbeCommand(value)))

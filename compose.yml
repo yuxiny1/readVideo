@@ -18,7 +18,7 @@ x-backend-environment: &backend-environment
 x-backend-volumes: &backend-volumes
   - ./downloads:/data/downloads
   - ./notes:/data/notes
-  - ./models:/models:ro
+  - ./models:/models
 
 services:
   frontend:
