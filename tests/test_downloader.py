@@ -7,8 +7,11 @@ from backend.services.downloader import clean_filename_part, download_video, nor
 
 
 class FakeYoutubeDLWithRequestedDownload:
+    last_options = None
+
     def __init__(self, options):
         self.options = options
+        type(self).last_options = options
 
     def __enter__(self):
         return self
@@ -54,6 +57,23 @@ class DownloaderFilenameTest(unittest.TestCase):
             self.assertEqual(downloaded.name, "Demo Video.mp4")
             self.assertTrue(downloaded.exists())
             self.assertEqual(progress_events[0]["status"], "finished")
+            self.assertEqual(
+                FakeYoutubeDLWithRequestedDownload.last_options["logger"].name,
+                "backend.services.downloader",
+            )
+
+    def test_download_does_not_create_a_log_file_in_the_process_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir, patch(
+            "backend.services.downloader.yt_dlp.YoutubeDL",
+            FakeYoutubeDLWithRequestedDownload,
+        ), patch(
+            "backend.services.downloader.logging.basicConfig",
+            side_effect=PermissionError("只读应用目录"),
+        ) as configure_file_logging:
+            downloaded = download_video("https://youtu.be/demo", tmpdir)
+            self.assertTrue(Path(downloaded).is_file())
+
+        configure_file_logging.assert_not_called()
 
 
 if __name__ == "__main__":

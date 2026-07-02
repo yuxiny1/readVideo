@@ -63,8 +63,6 @@ def download_video(
     progress_hook: Optional[Callable[[dict], None]] = None,
 ) -> str:
     """Download a video with yt-dlp and return the path to the downloaded file."""
-    logging.basicConfig(filename="yt_dlp_download.log", level=logging.INFO)
-
     output_dir = Path(download_path)
     output_dir.mkdir(parents=True, exist_ok=True)
     files_before_download = {path.resolve() for path in output_dir.iterdir() if path.is_file()}
@@ -77,7 +75,7 @@ def download_video(
         "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best",
         "merge_output_format": "mp4",
         "outtmpl": str(output_dir / "%(title).200s.%(ext)s"),
-        "logger": logging.getLogger(),
+        "logger": logger,
         "progress_hooks": progress_hooks,
         "noplaylist": True,
     }
