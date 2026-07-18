@@ -46,13 +46,21 @@ RECOMMENDED_WHISPER_MODELS = [
         notes="处理网络视频、口音和混合语言时准确度更高。",
     ),
     WhisperModelOption(
+        name="ggml-large-v3.bin",
+        label="大型 v3 高精度模型",
+        size="3.1GB",
+        path="models/ggml-large-v3.bin",
+        url=f"{BASE_URL}/ggml-large-v3.bin",
+        notes="本地转录质量优先，适合课程、访谈和噪声较多的视频；速度比 Turbo 慢。",
+        recommended=True,
+    ),
+    WhisperModelOption(
         name="ggml-large-v3-turbo.bin",
         label="大型 v3 Turbo 模型",
         size="1.6GB",
         path="models/ggml-large-v3-turbo.bin",
         url=f"{BASE_URL}/ggml-large-v3-turbo.bin",
-        notes="本地质量与速度的最佳平衡，推荐用于正式笔记。",
-        recommended=True,
+        notes="质量与速度的平衡方案；如果高精度模型太慢，可以切回这个模型。",
     ),
 ]
 

@@ -10,7 +10,7 @@ readVideo 使用 Docker Compose 运行完整平台：Angular + Nginx、FastAPI�
 cp deploy/container.env.example .container-env
 npm run containers:up
 npm run containers:migrate
-npm run containers:pull-model -- qwen2.5:32b
+npm run containers:pull-model -- qwen3.6:35b
 ```
 
 在 macOS 上，Docker Desktop 无法使用 Apple Metal，而且原生 Ollama 通常已经有模型。推荐改用下面的启动命令，让容器化 API 与 Worker 连接宿主机 Ollama，避免重复下载模型并保留 Metal 加速：
@@ -19,7 +19,7 @@ npm run containers:pull-model -- qwen2.5:32b
 npm run containers:up:host-ollama
 ```
 
-标准 `containers:up` 使用容器内 Ollama。本机已有的原生模型不会自动复制到容器中；容器模型保存在独立的 `ollama-data` volume，第一次需要执行 `containers:pull-model`。`qwen2.5:32b` 约 20GB；硬件不足时可显式选择 `qwen2.5:14b`，不要静默降级。
+标准 `containers:up` 使用容器内 Ollama。本机已有的原生模型不会自动复制到容器中；容器模型保存在独立的 `ollama-data` volume，第一次需要执行 `containers:pull-model`。`qwen3.6:35b` 约 24GB；硬件不足时可显式选择 `qwen3.6:27b` 或 `qwen2.5:14b`，不要静默降级。
 
 服务入口：
 
@@ -55,7 +55,7 @@ cd readVideo
 cp deploy/container.env.example .container-env
 npm run containers:up:gpu
 npm run containers:migrate
-npm run containers:pull-model -- qwen2.5:32b
+npm run containers:pull-model -- qwen3.6:35b
 ```
 
 把 `downloads/`、`notes/`、`models/` 与 Docker data root 放在持久化数据盘。公网只开放反向代理的 `80/443`；Portainer `9443` 应限制到管理 IP 或 VPN。不要直接公开 PostgreSQL、Redis、API 或 Ollama 端口。生产密码只放在 `.container-env`，并定期执行 `npm run containers:backup` 后把备份复制到 Azure Blob Storage。

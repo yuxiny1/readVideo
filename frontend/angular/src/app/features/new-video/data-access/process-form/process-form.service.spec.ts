@@ -31,7 +31,7 @@ describe("ProcessFormService", () => {
       transcriptionModel: " whisper-1 ",
       localWhisperModel: " model.bin ",
       localWhisperLanguage: " zh ",
-      ollamaModel: " qwen2.5:32b ",
+      ollamaModel: " qwen3.6:35b ",
       noteStyle: "commercial",
     });
 
@@ -44,7 +44,7 @@ describe("ProcessFormService", () => {
       local_whisper_language: "zh",
       notes_backend: "ollama",
       note_style: "commercial",
-      ollama_model: "qwen2.5:32b",
+      ollama_model: "qwen3.6:35b",
       reuse_task_id: "old-task",
       force_download: true,
       delete_video_after_completion: false,

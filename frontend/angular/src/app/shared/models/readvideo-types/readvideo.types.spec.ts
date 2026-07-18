@@ -13,7 +13,7 @@ describe("readvideo API type contracts", () => {
       local_whisper_language: "auto",
       notes_backend: "ollama",
       note_style: "detailed",
-      ollama_model: "qwen2.5:32b",
+      ollama_model: "qwen3.6:35b",
     };
     const task: TaskRecord = {task_id: "task-1", status: "queued", tags: ["course"]};
 

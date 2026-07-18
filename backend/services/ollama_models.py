@@ -34,10 +34,12 @@ RECOMMENDED_OLLAMA_MODELS = (
     OllamaModelOption("qwen2.5:3b", "Qwen2.5 3B", "1.9GB", "轻量备用模型，速度快，但笔记质量较弱。"),
     OllamaModelOption("qwen2.5:7b", "Qwen2.5 7B", "4.7GB", "适合普通电脑的中英文通用总结模型。"),
     OllamaModelOption("qwen2.5:14b", "Qwen2.5 14B", "9.0GB", "内存充足时可获得更好的结构和推理能力。"),
-    OllamaModelOption("qwen2.5:32b", "Qwen2.5 32B", "20GB", "安装后默认使用的高质量本地笔记模型。"),
+    OllamaModelOption("qwen2.5:32b", "Qwen2.5 32B", "20GB", "上一代高质量本地笔记模型，适合作为稳定备用。"),
     OllamaModelOption("qwen3:8b", "Qwen3 8B", "5.2GB", "较新的 Qwen 系列，速度与质量较均衡。"),
     OllamaModelOption("qwen3:14b", "Qwen3 14B", "9.3GB", "硬件开销适中，可生成质量更高的本地总结。"),
     OllamaModelOption("qwen3:30b", "Qwen3 30B", "19GB", "适合更强推理和内容组织的大型本地模型。"),
+    OllamaModelOption("qwen3.6:27b", "Qwen3.6 27B", "17GB", "新一代大上下文本地模型，比 35B 更省内存。"),
+    OllamaModelOption("qwen3.6:35b", "Qwen3.6 35B", "24GB", "M3 Max 48GB 推荐默认模型，适合长 transcript 分段和高质量笔记。"),
     OllamaModelOption("llama3.1:8b", "Llama 3.1 8B", "4.9GB", "多语言能力较强的通用模型。"),
 )
 

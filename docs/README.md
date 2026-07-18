@@ -3,7 +3,7 @@
 Download a YouTube video, transcribe its audio, turn the transcript into Markdown notes, and keep a small local watchlist of YouTube channels/playlists.
 
 The default transcription backend is local `whisper.cpp`, so OpenAI API access is optional.
-For local transcription quality, `ggml-large-v3-turbo.bin` is the recommended default; smaller models are faster but more likely to repeat or hallucinate text on noisy YouTube audio.
+For local transcription quality, `ggml-large-v3.bin` is the recommended default; `ggml-large-v3-turbo.bin` is faster, while smaller models are more likely to repeat or hallucinate text on noisy YouTube audio.
 
 ## What It Does
 
@@ -51,8 +51,8 @@ Download a local model:
 
 ```bash
 mkdir -p models
-curl -L -o models/ggml-large-v3-turbo.bin \
-  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin
+curl -L -o models/ggml-large-v3.bin \
+  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin
 ```
 
 ## Configuration
@@ -70,22 +70,22 @@ READVIDEO_TRANSCRIPTION_BACKEND=local
 READVIDEO_DOWNLOAD_DIR=downloads/youtube_videos
 READVIDEO_NOTES_DIR=notes
 READVIDEO_LOCAL_WHISPER_CLI=whisper-cli
-READVIDEO_LOCAL_WHISPER_MODEL=models/ggml-large-v3-turbo.bin
+READVIDEO_LOCAL_WHISPER_MODEL=models/ggml-large-v3.bin
 READVIDEO_LOCAL_WHISPER_LANGUAGE=auto
 READVIDEO_NOTES_BACKEND=ollama
 READVIDEO_NOTE_STYLE=detailed
-READVIDEO_OLLAMA_MODEL=qwen2.5:32b
+READVIDEO_OLLAMA_MODEL=qwen3.6:35b
 READVIDEO_OLLAMA_URL=http://127.0.0.1:11434/api/generate
 ```
 
 Default Ollama note model:
 
 ```bash
-ollama pull qwen2.5:32b
+ollama pull qwen3.6:35b
 READVIDEO_NOTES_BACKEND=ollama
 ```
 
-`READVIDEO_NOTES_BACKEND=ollama` means Better Local AI Notes: slower, but uses a local Ollama model to turn the full transcript into key points, a narrative summary paragraph, and high-detail article-style sections that preserve names, dates, examples, numbers, and the original flow. The default model is `qwen2.5:32b` when available. The Markdown note no longer embeds the full transcript; the transcript remains available as its separate `.txt` output.
+`READVIDEO_NOTES_BACKEND=ollama` means Better Local AI Notes: slower, but uses a local Ollama model to turn the full transcript into key points, a narrative summary paragraph, and high-detail article-style sections that preserve names, dates, examples, numbers, and the original flow. The default model is `qwen3.6:35b` when available. The Markdown note no longer embeds the full transcript; the transcript remains available as its separate `.txt` output.
 
 `READVIDEO_NOTE_STYLE=commercial` keeps the detailed segmented notes and adds a `Business Lens` plus an `Editorial Article` before them. This mode asks the local model for business-core takeaways, risks, opportunities, key metrics, next signals, and a polished business-news analysis summary with a clear lede, context, stakes, and implications. The default `detailed` mode preserves the current notes format.
 
@@ -154,7 +154,7 @@ curl -X POST "http://localhost:8000/process_video/" \
     "notes_dir": "/Users/you/Documents/Notes",
     "notes_backend": "ollama",
     "note_style": "commercial",
-    "ollama_model": "qwen2.5:32b",
+    "ollama_model": "qwen3.6:35b",
     "delete_video_after_completion": true
   }'
 ```

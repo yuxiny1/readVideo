@@ -17,9 +17,9 @@ class WhisperModelsTest(unittest.TestCase):
                 models = whisper_models.recommended_whisper_models()
 
         small = next(item for item in models if item["name"] == "ggml-small.bin")
-        large_turbo = next(item for item in models if item["name"] == "ggml-large-v3-turbo.bin")
+        large_v3 = next(item for item in models if item["name"] == "ggml-large-v3.bin")
         self.assertTrue(small["installed"])
-        self.assertTrue(large_turbo["recommended"])
+        self.assertTrue(large_v3["recommended"])
 
     def test_download_whisper_model_rejects_unknown_model(self):
         with self.assertRaisesRegex(ValueError, "找不到 Whisper 模型"):

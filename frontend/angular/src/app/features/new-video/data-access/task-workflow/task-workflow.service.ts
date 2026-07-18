@@ -258,7 +258,7 @@ export class TaskWorkflowService {
       this.failLocalValidation(this.models.whisperStatus().text);
       return false;
     }
-    const selectedModel = payload.ollama_model || this.config()?.ollama_model || "qwen2.5:32b";
+    const selectedModel = payload.ollama_model || this.config()?.ollama_model || "qwen3.6:35b";
     if (!this.models.isInstalledOllamaModel(selectedModel)) {
       const details = `Ollama 当前可见模型：${this.models.installedModels().join(", ") || "无"}。缺少模型：${selectedModel}。`;
       this.failLocalValidation(`缺少 Ollama 模型：${selectedModel}`, details);

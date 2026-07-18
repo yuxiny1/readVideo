@@ -48,21 +48,21 @@ READVIDEO_TRANSCRIPTION_BACKEND=local
 READVIDEO_DOWNLOAD_DIR=downloads/youtube_videos
 READVIDEO_NOTES_DIR=notes
 READVIDEO_LOCAL_WHISPER_CLI=whisper-cli
-READVIDEO_LOCAL_WHISPER_MODEL=models/ggml-large-v3-turbo.bin
+READVIDEO_LOCAL_WHISPER_MODEL=models/ggml-large-v3.bin
 READVIDEO_LOCAL_WHISPER_LANGUAGE=auto
 READVIDEO_NOTES_BACKEND=ollama
-READVIDEO_OLLAMA_MODEL=qwen2.5:32b
+READVIDEO_OLLAMA_MODEL=qwen3.6:35b
 READVIDEO_OLLAMA_URL=http://127.0.0.1:11434/api/generate
 ```
 
 Default Ollama article-style notes:
 
 ```bash
-ollama pull qwen2.5:32b
+ollama pull qwen3.6:35b
 READVIDEO_NOTES_BACKEND=ollama
 ```
 
-`READVIDEO_NOTES_BACKEND=ollama` means Better Local AI Notes: slower, but uses a local Ollama model to turn the full transcript into key points, a narrative summary paragraph, and high-detail article-style sections that preserve names, dates, examples, numbers, and the original flow. The default model is `qwen2.5:32b` when available.
+`READVIDEO_NOTES_BACKEND=ollama` means Better Local AI Notes: slower, but uses a local Ollama model to turn the full transcript into key points, a narrative summary paragraph, and high-detail article-style sections that preserve names, dates, examples, numbers, and the original flow. The default model is `qwen3.6:35b` when available.
 
 Optional OpenAI backend:
 
@@ -85,7 +85,7 @@ The recommended full-stack setup runs Angular, FastAPI, the task worker, Postgre
 cp deploy/container.env.example .container-env
 npm run containers:up
 npm run containers:migrate
-npm run containers:pull-model -- qwen2.5:32b
+npm run containers:pull-model -- qwen3.6:35b
 ```
 
 Open `http://localhost:8080` for readVideo and `https://localhost:9443` for Portainer. See [Container Platform](docs/container-platform.md) for GPU VM deployment, management, migration, and backup instructions.
@@ -158,7 +158,7 @@ curl -X POST "http://localhost:8000/process_video/" \
     "url": "https://www.youtube.com/watch?v=<VIDEO_ID>",
     "notes_dir": "/Users/you/Documents/Notes",
     "notes_backend": "ollama",
-    "ollama_model": "qwen2.5:32b"
+    "ollama_model": "qwen3.6:35b"
   }'
 ```
 

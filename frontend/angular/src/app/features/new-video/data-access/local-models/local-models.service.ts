@@ -36,10 +36,10 @@ export class LocalModelsService {
     this.config.set(config);
     this.form.patch({
       transcriptionBackend: config.transcription_backend || "local",
-      localWhisperModel: config.local_whisper_model || "models/ggml-large-v3-turbo.bin",
+      localWhisperModel: config.local_whisper_model || "models/ggml-large-v3.bin",
       localWhisperLanguage: config.local_whisper_language || "auto",
       noteStyle: config.note_style || "detailed",
-      ollamaModel: config.ollama_model || "qwen2.5:32b",
+      ollamaModel: config.ollama_model || "qwen3.6:35b",
     });
     this.loadOllamaModels(true);
     this.loadTranscriptionModels(true);
@@ -117,7 +117,7 @@ export class LocalModelsService {
       this.whisperStatus.set({
         text: model.recommended
           ? `已就绪：${model.label} 已安装，推荐用于减少转录文本重复。`
-          : `已就绪：${model.label} 已安装；如果仍有重复，建议改用大型 v3 Turbo 模型。`,
+          : `已就绪：${model.label} 已安装；如果仍有重复，建议改用大型 v3 高精度模型。`,
         kind: model.recommended ? "ok" : "pending",
       });
       return true;
@@ -139,7 +139,7 @@ export class LocalModelsService {
   validateOllamaSelection(): boolean {
     const selectedName = this.form.form().ollamaModel.trim()
       || this.config()?.ollama_model
-      || "qwen2.5:32b";
+      || "qwen3.6:35b";
     if (!this.ollamaAvailable()) {
       this.ollamaStatus.set({text: "无法连接 Ollama。", kind: "error"});
       return false;

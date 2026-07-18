@@ -8,10 +8,10 @@ x-backend-environment: &backend-environment
   READVIDEO_DOWNLOAD_DIR: /data/downloads/youtube_videos
   READVIDEO_NOTES_DIR: /data/notes
   READVIDEO_LOCAL_WHISPER_CLI: /usr/local/bin/whisper-cli
-  READVIDEO_LOCAL_WHISPER_MODEL: /models/ggml-large-v3-turbo.bin
+  READVIDEO_LOCAL_WHISPER_MODEL: /models/ggml-large-v3.bin
   READVIDEO_LOCAL_WHISPER_LANGUAGE: auto
   READVIDEO_NOTES_BACKEND: ollama
-  READVIDEO_OLLAMA_MODEL: ${READVIDEO_OLLAMA_MODEL:-qwen2.5:32b}
+  READVIDEO_OLLAMA_MODEL: ${READVIDEO_OLLAMA_MODEL:-qwen3.6:35b}
   READVIDEO_OLLAMA_URL: http://ollama:11434/api/generate
   OPENAI_API_KEY: ${OPENAI_API_KEY:-}
 

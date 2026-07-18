@@ -20,14 +20,14 @@ class Settings:
     transcription_model: str = "gpt-4o-mini-transcribe"
     chunk_seconds: int = 180
     local_whisper_cli: str = "whisper-cli"
-    local_whisper_model: str = "models/ggml-large-v3-turbo.bin"
+    local_whisper_model: str = "models/ggml-large-v3.bin"
     local_whisper_language: str = "auto"
     local_whisper_prompt: str = ""
     local_whisper_audio_filter: str = "highpass=f=80,lowpass=f=8000,loudnorm=I=-16:TP=-1.5:LRA=11"
     notes_dir: str = "notes"
     notes_backend: str = "ollama"
     note_style: str = "detailed"
-    ollama_model: str = "qwen2.5:32b"
+    ollama_model: str = "qwen3.6:35b"
     ollama_url: str = "http://127.0.0.1:11434/api/generate"
     database_path: str = "readvideo.sqlite3"
     redis_url: str = ""
@@ -75,6 +75,7 @@ def _default_local_whisper_model() -> str:
         return configured_model
 
     for model_path in (
+        "models/ggml-large-v3.bin",
         "models/ggml-large-v3-turbo.bin",
         "models/ggml-medium.bin",
         "models/ggml-small.bin",
@@ -82,7 +83,7 @@ def _default_local_whisper_model() -> str:
     ):
         if (PROJECT_ROOT / model_path).is_file():
             return model_path
-    return "models/ggml-large-v3-turbo.bin"
+    return "models/ggml-large-v3.bin"
 
 
 def load_settings() -> Settings:
@@ -115,7 +116,7 @@ def load_settings() -> Settings:
         notes_dir=os.getenv("READVIDEO_NOTES_DIR", "notes"),
         notes_backend=notes_backend,
         note_style=note_style,
-        ollama_model=os.getenv("READVIDEO_OLLAMA_MODEL", "qwen2.5:32b"),
+        ollama_model=os.getenv("READVIDEO_OLLAMA_MODEL", "qwen3.6:35b"),
         ollama_url=os.getenv("READVIDEO_OLLAMA_URL", "http://127.0.0.1:11434/api/generate"),
         database_path=os.getenv("READVIDEO_DATABASE_URL") or os.getenv("READVIDEO_DATABASE_PATH", "readvideo.sqlite3"),
         redis_url=os.getenv("READVIDEO_REDIS_URL", ""),

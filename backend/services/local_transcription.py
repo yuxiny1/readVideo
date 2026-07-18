@@ -31,7 +31,7 @@ class LocalWhisperTranscription:
     def __init__(
         self,
         whisper_cli: str = "whisper-cli",
-        model_path: str = "models/ggml-large-v3-turbo.bin",
+        model_path: str = "models/ggml-large-v3.bin",
         language: str = "auto",
         prompt: str = "",
         audio_filter: str = DEFAULT_AUDIO_FILTER,

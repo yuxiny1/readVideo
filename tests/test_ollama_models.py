@@ -30,6 +30,7 @@ class OllamaModelsTest(unittest.TestCase):
         names = {model["name"] for model in recommended_models()}
         self.assertIn("qwen2.5:14b", names)
         self.assertIn("qwen3:30b", names)
+        self.assertIn("qwen3.6:35b", names)
 
     def test_list_installed_models_parses_ollama_output(self):
         result = subprocess.CompletedProcess(

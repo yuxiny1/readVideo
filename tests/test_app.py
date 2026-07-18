@@ -170,8 +170,8 @@ class MainAppTest(unittest.TestCase):
         self.assertEqual(data["transcription_backend"], "local")
         self.assertEqual(data["notes_backend"], "ollama")
         self.assertEqual(data["note_style"], "detailed")
-        self.assertEqual(data["ollama_model"], "qwen2.5:32b")
-        self.assertEqual(data["local_whisper_model"], "models/ggml-large-v3-turbo.bin")
+        self.assertEqual(data["ollama_model"], "qwen3.6:35b")
+        self.assertEqual(data["local_whisper_model"], "models/ggml-large-v3.bin")
         self.assertNotIn("openai_api_key", data)
 
     def test_ollama_models_endpoint_lists_installed_models(self):
@@ -215,7 +215,7 @@ class MainAppTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         recommended = [model for model in data["whisper"] if model["recommended"]]
-        self.assertEqual(recommended[0]["name"], "ggml-large-v3-turbo.bin")
+        self.assertEqual(recommended[0]["name"], "ggml-large-v3.bin")
         self.assertIn("auto", [language["code"] for language in data["languages"]])
 
     def test_tasks_endpoint_lists_recent_task_metadata(self):
