@@ -1,17 +1,8 @@
 import {ReaderFocusTheme, ReaderTextSize, ReaderWidth} from "../../models/reader-types/reader.types";
 
-const FOCUS_MODE_STORAGE_KEY = "readvideo.reader.focusMode";
 const FOCUS_THEME_STORAGE_KEY = "readvideo.reader.focusTheme";
 const READER_WIDTH_STORAGE_KEY = "readvideo.reader.width";
 const READER_TEXT_SIZE_STORAGE_KEY = "readvideo.reader.textSize";
-
-export function readFocusModeDefault(): boolean {
-  return readStorage(FOCUS_MODE_STORAGE_KEY) === "true";
-}
-
-export function persistFocusModeDefault(enabled: boolean): void {
-  writeStorage(FOCUS_MODE_STORAGE_KEY, enabled ? "true" : "false");
-}
 
 export function readFocusThemeDefault(): ReaderFocusTheme {
   return readStorage(FOCUS_THEME_STORAGE_KEY) === "dark" ? "dark" : "light";

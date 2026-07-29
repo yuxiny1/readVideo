@@ -8,6 +8,41 @@ import yt_dlp
 
 
 logger = logging.getLogger(__name__)
+DOWNLOAD_RETRIES = 20
+HTTP_CHUNK_SIZE = 10 * 1024 * 1024
+
+
+class YtDlpLogger:
+    def __init__(self, progress_hook: Optional[Callable[[dict], None]] = None):
+        self.name = logger.name
+        self._progress_hook = progress_hook
+
+    def debug(self, message: str) -> None:
+        logger.debug("%s", message)
+        self._report_retry(message)
+
+    def info(self, message: str) -> None:
+        logger.info("%s", message)
+
+    def warning(self, message: str) -> None:
+        logger.warning("%s", message)
+        self._report_retry(message)
+
+    def _report_retry(self, message: str) -> None:
+        retry = re.search(r"Retrying.*\((\d+)/(\d+)\)", message)
+        if retry and self._progress_hook is not None:
+            self._progress_hook({
+                "status": "retrying",
+                "retry_attempt": int(retry.group(1)),
+                "retry_limit": int(retry.group(2)),
+            })
+
+    def error(self, message: str) -> None:
+        logger.error("%s", message)
+
+
+def _retry_delay(n: int) -> int:
+    return min(2 ** n, 10)
 
 
 def clean_filename_part(value: str) -> str:
@@ -71,13 +106,26 @@ def download_video(
     if progress_hook is not None:
         progress_hooks.append(progress_hook)
 
+    # YoutubeDL's Python API does not inherit the CLI retry defaults.
     ydl_opts = {
         "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best",
         "merge_output_format": "mp4",
         "outtmpl": str(output_dir / "%(title).200s.%(ext)s"),
-        "logger": logger,
+        "logger": YtDlpLogger(progress_hook),
         "progress_hooks": progress_hooks,
         "noplaylist": True,
+        "retries": DOWNLOAD_RETRIES,
+        "fragment_retries": DOWNLOAD_RETRIES,
+        "file_access_retries": 5,
+        "extractor_retries": 5,
+        "retry_sleep_functions": {
+            "http": _retry_delay,
+            "fragment": _retry_delay,
+        },
+        "continuedl": True,
+        "nopart": False,
+        "http_chunk_size": HTTP_CHUNK_SIZE,
+        "socket_timeout": 30,
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:

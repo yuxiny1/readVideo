@@ -36,10 +36,12 @@ class FrontendContractTest(unittest.TestCase):
 
         self.assertIn("focusMode", document_store)
         self.assertIn("toggleFocusMode", document_store)
-        self.assertIn("readvideo.reader.focusMode", preferences)
+        self.assertIn("focusMode: false", document_store)
+        self.assertNotIn("readvideo.reader.focusMode", preferences)
         self.assertIn("focusTheme", document_store)
         self.assertIn("readvideo.reader.focusTheme", preferences)
         self.assertIn("pageVm = computed", page_component)
+        self.assertIn("document:keydown.escape", page_component)
         self.assertIn("reader-focus-mode", template)
         self.assertIn("reader-focus-dark", template)
         self.assertIn("reader-page-focus", template)

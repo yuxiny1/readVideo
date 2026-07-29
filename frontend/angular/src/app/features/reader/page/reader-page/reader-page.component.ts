@@ -1,5 +1,5 @@
 import {CommonModule} from "@angular/common";
-import {ChangeDetectionStrategy, Component, computed, inject, OnInit} from "@angular/core";
+import {ChangeDetectionStrategy, Component, computed, HostListener, inject, OnInit} from "@angular/core";
 import {RouterLink} from "@angular/router";
 
 import {LibraryStore} from "../../../library/data-access/library-store/library.store";
@@ -26,6 +26,7 @@ export class ReaderPageComponent implements OnInit {
     const status = document.status();
     const focusMode = document.focusMode();
     const focusDark = focusMode && document.focusTheme() === "dark";
+    const hasDocument = Boolean(document.path());
     return {
       status,
       statusClass: status === "已打开" ? "ok" : status === "错误" ? "error" : "muted",
@@ -33,7 +34,7 @@ export class ReaderPageComponent implements OnInit {
       focusMode,
       focusDark,
       wideLayout: document.readerWidth() === "wide",
-      hasDocument: Boolean(document.path()),
+      canToggleFocus: focusMode || hasDocument,
       canOpenPrevious: this.reader.canOpenPrevious(),
       canOpenNext: this.reader.canOpenNext(),
       focusButtonLabel: focusMode ? "退出专注阅读" : "进入专注阅读",
@@ -42,5 +43,10 @@ export class ReaderPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.reader.initialize();
+  }
+
+  @HostListener("document:keydown.escape")
+  exitFocusMode(): void {
+    if (this.reader.document.focusMode()) this.reader.document.toggleFocusMode();
   }
 }

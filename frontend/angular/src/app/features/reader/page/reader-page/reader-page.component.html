@@ -23,7 +23,7 @@
       <button
         class="primary-button small-button focus-mode-launch"
         type="button"
-        [disabled]="!page.hasDocument"
+        [disabled]="!page.canToggleFocus"
         [attr.aria-pressed]="page.focusMode"
         (click)="vm.document.toggleFocusMode()"
       >

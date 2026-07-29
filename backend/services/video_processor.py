@@ -384,6 +384,17 @@ def build_download_progress_hook(task_id: str):
             )
             append_task_log(task_id, "下载完成，正在准备转录。", status="downloading")
 
+        if status == "retrying":
+            attempt = progress.get("retry_attempt")
+            limit = progress.get("retry_limit")
+            update_task_details(task_id, download_status="retrying")
+            append_task_log(
+                task_id,
+                f"下载连接中断，正在自动重试（第 {attempt}/{limit} 次）。",
+                level="warning",
+                status="downloading",
+            )
+
     return report
 
 

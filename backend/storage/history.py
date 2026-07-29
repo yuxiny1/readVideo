@@ -158,6 +158,9 @@ def source_key_for_url(url: str) -> str:
     if host == "youtu.be" and path_parts:
         return f"youtube:{path_parts[0]}"
 
+    if host in {"bilibili.com", "m.bilibili.com"} and len(path_parts) >= 2 and path_parts[0] == "video":
+        return f"bilibili:{path_parts[1]}"
+
     normalized_path = parsed.path.rstrip("/")
     query = parsed.query
     return f"url:{host}{normalized_path}?{query}" if query else f"url:{host}{normalized_path}"

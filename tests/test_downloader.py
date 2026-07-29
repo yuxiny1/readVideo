@@ -3,7 +3,15 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from backend.services.downloader import clean_filename_part, download_video, normalize_downloaded_file_path
+from backend.services.downloader import (
+    DOWNLOAD_RETRIES,
+    HTTP_CHUNK_SIZE,
+    YtDlpLogger,
+    _retry_delay,
+    clean_filename_part,
+    download_video,
+    normalize_downloaded_file_path,
+)
 
 
 class FakeYoutubeDLWithRequestedDownload:
@@ -61,6 +69,28 @@ class DownloaderFilenameTest(unittest.TestCase):
                 FakeYoutubeDLWithRequestedDownload.last_options["logger"].name,
                 "backend.services.downloader",
             )
+            self.assertEqual(FakeYoutubeDLWithRequestedDownload.last_options["retries"], DOWNLOAD_RETRIES)
+            self.assertEqual(FakeYoutubeDLWithRequestedDownload.last_options["fragment_retries"], DOWNLOAD_RETRIES)
+            self.assertEqual(FakeYoutubeDLWithRequestedDownload.last_options["http_chunk_size"], HTTP_CHUNK_SIZE)
+            self.assertTrue(FakeYoutubeDLWithRequestedDownload.last_options["continuedl"])
+            self.assertFalse(FakeYoutubeDLWithRequestedDownload.last_options["nopart"])
+
+    def test_yt_dlp_logger_reports_retry_attempts_to_the_task_hook(self):
+        progress_events = []
+        task_logger = YtDlpLogger(progress_events.append)
+
+        task_logger.debug("[download] Got error: Connection closed. Retrying (2/20)...")
+
+        self.assertEqual(progress_events, [{
+            "status": "retrying",
+            "retry_attempt": 2,
+            "retry_limit": 20,
+        }])
+
+    def test_retry_delay_accepts_yt_dlp_keyword_argument(self):
+        self.assertEqual(_retry_delay(n=0), 1)
+        self.assertEqual(_retry_delay(n=3), 8)
+        self.assertEqual(_retry_delay(n=8), 10)
 
     def test_download_does_not_create_a_log_file_in_the_process_directory(self):
         with tempfile.TemporaryDirectory() as tmpdir, patch(

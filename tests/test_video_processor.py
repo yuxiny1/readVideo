@@ -229,6 +229,17 @@ class VideoProcessorReuseTest(unittest.TestCase):
         self.assertTrue(any("下载进度：50.0%" in log["message"] for log in task["logs"]))
         self.assertTrue(any("下载完成" in log["message"] for log in task["logs"]))
 
+    def test_download_progress_hook_records_network_retries(self):
+        set_task_status("retry-task", "downloading")
+        hook = build_download_progress_hook("retry-task")
+
+        hook({"status": "retrying", "retry_attempt": 2, "retry_limit": 20})
+
+        task = TASKS["retry-task"]
+        self.assertEqual(task["download_status"], "retrying")
+        self.assertEqual(task["logs"][-1]["level"], "warning")
+        self.assertIn("第 2/20 次", task["logs"][-1]["message"])
+
     def test_download_percent_handles_missing_and_caps_at_one_hundred(self):
         self.assertIsNone(_download_percent(None, 100))
         self.assertIsNone(_download_percent(100, 0))

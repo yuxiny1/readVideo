@@ -19,11 +19,9 @@ import {
   renderMarkdown,
 } from "../../utils/reader-markdown/reader-markdown";
 import {
-  persistFocusModeDefault,
   persistFocusThemeDefault,
   persistReaderTextSizeDefault,
   persistReaderWidthDefault,
-  readFocusModeDefault,
   readFocusThemeDefault,
   readReaderTextSizeDefault,
   readReaderWidthDefault,
@@ -61,7 +59,7 @@ export const ReaderDocumentStore = signalStore(
     emptyMessage: "请选择一篇笔记开始阅读。",
     documentQuery: "",
     error: "",
-    focusMode: readFocusModeDefault(),
+    focusMode: false,
     focusTheme: readFocusThemeDefault(),
     readerWidth: readReaderWidthDefault(),
     readerTextSize: readReaderTextSizeDefault(),
@@ -143,9 +141,9 @@ export const ReaderDocumentStore = signalStore(
       },
 
       toggleFocusMode(): void {
+        if (!store.focusMode() && !store.path()) return;
         const focusMode = !store.focusMode();
         patchState(store, {focusMode});
-        persistFocusModeDefault(focusMode);
       },
 
       setFocusTheme(focusTheme: ReaderFocusTheme): void {

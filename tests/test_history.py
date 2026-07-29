@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from backend.storage.history import HistoryStore
+from backend.storage.history import HistoryStore, source_key_for_url
 
 
 class HistoryStoreTest(unittest.TestCase):
@@ -56,6 +56,15 @@ class HistoryStoreTest(unittest.TestCase):
 
         self.assertIsNotNone(record)
         self.assertEqual(record.task_id, "task-1")
+
+    def test_bilibili_source_key_ignores_tracking_query(self):
+        tracked = source_key_for_url(
+            "https://www.bilibili.com/video/BV1qR3i6hETU/?spm_id_from=333.337.search-card.all.click"
+        )
+        clean = source_key_for_url("https://bilibili.com/video/BV1qR3i6hETU")
+
+        self.assertEqual(tracked, "bilibili:BV1qR3i6hETU")
+        self.assertEqual(tracked, clean)
 
 
 if __name__ == "__main__":

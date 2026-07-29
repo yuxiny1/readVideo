@@ -33,7 +33,8 @@ describe("ReaderDocumentStore", () => {
     expect(String(store.html())).toContain("Course");
   });
 
-  it("updates reader controls and persists focus preferences", () => {
+  it("updates reader controls and persists visual preferences", () => {
+    store.open({path: "/notes/a.md", content: "# Reader note"});
     store.toggleFocusMode();
     store.setFocusTheme("dark");
     store.setReaderWidth("wide");
@@ -48,6 +49,23 @@ describe("ReaderDocumentStore", () => {
     expect(localStorage.getItem("readvideo.reader.focusTheme")).toBe("dark");
     expect(localStorage.getItem("readvideo.reader.width")).toBe("wide");
     expect(localStorage.getItem("readvideo.reader.textSize")).toBe("large");
+  });
+
+  it("keeps focus mode session-scoped and requires an open document", () => {
+    TestBed.resetTestingModule();
+    localStorage.setItem("readvideo.reader.focusMode", "true");
+    TestBed.configureTestingModule({providers: [ReaderDocumentStore]});
+    store = TestBed.inject(ReaderDocumentStore);
+
+    expect(store.focusMode()).toBe(false);
+    store.toggleFocusMode();
+    expect(store.focusMode()).toBe(false);
+
+    store.open({path: "/notes/a.md", content: "# Reader note"});
+    store.toggleFocusMode();
+    expect(store.focusMode()).toBe(true);
+    store.toggleFocusMode();
+    expect(store.focusMode()).toBe(false);
   });
 
   it("tracks open failures without unsafe HTML", () => {
