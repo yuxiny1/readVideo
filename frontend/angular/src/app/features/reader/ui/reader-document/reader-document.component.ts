@@ -1,5 +1,6 @@
-import {ChangeDetectionStrategy, Component} from "@angular/core";
+import {ChangeDetectionStrategy, Component, input} from "@angular/core";
 
+import {ReaderFacade} from "../../data-access/reader-facade/reader.facade";
 import {ReaderContentComponent} from "../reader-content/reader-content.component";
 import {ReaderDocumentToolbarComponent} from "../reader-document-toolbar/reader-document-toolbar.component";
 
@@ -11,4 +12,6 @@ import {ReaderDocumentToolbarComponent} from "../reader-document-toolbar/reader-
   styleUrl: "./reader-document.component.scss",
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ReaderDocumentComponent {}
+export class ReaderDocumentComponent {
+  readonly reader = input.required<ReaderFacade>();
+}

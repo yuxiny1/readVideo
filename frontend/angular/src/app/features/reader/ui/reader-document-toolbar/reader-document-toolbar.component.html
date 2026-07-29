@@ -1,4 +1,4 @@
-@let vm = reader;
+@let vm = reader();
 <header class="reader-document-bar">
   <div>
     <h2>{{ vm.document.title() }}</h2>
@@ -17,20 +17,22 @@
       } @else {
         <rv-tag-chip label="暂无标签" [interactive]="false" [colored]="false" [prefix]="false" [muted]="true" />
       }
-      <div class="reader-tag-edit-row">
-        <input
-          name="reader-active-tags"
-          placeholder="课程、人工智能、金融"
-          [disabled]="!vm.activeFavorite()"
-          [ngModel]="vm.activeTagDraft()"
-          (ngModelChange)="vm.setActiveTagDraft($event)"
-        >
-        <button class="secondary-button small-button" type="button" [disabled]="!vm.activeFavorite()" (click)="vm.saveActiveTags()">保存标签</button>
-      </div>
+      <rv-tag-editor
+        class="reader-document-tag-editor"
+        inputId="reader-active-tags"
+        name="reader-active-tags"
+        placeholder="选择已有标签，或输入新标签"
+        saveLabel="保存标签"
+        [disabled]="!vm.activeDocumentIsTaggable()"
+        [suggestions]="vm.tags()"
+        [value]="vm.activeTagDraft()"
+        (valueChange)="vm.setActiveTagDraft($event)"
+        (saveRequested)="vm.saveActiveTags()"
+      />
     </div>
   </div>
   <div class="reader-document-actions">
-    <div class="segmented-control compact-segmented" aria-label="阅读视图">
+    <div class="segmented-control compact-segmented reader-view-toggle" aria-label="阅读视图">
       <button type="button" [ngClass]="vm.document.viewMode() === 'rendered' ? 'active' : ''" (click)="vm.document.setViewMode('rendered')">阅读</button>
       <button type="button" [ngClass]="vm.document.viewMode() === 'markdown' ? 'active' : ''" (click)="vm.document.setViewMode('markdown')">源码</button>
     </div>
@@ -43,14 +45,14 @@
         <button type="button" [ngClass]="vm.document.focusTheme() === 'light' ? 'active' : ''" (click)="vm.document.setFocusTheme('light')">浅色</button>
         <button type="button" [ngClass]="vm.document.focusTheme() === 'dark' ? 'active' : ''" (click)="vm.document.setFocusTheme('dark')">深色</button>
       </div>
-      <div class="segmented-control compact-segmented" aria-label="专注模式字号">
+      <div class="segmented-control compact-segmented reader-text-toggle" aria-label="专注模式字号">
         <button type="button" [ngClass]="vm.document.readerTextSize() === 'standard' ? 'active' : ''" (click)="vm.document.setReaderTextSize('standard')">标准</button>
         <button type="button" [ngClass]="vm.document.readerTextSize() === 'large' ? 'active' : ''" (click)="vm.document.setReaderTextSize('large')">大号</button>
       </div>
     }
     @if (vm.document.path()) {
-      <button class="secondary-button small-button" type="button" (click)="vm.document.copyMarkdown()">复制完整笔记</button>
-      <a class="quiet-link small-link" [href]="vm.document.downloadHref()">下载笔记</a>
+      <button class="secondary-button small-button reader-copy-action" type="button" (click)="vm.document.copyMarkdown()">复制完整笔记</button>
+      <a class="quiet-link small-link reader-download-action" [href]="vm.document.downloadHref()">下载笔记</a>
     }
   </div>
 </header>

@@ -154,6 +154,16 @@
   transform: none;
 }
 
+@container page-content (min-width: 981px) and (max-width: 1480px) {
+  :host {
+    position: static;
+  }
+
+  .reader-inspector-panel {
+    max-height: min(36vh, 420px);
+  }
+}
+
 @media (max-width: 1120px) {
   :host {
     position: static;

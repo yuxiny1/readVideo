@@ -16,6 +16,7 @@ import {
 import {LibraryMode, LibrarySort, ReaderLibraryItem} from "../../models/reader-types/reader.types";
 import {filterFavorites, filterFiles, libraryItems} from "../../utils/reader-library/reader-library";
 import {ReaderDocumentStore} from "../reader-document/reader-document.store";
+import {ReaderHistoryContextService} from "../reader-history-context/reader-history-context.service";
 
 type DocumentRequest =
   | {kind: "path"; path: string; updateRoute: boolean}
@@ -27,6 +28,7 @@ export class ReaderFacade {
   private readonly router = inject(Router);
   private readonly api = inject(ReadvideoApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly historyContext = inject(ReaderHistoryContextService);
   private readonly markdownFileRequests = new Subject<{directory: string; updateRoute: boolean}>();
   private readonly documentRequests = new Subject<DocumentRequest>();
   readonly document = inject(ReaderDocumentStore);
@@ -38,6 +40,7 @@ export class ReaderFacade {
   readonly activeFolderId = signal("all");
   readonly activeTag = signal("all");
   readonly selectedFavoriteId = signal<number | null>(null);
+  readonly activeTask = this.historyContext.activeTask;
   readonly files = signal<MarkdownFile[]>([]);
   readonly fileCount = signal("0 个文件");
   readonly defaultNotesDir = signal("notes");
@@ -73,7 +76,8 @@ export class ReaderFacade {
       ?? this.favorites().find((item) => this.pathsReferToSameDocument(item.markdown_path, this.document.path()))
       ?? null
   ));
-  readonly activeDocumentTags = computed(() => tagsFor(this.activeFavorite() ?? {}));
+  readonly activeDocumentTags = computed(() => tagsFor(this.activeFavorite() ?? this.activeTask() ?? {}));
+  readonly activeDocumentIsTaggable = computed(() => Boolean(this.activeFavorite() || this.activeTask()));
   readonly activeLibraryIndex = computed(() => {
     const currentPath = this.document.path();
     return currentPath
@@ -181,6 +185,7 @@ export class ReaderFacade {
 
   openFavorite(item: FavoriteSummary): void {
     this.selectedFavoriteId.set(item.id);
+    this.historyContext.clear();
     if (item.notes_dir && item.notes_dir !== this.markdownFolder) this.loadMarkdownFiles(item.notes_dir);
     this.document.beginOpen(item.markdown_path || item.title);
     this.localError.set("");
@@ -189,12 +194,16 @@ export class ReaderFacade {
 
   openFile(file: MarkdownFile): void {
     this.selectedFavoriteId.set(null);
+    this.historyContext.clear();
     this.openPath(file.path);
   }
 
-  openPath(path: string, updateRoute = true): void {
+  openPath(path: string, updateRoute = true, taskId = ""): void {
     const matchingFavorite = this.favorites().find((item) => this.pathsReferToSameDocument(item.markdown_path, path));
     this.selectedFavoriteId.set(matchingFavorite?.id ?? null);
+    if (matchingFavorite) this.historyContext.clear();
+    else if (taskId) this.runOnce(this.historyContext.load(taskId), () => undefined);
+    else this.historyContext.clear();
     this.document.beginOpen(path);
     this.localError.set("");
     this.documentRequests.next({kind: "path", path, updateRoute});
@@ -233,19 +242,31 @@ export class ReaderFacade {
 
   activeTagDraft(): string {
     const item = this.activeFavorite();
-    return item ? this.tagDraft(item) : "";
+    if (item) return this.tagDraft(item);
+    return this.historyContext.activeDraft();
   }
 
   setActiveTagDraft(value: string): void {
     const item = this.activeFavorite();
-    if (item) this.tagDrafts[item.id] = value;
+    if (item) {
+      this.tagDrafts[item.id] = value;
+      return;
+    }
+    this.historyContext.setActiveDraft(value);
   }
 
   saveActiveTags(): void {
     const item = this.activeFavorite();
-    if (!item) return;
+    if (!item && !this.activeTask()) return;
     this.document.setStatus("正在保存标签");
-    this.library.updateTags({favoriteId: item.id, tags: parseTags(this.tagDraft(item))});
+    if (item) {
+      this.library.updateTags({favoriteId: item.id, tags: parseTags(this.tagDraft(item))});
+      return;
+    }
+    this.runOnce(this.historyContext.saveActiveTags(), () => {
+      this.library.loadAll();
+      this.document.setStatus("标签已保存");
+    });
   }
 
   folderCount(id: string | number): number {
@@ -278,15 +299,17 @@ export class ReaderFacade {
     const folder = this.route.snapshot.queryParamMap.get("folder") || this.markdownFolder;
     this.loadMarkdownFiles(folder);
     const path = this.route.snapshot.queryParamMap.get("path");
-    if (path) this.openPath(path, false);
+    const taskId = this.route.snapshot.queryParamMap.get("taskId") || "";
+    if (path) this.openPath(path, false, taskId);
   }
 
   private applyDocument(document: MarkdownDocument, updateRoute: boolean): void {
     this.document.open(document);
     if (updateRoute) {
+      const activeTaskId = this.activeTask()?.task_id;
       void this.router.navigate([], {
         relativeTo: this.route,
-        queryParams: {path: document.path, folder: this.markdownFolder},
+        queryParams: {path: document.path, folder: this.markdownFolder, taskId: activeTaskId || null},
         queryParamsHandling: "merge",
       });
     }

@@ -20,6 +20,7 @@ import {
 
 import {ReadvideoApiService} from "../../../../core/api/readvideo-api/readvideo-api.service";
 import {DuplicateLookup, NoticeKind, NoticeState, ProcessPayload, TaskRecord} from "../../../../shared/models/readvideo-types/readvideo.types";
+import {copyTextToClipboard} from "../../../../shared/utils/clipboard/clipboard";
 import {errorMessage} from "../../../../shared/utils/errors/errors";
 import {statusLabel} from "../../../../shared/utils/format/format";
 import {LocalModelsService} from "../local-models/local-models.service";
@@ -212,7 +213,7 @@ export class TaskWorkflowService {
 
     this.runOnce(
       content$.pipe(
-        switchMap(({content, notice}) => defer(() => navigator.clipboard.writeText(content)).pipe(
+        switchMap(({content, notice}) => defer(() => copyTextToClipboard(content)).pipe(
           map(() => notice),
         )),
       ),

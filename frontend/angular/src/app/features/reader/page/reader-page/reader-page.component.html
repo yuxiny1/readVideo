@@ -1,39 +1,46 @@
 @let vm = reader;
-<header
-  class="topbar reader-topbar"
-  [class.reader-focus-topbar]="vm.document.focusMode()"
-  [class.reader-focus-dark]="vm.document.focusMode() && vm.document.focusTheme() === 'dark'"
+@let page = pageVm();
+<section
+  class="reader-page-surface"
+  [class.reader-page-focus]="page.focusMode"
+  [class.reader-page-focus-dark]="page.focusDark"
 >
-  <div>
-    <h1>阅读器</h1>
-    <div class="meta-row">
-      <span class="pill" [ngClass]="vm.document.status() === '已打开' ? 'ok' : vm.document.status() === '错误' ? 'error' : 'muted'">{{ vm.document.status() }}</span>
-      <span class="pill muted">{{ vm.libraryCount() }}</span>
+  <header
+    class="topbar reader-topbar"
+    [class.reader-focus-topbar]="page.focusMode"
+    [class.reader-focus-dark]="page.focusDark"
+  >
+    <div>
+      <h1>阅读器</h1>
+      <div class="meta-row">
+        <span class="pill" [ngClass]="page.statusClass">{{ page.status }}</span>
+        <span class="pill muted">{{ page.libraryCount }}</span>
+      </div>
     </div>
-  </div>
-  <div class="button-row">
-    <button class="secondary-button small-button" type="button" [disabled]="!vm.canOpenPrevious()" (click)="vm.openAdjacent(-1)">上一篇</button>
-    <button class="secondary-button small-button" type="button" [disabled]="!vm.canOpenNext()" (click)="vm.openAdjacent(1)">下一篇</button>
-    <button
-      class="primary-button small-button focus-mode-launch"
-      type="button"
-      [disabled]="!vm.document.path()"
-      [attr.aria-pressed]="vm.document.focusMode()"
-      (click)="vm.document.toggleFocusMode()"
-    >
-      {{ vm.document.focusMode() ? '退出专注阅读' : '进入专注阅读' }}
-    </button>
-    <a class="quiet-link small-link" routerLink="/favorites">收藏</a>
-  </div>
-</header>
+    <div class="button-row">
+      <button class="secondary-button small-button" type="button" [disabled]="!page.canOpenPrevious" (click)="vm.openAdjacent(-1)">上一篇</button>
+      <button class="secondary-button small-button" type="button" [disabled]="!page.canOpenNext" (click)="vm.openAdjacent(1)">下一篇</button>
+      <button
+        class="primary-button small-button focus-mode-launch"
+        type="button"
+        [disabled]="!page.hasDocument"
+        [attr.aria-pressed]="page.focusMode"
+        (click)="vm.document.toggleFocusMode()"
+      >
+        {{ page.focusButtonLabel }}
+      </button>
+      <a class="quiet-link small-link" routerLink="/favorites">收藏</a>
+    </div>
+  </header>
 
-<main
-  class="reader-workspace"
-  [class.reader-focus-mode]="vm.document.focusMode()"
-  [class.reader-focus-dark]="vm.document.focusMode() && vm.document.focusTheme() === 'dark'"
-  [class.reader-wide-layout]="vm.document.readerWidth() === 'wide'"
->
-  @if (!vm.document.focusMode()) {<rv-reader-library />}
-  <rv-reader-document />
-  @if (!vm.document.focusMode()) {<rv-reader-inspector />}
-</main>
+  <main
+    class="reader-workspace"
+    [class.reader-focus-mode]="page.focusMode"
+    [class.reader-focus-dark]="page.focusDark"
+    [class.reader-wide-layout]="page.wideLayout"
+  >
+    @if (!page.focusMode) {<rv-reader-library [reader]="vm" />}
+    <rv-reader-document [reader]="vm" />
+    @if (!page.focusMode) {<rv-reader-inspector [reader]="vm" />}
+  </main>
+</section>

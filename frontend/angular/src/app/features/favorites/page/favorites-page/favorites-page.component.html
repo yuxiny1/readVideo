@@ -88,27 +88,16 @@
             <section class="note-tag-manager">
               <div class="section-heading-row">
                 <h3>标签</h3>
-                @if (!vm.tagsFor(item).length) {
-                  <rv-tag-chip label="暂无标签" [interactive]="false" [colored]="false" [prefix]="false" [muted]="true" [mini]="true" />
-                }
               </div>
-              @if (vm.tagsFor(item).length) {
-                <div class="tag-strip note-tag-strip">
-                  @for (tag of vm.tagsFor(item); track tag) {
-                    <rv-tag-chip [label]="tag" [mini]="true" (selected)="vm.setActiveTag(tag)" />
-                  }
-                </div>
-              }
-              <div class="tag-input-row">
-                <input
-                  [id]="'favorite-tags-' + item.id"
-                  [name]="'favorite-tags-' + item.id"
-                  placeholder="课程、人工智能、金融"
-                  [ngModel]="vm.tagDraft(item)"
-                  (ngModelChange)="vm.setTagDraft(item, $event)"
-                >
-                <button class="secondary-button small-button" type="button" (click)="vm.saveTags(item)">保存标签</button>
-              </div>
+              <rv-tag-editor
+                [inputId]="'favorite-tags-' + item.id"
+                [name]="'favorite-tags-' + item.id"
+                placeholder="选择已有标签，或输入新标签"
+                [suggestions]="vm.tags()"
+                [value]="vm.tagDraft(item)"
+                (valueChange)="vm.setTagDraft(item, $event)"
+                (saveRequested)="vm.saveTags(item)"
+              />
             </section>
 
             <section class="favorite-detail">

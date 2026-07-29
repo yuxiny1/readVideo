@@ -7,6 +7,7 @@ import {ReadvideoApiService} from "../../../../core/api/readvideo-api/readvideo-
 import {LibraryStore} from "../../../library/data-access/library-store/library.store";
 import {FavoriteFolder, FavoriteSummary, MarkdownFile} from "../../../../shared/models/readvideo-types/readvideo.types";
 import {ReaderDocumentStore} from "../reader-document/reader-document.store";
+import {ReaderHistoryContextService} from "../reader-history-context/reader-history-context.service";
 import {ReaderFacade} from "./reader.facade";
 
 const favorite = (overrides: Partial<FavoriteSummary> = {}): FavoriteSummary => ({
@@ -56,15 +57,28 @@ describe("ReaderFacade", () => {
       favoriteFolders: vi.fn(() => of([folder])),
       tags: vi.fn(() => of([])),
       updateFavoriteTags: vi.fn((_id: number, tags: string[]) => of(favorite({tags}))),
+      updateHistoryTags: vi.fn((taskId: string, tags: string[]) => of({
+        task_id: taskId,
+        status: "completed",
+        markdown_path: "/notes/history.md",
+        tags,
+      })),
       appConfig: vi.fn(() => of({notes_dir: "/notes"})),
       markdownFiles: vi.fn(() => of([file])),
       markdownDocument: vi.fn((path: string) => of({path, content: "# Reader Note\nBody"})),
       favoriteMarkdown: vi.fn(() => of({path: "/notes/generated.md", content: "# Generated"})),
+      taskStatus: vi.fn((taskId: string) => of({
+        task_id: taskId,
+        status: "completed",
+        markdown_path: "/notes/history.md",
+        tags: ["history"],
+      })),
     };
     router = {navigate: vi.fn(() => Promise.resolve(true))};
     TestBed.configureTestingModule({providers: [
       LibraryStore,
       ReaderDocumentStore,
+      ReaderHistoryContextService,
       ReaderFacade,
       {provide: ReadvideoApiService, useValue: api},
       {provide: Router, useValue: router},
@@ -120,6 +134,22 @@ describe("ReaderFacade", () => {
     TestBed.tick();
 
     expect(api.updateFavoriteTags).toHaveBeenCalledWith(1, ["Angular", "notes"]);
+    expect(documentStore.status()).toBe("标签已保存");
+  });
+
+  it("saves tags for a directly opened history document", () => {
+    facade.initialize();
+    TestBed.tick();
+
+    facade.openPath("/notes/history.md", true, "history-task");
+    TestBed.tick();
+    facade.setActiveTagDraft("课程, reader");
+    facade.saveActiveTags();
+    TestBed.tick();
+
+    expect(api.taskStatus).toHaveBeenCalledWith("history-task");
+    expect(api.updateHistoryTags).toHaveBeenCalledWith("history-task", ["课程", "reader"]);
+    expect(facade.activeDocumentTags()).toEqual(["课程", "reader"]);
     expect(documentStore.status()).toBe("标签已保存");
   });
 

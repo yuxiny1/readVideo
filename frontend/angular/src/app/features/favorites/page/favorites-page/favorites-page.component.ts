@@ -3,13 +3,14 @@ import {ChangeDetectionStrategy, Component, inject, OnInit} from "@angular/core"
 import {FormsModule} from "@angular/forms";
 
 import {TagChipComponent} from "../../../../shared/ui/tag-chip/tag-chip.component";
+import {TagEditorComponent} from "../../../../shared/ui/tag-editor/tag-editor.component";
 import {LibraryStore} from "../../../library/data-access/library-store/library.store";
 import {FavoritesFacade} from "../../data-access/favorites-facade/favorites.facade";
 
 @Component({
   selector: "rv-favorites-page",
   standalone: true,
-  imports: [CommonModule, FormsModule, TagChipComponent],
+  imports: [CommonModule, FormsModule, TagChipComponent, TagEditorComponent],
   templateUrl: "./favorites-page.component.html",
   styleUrl: "./favorites-page.component.scss",
   providers: [LibraryStore, FavoritesFacade],

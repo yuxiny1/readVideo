@@ -6,6 +6,7 @@ import {Observable, defer, take} from "rxjs";
 import {ReadvideoApiService} from "../../../../core/api/readvideo-api/readvideo-api.service";
 import {LibraryStore} from "../../../library/data-access/library-store/library.store";
 import {FavoriteFolder, FavoriteSummary} from "../../../../shared/models/readvideo-types/readvideo.types";
+import {copyTextToClipboard} from "../../../../shared/utils/clipboard/clipboard";
 import {errorMessage} from "../../../../shared/utils/errors/errors";
 import {hasTag, parseTags, tagsFor} from "../../../../shared/utils/tags/tags";
 
@@ -175,7 +176,7 @@ export class FavoritesFacade {
 
   copyFolderLabel(folder: FavoriteFolder): void {
     this.localError.set("");
-    this.runOnce(defer(() => navigator.clipboard.writeText(folder.name)), () => {
+    this.runOnce(defer(() => copyTextToClipboard(folder.name)), () => {
       this.localNotice.set("文件夹名称已复制");
     });
   }

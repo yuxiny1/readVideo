@@ -1,4 +1,5 @@
 import {TestBed} from "@angular/core/testing";
+import {Router} from "@angular/router";
 import {of, throwError} from "rxjs";
 import {beforeEach, describe, expect, it, vi} from "vitest";
 
@@ -27,6 +28,7 @@ const tag: TagSummary = {
 describe("HistoryFacade", () => {
   let facade: HistoryFacade;
   let api: Record<string, ReturnType<typeof vi.fn>>;
+  let router: {navigate: ReturnType<typeof vi.fn>};
 
   beforeEach(() => {
     api = {
@@ -35,9 +37,11 @@ describe("HistoryFacade", () => {
       favoriteTask: vi.fn(() => of({})),
       updateHistoryTags: vi.fn((taskId: string, tags: string[]) => of(record({task_id: taskId, tags}))),
     };
+    router = {navigate: vi.fn(() => Promise.resolve(true))};
     TestBed.configureTestingModule({providers: [
       HistoryFacade,
       {provide: ReadvideoApiService, useValue: api},
+      {provide: Router, useValue: router},
     ]});
     facade = TestBed.inject(HistoryFacade);
   });
@@ -57,6 +61,14 @@ describe("HistoryFacade", () => {
     facade.favorite(record());
     expect(api.favoriteTask).toHaveBeenCalledWith("task-1");
     expect(facade.notice()).toBe("已保存到收藏");
+  });
+
+  it("opens completed Markdown directly in Reader without requiring a favorite", () => {
+    facade.read(record());
+    expect(facade.canRead(record())).toBe(true);
+    expect(router.navigate).toHaveBeenCalledWith(["/reader"], {
+      queryParams: {path: "/notes/angular.md", taskId: "task-1"},
+    });
   });
 
   it("normalizes and saves record tags", () => {

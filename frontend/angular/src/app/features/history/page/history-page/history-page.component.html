@@ -99,19 +99,19 @@
 
             <div class="tag-editor history-tag-editor">
               <label [for]="'history-tags-' + record.task_id">标签</label>
-              <div class="tag-input-row">
-                <input
-                  [id]="'history-tags-' + record.task_id"
-                  [name]="'history-tags-' + record.task_id"
-                  placeholder="课程、人工智能、金融"
-                  [ngModel]="vm.tagDraft(record)"
-                  (ngModelChange)="vm.setTagDraft(record, $event)"
-                >
-                <button class="secondary-button small-button" type="button" (click)="vm.saveTags(record)">保存</button>
-              </div>
+              <rv-tag-editor
+                [inputId]="'history-tags-' + record.task_id"
+                [name]="'history-tags-' + record.task_id"
+                placeholder="选择已有标签，或输入新标签"
+                [suggestions]="vm.tags()"
+                [value]="vm.tagDraft(record)"
+                (valueChange)="vm.setTagDraft(record, $event)"
+                (saveRequested)="vm.saveTags(record)"
+              />
             </div>
 
             <div class="card-actions">
+              <button class="primary-button small-button" type="button" [disabled]="!vm.canRead(record)" (click)="vm.read(record)">阅读</button>
               <button class="secondary-button small-button" type="button" [disabled]="!vm.canFavorite(record)" (click)="vm.favorite(record)">收藏</button>
               @if (record.markdown_path) {
                 <a class="quiet-link small-link" [href]="'/api/markdown_files/download?path=' + vm.encodePath(record.markdown_path)">下载笔记</a>

@@ -32,7 +32,7 @@ export class LatestOutputComponent {
   }
 
   canRead(task: TaskRecord | null): boolean {
-    return Boolean(task?.status === "completed" && task.markdown_path);
+    return Boolean(task?.markdown_path);
   }
 
   readSummary(task: TaskRecord | null): void {

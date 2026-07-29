@@ -3,7 +3,7 @@
     <h2>最新结果</h2>
     <div class="button-row">
       @if (canRead(vm().task)) {
-        <button class="primary-button" type="button" (click)="readSummary(vm().task)">阅读总结</button>
+        <button class="primary-button" type="button" (click)="readSummary(vm().task)">直接阅读</button>
       }
       <button class="secondary-button" type="button" [disabled]="!canFavorite(vm().task)" (click)="favoriteRequested.emit()">收藏总结</button>
       <button class="secondary-button" type="button" [disabled]="!vm().canCopy" (click)="copyRequested.emit()">复制完整笔记</button>

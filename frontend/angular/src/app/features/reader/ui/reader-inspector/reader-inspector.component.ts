@@ -1,5 +1,5 @@
 import {CommonModule} from "@angular/common";
-import {ChangeDetectionStrategy, Component, inject} from "@angular/core";
+import {ChangeDetectionStrategy, Component, input} from "@angular/core";
 
 import {ReaderFacade} from "../../data-access/reader-facade/reader.facade";
 
@@ -12,5 +12,5 @@ import {ReaderFacade} from "../../data-access/reader-facade/reader.facade";
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ReaderInspectorComponent {
-  readonly reader = inject(ReaderFacade);
+  readonly reader = input.required<ReaderFacade>();
 }

@@ -27,6 +27,7 @@ class FrontendContractTest(unittest.TestCase):
     def test_reader_exposes_focus_mode(self):
         document_store = read_repo_file("frontend/angular/src/app/features/reader/data-access/reader-document/reader-document.store.ts")
         preferences = read_repo_file("frontend/angular/src/app/features/reader/utils/reader-preferences/reader-preferences.ts")
+        page_component = read_repo_file("frontend/angular/src/app/features/reader/page/reader-page/reader-page.component.ts")
         template = read_repo_file("frontend/angular/src/app/features/reader/page/reader-page/reader-page.component.html")
         document_template = read_repo_file("frontend/angular/src/app/features/reader/ui/reader-document-toolbar/reader-document-toolbar.component.html")
         page_styles = read_repo_file("frontend/angular/src/app/features/reader/page/reader-page/reader-page.component.scss")
@@ -38,12 +39,16 @@ class FrontendContractTest(unittest.TestCase):
         self.assertIn("readvideo.reader.focusMode", preferences)
         self.assertIn("focusTheme", document_store)
         self.assertIn("readvideo.reader.focusTheme", preferences)
+        self.assertIn("pageVm = computed", page_component)
         self.assertIn("reader-focus-mode", template)
         self.assertIn("reader-focus-dark", template)
-        self.assertIn("进入专注阅读", template)
+        self.assertIn("reader-page-focus", template)
+        self.assertIn("进入专注阅读", page_component)
         self.assertIn("深色", document_template)
-        self.assertIn("@if (!vm.document.focusMode())", template)
+        self.assertIn("@if (!page.focusMode)", template)
         self.assertIn(".reader-workspace.reader-focus-mode", page_styles)
+        self.assertIn(".reader-page-surface.reader-page-focus", page_styles)
+        self.assertIn("position: fixed", page_styles)
         self.assertIn(".reader-topbar.reader-focus-dark", page_styles)
         self.assertIn(".app-layout:has(.reader-workspace.reader-focus-mode)", global_styles)
         self.assertIn(":host-context(.reader-focus-mode) ::ng-deep .modern-reader", document_styles)
@@ -51,6 +56,22 @@ class FrontendContractTest(unittest.TestCase):
         self.assertIn("reader-wide-layout", template)
         self.assertIn(".reader-workspace.reader-wide-layout", page_styles)
         self.assertIn("104ch", document_styles)
+
+    def test_reader_uses_available_content_width_for_laptop_layout(self):
+        shell_styles = read_repo_file("frontend/angular/src/app/shell/app-shell/app.component.scss")
+        page_styles = read_repo_file("frontend/angular/src/app/features/reader/page/reader-page/reader-page.component.scss")
+        toolbar_styles = read_repo_file(
+            "frontend/angular/src/app/features/reader/ui/reader-document-toolbar/"
+            "reader-document-toolbar.component.scss"
+        )
+
+        self.assertIn("container: page-content / inline-size", shell_styles)
+        self.assertIn("@container page-content (max-width: 1480px)", page_styles)
+        self.assertIn('"library document"', page_styles)
+        self.assertIn('"inspector document"', page_styles)
+        self.assertIn("@container page-content (max-width: 980px)", page_styles)
+        self.assertIn('"library document inspector"', page_styles)
+        self.assertIn("@container page-content (max-width: 1480px)", toolbar_styles)
 
     def test_saved_sources_exposes_compact_actions_menu(self):
         template = read_repo_file("frontend/angular/src/app/features/saved-sources/ui/saved-sources/saved-sources.component.html")
@@ -181,7 +202,7 @@ class FrontendContractTest(unittest.TestCase):
         self.assertIn("updateFavoriteTags", library_store)
         self.assertIn("this.library.updateTags", reader_facade)
         self.assertIn("reader-document-tags-row", reader_document_template)
-        self.assertIn("reader-tag-edit-row", reader_document_template)
+        self.assertIn("rv-tag-editor", reader_document_template)
         self.assertIn("保存标签", reader_document_template)
         self.assertIn("暂无标签", reader_document_template)
         self.assertIn("reader-tag-filter", reader_library_template)
@@ -245,11 +266,18 @@ class FrontendContractTest(unittest.TestCase):
             self.assertNotIn("providedIn", store)
 
         self.assertIn("providers: [LibraryStore, FavoritesFacade]", favorites_page)
-        self.assertIn("providers: [LibraryStore, ReaderDocumentStore, ReaderFacade]", reader_page)
+        self.assertIn("providers: [LibraryStore, ReaderDocumentStore, ReaderHistoryContextService, ReaderFacade]", reader_page)
         self.assertIn("readonly favorites = this.library.favorites", favorites_facade)
         self.assertIn("readonly favorites = this.library.favorites", reader_facade)
         self.assertNotIn("readonly favorites = signal", favorites_facade)
         self.assertNotIn("readonly favorites = signal", reader_facade)
+        for component in (PROJECT_ROOT / "frontend/angular/src/app/features/reader/ui").rglob("*.component.ts"):
+            source = component.read_text(encoding="utf-8")
+            self.assertNotIn(
+                "inject(ReaderFacade)",
+                source,
+                f"{component.relative_to(PROJECT_ROOT)} should receive reader state from the page container",
+            )
 
     def test_frontend_feature_files_are_grouped_by_responsibility(self):
         app_root = PROJECT_ROOT / "frontend/angular/src/app"

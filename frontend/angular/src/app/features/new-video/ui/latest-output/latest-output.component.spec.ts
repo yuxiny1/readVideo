@@ -28,7 +28,8 @@ describe("LatestOutputComponent", () => {
   it("recognizes readable and favorite-ready output", () => {
     expect(component.canFavorite(completedTask)).toBe(true);
     expect(component.canRead(completedTask)).toBe(true);
-    expect(component.canRead({...completedTask, status: "failed"})).toBe(false);
+    expect(component.canRead({...completedTask, status: "failed"})).toBe(true);
+    expect(component.canRead({...completedTask, markdown_path: ""})).toBe(false);
   });
 
   it("emits Reader navigation for completed Markdown", () => {

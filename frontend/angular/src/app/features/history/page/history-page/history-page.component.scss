@@ -108,19 +108,6 @@
   margin-top: 12px;
 }
 
-.tag-input-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 6px;
-  align-items: start;
-}
-
-.tag-input-row input {
-  min-height: 32px;
-  padding: 6px 9px;
-  font-size: 12px;
-}
-
 .card-actions {
   margin-top: 12px;
 }
@@ -137,7 +124,6 @@
 
 @media (max-width: 880px) {
   .history-filter-toolbar,
-  .tag-input-row,
   .path-list div {
     grid-template-columns: 1fr;
   }

@@ -1,0 +1,86 @@
+.tag-editor-shell {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.tag-editor-current,
+.tag-suggestion-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+.tag-editor-empty {
+  min-height: 24px;
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px dashed rgba(111, 129, 153, 0.32);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 780;
+}
+
+.tag-remove-button,
+.tag-suggestion-button {
+  min-height: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+}
+
+.tag-remove-button > span {
+  width: 17px;
+  height: 17px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(111, 129, 153, 0.12);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.tag-suggestion-button {
+  padding: 4px 7px;
+  border: 1px solid rgba(10, 132, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #155c9d;
+  font-size: 11px;
+  font-weight: 790;
+}
+
+.tag-suggestion-button span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.tag-entry-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: start;
+}
+
+.tag-entry-row input {
+  min-height: 32px;
+  padding: 6px 9px;
+  font-size: 12px;
+}
+
+.disabled {
+  opacity: 0.66;
+}
+
+@media (max-width: 640px) {
+  .tag-entry-row {
+    grid-template-columns: 1fr;
+  }
+}

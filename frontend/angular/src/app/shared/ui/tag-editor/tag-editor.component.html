@@ -1,0 +1,45 @@
+<div class="tag-editor-shell" [class.disabled]="disabled()">
+  <div class="tag-editor-current" aria-label="当前标签">
+    @if (selectedTags().length) {
+      @for (tag of selectedTags(); track tag) {
+        <button class="tag-remove-button" type="button" [disabled]="disabled()" (click)="removeTag(tag)">
+          <rv-tag-chip [label]="tag" [mini]="true" [interactive]="false" />
+          <span aria-hidden="true">×</span>
+        </button>
+      }
+    } @else {
+      <span class="tag-editor-empty">暂无标签</span>
+    }
+  </div>
+
+  @if (suggestedTags().length) {
+    <div class="tag-suggestion-row" aria-label="可选标签">
+      @for (tag of suggestedTags(); track tag.id) {
+        <button class="tag-suggestion-button" type="button" [disabled]="disabled()" (click)="addTag(tag.name)">
+          + {{ tag.name }}
+          <span>{{ tag.task_count }}</span>
+        </button>
+      }
+    </div>
+  }
+
+  <div class="tag-entry-row">
+    <input
+      [id]="inputId()"
+      [name]="name()"
+      [attr.list]="datalistId()"
+      [placeholder]="placeholder()"
+      [disabled]="disabled()"
+      [ngModel]="value()"
+      (ngModelChange)="setValue($event)"
+    >
+    <datalist [id]="datalistId()">
+      @for (tag of suggestions(); track tag.id) {
+        <option [value]="tag.name"></option>
+      }
+    </datalist>
+    <button class="secondary-button small-button" type="button" [disabled]="disabled()" (click)="save()">
+      {{ saveLabel() }}
+    </button>
+  </div>
+</div>

@@ -69,6 +69,8 @@ export class NewVideoPageComponent implements OnInit {
   }
 
   openReader(path: string): void {
-    void this.router.navigate(["/reader"], {queryParams: {path}});
+    const task = this.workflow.latestTask();
+    const taskId = task?.markdown_path === path ? task.task_id : null;
+    void this.router.navigate(["/reader"], {queryParams: taskId ? {path, taskId} : {path}});
   }
 }

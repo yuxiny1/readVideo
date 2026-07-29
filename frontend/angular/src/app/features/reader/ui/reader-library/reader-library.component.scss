@@ -198,6 +198,16 @@
   flex: 0 0 auto;
 }
 
+@container page-content (min-width: 981px) and (max-width: 1480px) {
+  :host {
+    position: static;
+  }
+
+  .reader-library-panel {
+    max-height: min(58vh, 620px);
+  }
+}
+
 @media (max-width: 880px) {
   :host {
     position: static;

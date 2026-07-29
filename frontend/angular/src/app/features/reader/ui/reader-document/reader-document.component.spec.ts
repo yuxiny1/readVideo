@@ -10,6 +10,7 @@ describe("ReaderDocumentComponent", () => {
         set: {template: ""},
       }).compileComponents();
     const fixture = TestBed.createComponent(ReaderDocumentComponent);
+    fixture.componentRef.setInput("reader", {});
     expect(fixture.componentInstance).toBeTruthy();
   });
 });

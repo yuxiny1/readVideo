@@ -79,6 +79,7 @@
 
 .page-content {
   min-width: 0;
+  container: page-content / inline-size;
 }
 
 @media (max-width: 1120px) {

@@ -1,5 +1,6 @@
 import {DestroyRef, Injectable, computed, inject, signal} from "@angular/core";
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
+import {Router} from "@angular/router";
 import {Observable, forkJoin, map, switchMap, take} from "rxjs";
 
 import {ReadvideoApiService} from "../../../../core/api/readvideo-api/readvideo-api.service";
@@ -21,6 +22,7 @@ const SUMMARY_LABELS: Readonly<Record<string, string>> = Object.freeze({
 @Injectable()
 export class HistoryFacade {
   private readonly api = inject(ReadvideoApiService);
+  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly records = signal<TaskRecord[]>([]);
@@ -87,6 +89,12 @@ export class HistoryFacade {
     );
   }
 
+  read(record: TaskRecord): void {
+    if (record.markdown_path) {
+      void this.router.navigate(["/reader"], {queryParams: {path: record.markdown_path, taskId: record.task_id}});
+    }
+  }
+
   saveTags(record: TaskRecord): void {
     const tags = parseTags(this.tagDraft(record));
     this.runOnce(
@@ -130,6 +138,10 @@ export class HistoryFacade {
 
   canFavorite(record: TaskRecord): boolean {
     return Boolean(record.summary || record.markdown_path);
+  }
+
+  canRead(record: TaskRecord): boolean {
+    return Boolean(record.markdown_path);
   }
 
   tagsFor(record: TaskRecord): string[] {

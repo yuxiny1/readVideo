@@ -6,6 +6,7 @@ import {describe, expect, it, vi} from "vitest";
 import {LocalModelsService} from "../../data-access/local-models/local-models.service";
 import {ProcessFormService, ProcessFormState} from "../../data-access/process-form/process-form.service";
 import {TaskWorkflowService} from "../../data-access/task-workflow/task-workflow.service";
+import {TaskRecord} from "../../../../shared/models/readvideo-types/readvideo.types";
 import {NewVideoPageComponent} from "./new-video-page.component";
 
 const formState: ProcessFormState = {
@@ -37,7 +38,7 @@ describe("NewVideoPageComponent", () => {
       taskIdLabel: signal(""),
       notice: signal({text: "Idle", kind: "muted"}),
       duplicate: signal(null),
-      latestTask: signal(null),
+      latestTask: signal<TaskRecord | null>(null),
       phaseTitle: signal("idle"),
       phaseDetail: signal("No active task"),
       progressPercent: signal(0),
@@ -83,5 +84,11 @@ describe("NewVideoPageComponent", () => {
 
     component.openReader("/notes/a.md");
     expect(router.navigate).toHaveBeenCalledWith(["/reader"], {queryParams: {path: "/notes/a.md"}});
+
+    workflow.latestTask.set({task_id: "task-1", status: "completed", markdown_path: "/notes/a.md"});
+    component.openReader("/notes/a.md");
+    expect(router.navigate).toHaveBeenCalledWith(["/reader"], {
+      queryParams: {path: "/notes/a.md", taskId: "task-1"},
+    });
   });
 });

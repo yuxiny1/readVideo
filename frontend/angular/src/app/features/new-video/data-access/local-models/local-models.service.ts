@@ -1,6 +1,7 @@
-import {DestroyRef, Injectable, computed, inject, signal} from "@angular/core";
-import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
-import {map, switchMap, take} from "rxjs";
+import {Injectable, computed, inject, signal} from "@angular/core";
+import {tapResponse} from "@ngrx/operators";
+import {rxMethod} from "@ngrx/signals/rxjs-interop";
+import {map, pipe, switchMap, tap} from "rxjs";
 
 import {ReadvideoApiService} from "../../../../core/api/readvideo-api/readvideo-api.service";
 import {
@@ -18,7 +19,6 @@ import {ProcessFormService} from "../process-form/process-form.service";
 export class LocalModelsService {
   private readonly api = inject(ReadvideoApiService);
   private readonly form = inject(ProcessFormService);
-  private readonly destroyRef = inject(DestroyRef);
 
   readonly config = signal<AppConfig | null>(null);
   readonly ollamaModels = signal<OllamaModel[]>([]);
@@ -31,6 +31,68 @@ export class LocalModelsService {
     const sizeDelta = Number(second.size || 0) - Number(first.size || 0);
     return sizeDelta || first.name.localeCompare(second.name);
   }));
+  private readonly loadOllamaModelsRequest = rxMethod<boolean>(
+    pipe(
+      switchMap((preferStrongest) => this.api.ollamaModels().pipe(
+        tapResponse({
+          next: (result) => {
+            this.ollamaAvailable.set(result.status === "ok");
+            this.ollamaModels.set(result.models ?? []);
+            if (result.status !== "ok") {
+              this.ollamaStatus.set({text: result.error || "无法连接 Ollama。", kind: "error"});
+              return;
+            }
+            this.selectDefaultOllamaModel(preferStrongest);
+            this.validateOllamaSelection();
+          },
+          error: (error) => {
+            this.ollamaAvailable.set(false);
+            this.ollamaModels.set([]);
+            this.ollamaStatus.set({text: errorMessage(error), kind: "error"});
+          },
+        }),
+      )),
+    ),
+  );
+  private readonly loadTranscriptionModelsRequest = rxMethod<boolean>(
+    pipe(
+      switchMap((preferStrongest) => this.api.transcriptionModels().pipe(
+        tapResponse({
+          next: (result) => this.applyTranscriptionModels(result, preferStrongest),
+          error: (error) => {
+            this.whisperModels.set([]);
+            this.transcriptionLanguages.set([]);
+            this.whisperStatus.set({text: errorMessage(error), kind: "error"});
+          },
+        }),
+      )),
+    ),
+  );
+  private readonly downloadWhisperModelRequest = rxMethod<WhisperModelOption>(
+    pipe(
+      tap((model) => {
+        this.whisperStatus.set({text: `正在下载 ${model.label}（${model.size}）……`, kind: "pending"});
+      }),
+      switchMap((model) => this.api.downloadTranscriptionModel(model.name).pipe(
+        switchMap((download) => this.api.transcriptionModels().pipe(
+          map((models) => ({download, models, model})),
+        )),
+        tapResponse({
+          next: ({download, models, model}) => {
+            this.form.patch({localWhisperModel: download.path});
+            this.applyTranscriptionModels(models, false);
+            this.whisperStatus.set({
+              text: download.downloaded
+                ? `已就绪：${model.label} 下载完成。`
+                : `已就绪：${model.label} 已经安装。`,
+              kind: "ok",
+            });
+          },
+          error: (error) => this.whisperStatus.set({text: errorMessage(error), kind: "error"}),
+        }),
+      )),
+    ),
+  );
 
   initialize(config: AppConfig): void {
     this.config.set(config);
@@ -46,40 +108,11 @@ export class LocalModelsService {
   }
 
   loadOllamaModels(preferStrongest = false): void {
-    this.api.ollamaModels().pipe(
-      take(1),
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe({
-      next: (result) => {
-        this.ollamaAvailable.set(result.status === "ok");
-        this.ollamaModels.set(result.models ?? []);
-        if (result.status !== "ok") {
-          this.ollamaStatus.set({text: result.error || "无法连接 Ollama。", kind: "error"});
-          return;
-        }
-        this.selectDefaultOllamaModel(preferStrongest);
-        this.validateOllamaSelection();
-      },
-      error: (error) => {
-        this.ollamaAvailable.set(false);
-        this.ollamaModels.set([]);
-        this.ollamaStatus.set({text: errorMessage(error), kind: "error"});
-      },
-    });
+    this.loadOllamaModelsRequest(preferStrongest);
   }
 
   loadTranscriptionModels(preferStrongest = false): void {
-    this.api.transcriptionModels().pipe(
-      take(1),
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe({
-      next: (result) => this.applyTranscriptionModels(result, preferStrongest),
-      error: (error) => {
-        this.whisperModels.set([]);
-        this.transcriptionLanguages.set([]);
-        this.whisperStatus.set({text: errorMessage(error), kind: "error"});
-      },
-    });
+    this.loadTranscriptionModelsRequest(preferStrongest);
   }
 
   downloadSelectedWhisperModel(modelPath = this.form.form().localWhisperModel): void {
@@ -88,26 +121,7 @@ export class LocalModelsService {
       this.whisperStatus.set({text: "请先选择推荐的 Whisper 模型。", kind: "error"});
       return;
     }
-    this.whisperStatus.set({text: `正在下载 ${model.label}（${model.size}）……`, kind: "pending"});
-    this.api.downloadTranscriptionModel(model.name).pipe(
-      switchMap((download) => this.api.transcriptionModels().pipe(
-        map((models) => ({download, models})),
-      )),
-      take(1),
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe({
-      next: ({download, models}) => {
-        this.form.patch({localWhisperModel: download.path});
-        this.applyTranscriptionModels(models, false);
-        this.whisperStatus.set({
-          text: download.downloaded
-            ? `已就绪：${model.label} 下载完成。`
-            : `已就绪：${model.label} 已经安装。`,
-          kind: "ok",
-        });
-      },
-      error: (error) => this.whisperStatus.set({text: errorMessage(error), kind: "error"}),
-    });
+    this.downloadWhisperModelRequest(model);
   }
 
   validateWhisperSelection(): boolean {

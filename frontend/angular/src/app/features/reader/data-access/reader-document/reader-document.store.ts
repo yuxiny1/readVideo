@@ -6,6 +6,7 @@ import {rxMethod} from "@ngrx/signals/rxjs-interop";
 import {concatMap, defer, pipe, switchMap, timer} from "rxjs";
 
 import {MarkdownDocument} from "../../../../shared/models/readvideo-types/readvideo.types";
+import {copyTextToClipboard} from "../../../../shared/utils/clipboard/clipboard";
 import {errorMessage} from "../../../../shared/utils/errors/errors";
 import {
   countMatches,
@@ -94,7 +95,7 @@ export const ReaderDocumentStore = signalStore(
     });
     const copyText = rxMethod<CopyTextCommand>(
       pipe(
-        concatMap(({value, successStatus}) => defer(() => navigator.clipboard.writeText(value)).pipe(
+        concatMap(({value, successStatus}) => defer(() => copyTextToClipboard(value)).pipe(
           switchMap(() => {
             patchState(store, {status: successStatus});
             return timer(1200);
