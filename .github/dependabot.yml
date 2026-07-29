@@ -1,0 +1,38 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/London
+    open-pull-requests-limit: 5
+    groups:
+      angular:
+        patterns:
+          - "@angular/*"
+          - "@ngrx/*"
+      frontend-testing:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+          - "jsdom"
+
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:15"
+      timezone: Europe/London
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: docker
+    directory: /deploy
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:30"
+      timezone: Europe/London
+    open-pull-requests-limit: 3

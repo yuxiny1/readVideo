@@ -132,13 +132,13 @@ class LocalTranscriptionTest(unittest.TestCase):
     def test_run_command_raises_with_trimmed_error_output(self):
         long_error = "x" * 2105
         result = CompletedProcess(args=["ffmpeg"], returncode=1, stdout="", stderr=long_error)
-        with patch("backend.services.local_transcription.subprocess.run", return_value=result):
+        with patch("backend.services.media_audio.subprocess.run", return_value=result):
             with self.assertRaisesRegex(RuntimeError, "命令执行失败：ffmpeg"):
                 _run_command(["ffmpeg", "-version"])
 
     def test_run_command_decodes_invalid_process_output_for_errors(self):
         result = CompletedProcess(args=["whisper-cli"], returncode=1, stdout=b"", stderr=b"bad output \xe4\xff")
-        with patch("backend.services.local_transcription.subprocess.run", return_value=result):
+        with patch("backend.services.media_audio.subprocess.run", return_value=result):
             with self.assertRaisesRegex(RuntimeError, "bad output"):
                 _run_command(["whisper-cli", "-m"])
 

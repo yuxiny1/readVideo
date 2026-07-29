@@ -6,10 +6,7 @@ import wave
 
 from openai import OpenAI
 
-try:
-    from moviepy import AudioFileClip
-except ImportError:  # moviepy<2 compatibility
-    from moviepy.editor import AudioFileClip
+from backend.services.media_audio import extract_audio
 
 
 DEFAULT_TRANSCRIPTION_MODEL = "whisper-1"
@@ -128,15 +125,7 @@ class AudioTranscription:
         audio_chunks = []
 
         try:
-            with AudioFileClip(str(video_path)) as audio:
-                audio.write_audiofile(
-                    str(audio_file_path),
-                    fps=16000,
-                    nbytes=2,
-                    codec="pcm_s16le",
-                    logger=None,
-                )
-
+            extract_audio(video_path, audio_file_path)
             audio_chunks = self.split_audio_by_duration(str(audio_file_path), chunk_duration_sec)
             transcriptions = []
             for chunk_path in audio_chunks:

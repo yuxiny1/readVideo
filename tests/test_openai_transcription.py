@@ -1,6 +1,8 @@
 import tempfile
 import unittest
 import wave
+from pathlib import Path
+from unittest.mock import patch
 
 from backend.services.openai_transcription import AudioTranscription
 
@@ -103,6 +105,28 @@ class AudioTranscriptionTest(unittest.TestCase):
         service = AudioTranscription(client=FakeClient())
         with self.assertRaises(FileNotFoundError):
             service.process_video("/tmp/readvideo-missing-file.mp4")
+
+    def test_process_video_extracts_audio_with_ffmpeg(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            video_path = Path(tmpdir) / "sample.mp4"
+            chunk_path = Path(tmpdir) / "sample_chunk_0.wav"
+            video_path.write_bytes(b"video")
+            chunk_path.write_bytes(b"audio")
+            service = AudioTranscription(client=FakeClient())
+
+            with (
+                patch("backend.services.openai_transcription.extract_audio") as extract,
+                patch.object(
+                    service,
+                    "split_audio_by_duration",
+                    return_value=[str(chunk_path)],
+                ),
+            ):
+                result = service.process_video(str(video_path))
+
+            extract.assert_called_once_with(video_path, video_path.with_suffix(".wav"))
+            self.assertEqual(result.text, "hello from fake openai")
+            self.assertEqual(result.chunk_count, 1)
 
 
 if __name__ == "__main__":

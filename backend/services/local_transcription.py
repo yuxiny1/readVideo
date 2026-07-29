@@ -6,9 +6,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from backend.services.downloader import clean_filename_part
-
-
-DEFAULT_AUDIO_FILTER = "highpass=f=80,lowpass=f=8000,loudnorm=I=-16:TP=-1.5:LRA=11"
+from backend.services.media_audio import (
+    DEFAULT_AUDIO_FILTER,
+    build_ffmpeg_command as _build_ffmpeg_command,
+    run_command as _run_command,
+)
 
 
 @dataclass(frozen=True)
@@ -174,26 +176,6 @@ def _looks_like_whisper_output(candidate: Path, video_path: Path, output_base: P
     )
 
 
-def _build_ffmpeg_command(video_path: Path, audio_path: Path, audio_filter: str = DEFAULT_AUDIO_FILTER) -> list[str]:
-    command = [
-        "ffmpeg",
-        "-v",
-        "error",
-        "-y",
-        "-i",
-        str(video_path),
-        "-vn",
-        "-ac",
-        "1",
-        "-ar",
-        "16000",
-    ]
-    if audio_filter:
-        command.extend(["-af", audio_filter])
-    command.extend(["-c:a", "pcm_s16le", str(audio_path)])
-    return command
-
-
 def _build_whisper_command(
     whisper_cli: str,
     model_path: str,
@@ -241,20 +223,3 @@ def _supported_whisper_flags(whisper_cli: str) -> set[str]:
         return set()
     help_text = f"{result.stdout}\n{result.stderr}"
     return set(re.findall(r"(?<!\w)(?:--?[A-Za-z][A-Za-z0-9-]*)", help_text))
-
-
-def _run_command(command: list[str]):
-    result = subprocess.run(command, capture_output=True, check=False)
-    if result.returncode != 0:
-        output = _decode_process_output(result.stderr or result.stdout).strip()
-        if len(output) > 2000:
-            output = output[-2000:]
-        raise RuntimeError(f"命令执行失败：{' '.join(command[:2])}\n{output}")
-
-
-def _decode_process_output(output) -> str:
-    if output is None:
-        return ""
-    if isinstance(output, bytes):
-        return output.decode("utf-8", errors="replace")
-    return str(output)
