@@ -6,6 +6,8 @@ import {LibraryStore} from "../../../library/data-access/library-store/library.s
 import {ReaderDocumentStore} from "../../data-access/reader-document/reader-document.store";
 import {ReaderFacade} from "../../data-access/reader-facade/reader.facade";
 import {ReaderHistoryContextService} from "../../data-access/reader-history-context/reader-history-context.service";
+import {ReaderLibraryViewStore} from "../../data-access/reader-library-view/reader-library-view.store";
+import {ReaderTagEditorService} from "../../data-access/reader-tag-editor/reader-tag-editor.service";
 import {ReaderDocumentComponent} from "../../ui/reader-document/reader-document.component";
 import {ReaderInspectorComponent} from "../../ui/reader-inspector/reader-inspector.component";
 import {ReaderLibraryComponent} from "../../ui/reader-library/reader-library.component";
@@ -16,7 +18,14 @@ import {ReaderLibraryComponent} from "../../ui/reader-library/reader-library.com
   imports: [CommonModule, RouterLink, ReaderLibraryComponent, ReaderDocumentComponent, ReaderInspectorComponent],
   templateUrl: "./reader-page.component.html",
   styleUrl: "./reader-page.component.scss",
-  providers: [LibraryStore, ReaderDocumentStore, ReaderHistoryContextService, ReaderFacade],
+  providers: [
+    LibraryStore,
+    ReaderDocumentStore,
+    ReaderHistoryContextService,
+    ReaderLibraryViewStore,
+    ReaderTagEditorService,
+    ReaderFacade,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ReaderPageComponent implements OnInit {

@@ -5,7 +5,6 @@ import {
   Observable,
   Subject,
   catchError,
-  defer,
   exhaustMap,
   filter,
   forkJoin,
@@ -19,12 +18,13 @@ import {
 } from "rxjs";
 
 import {ReadvideoApiService} from "../../../../core/api/readvideo-api/readvideo-api.service";
-import {DuplicateLookup, NoticeKind, NoticeState, ProcessPayload, TaskRecord} from "../../../../shared/models/readvideo-types/readvideo.types";
-import {copyTextToClipboard} from "../../../../shared/utils/clipboard/clipboard";
+import {NoticeKind, NoticeState, ProcessPayload, TaskRecord} from "../../../../shared/models/readvideo-types/readvideo.types";
 import {errorMessage} from "../../../../shared/utils/errors/errors";
 import {statusLabel} from "../../../../shared/utils/format/format";
 import {LocalModelsService} from "../local-models/local-models.service";
 import {ProcessFormService} from "../process-form/process-form.service";
+import {DuplicateDecision, TaskDuplicateService} from "../task-duplicate/task-duplicate.service";
+import {TaskOutputService} from "../task-output/task-output.service";
 import {
   TERMINAL_TASK_STATUSES,
   describeTaskPhase,
@@ -49,6 +49,8 @@ export class TaskWorkflowService {
   private readonly api = inject(ReadvideoApiService);
   private readonly processForm = inject(ProcessFormService);
   private readonly models = inject(LocalModelsService);
+  private readonly duplicates = inject(TaskDuplicateService);
+  private readonly outputs = inject(TaskOutputService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly pollRequests = new Subject<string>();
   private readonly startRequests = new Subject<StartProcessingRequest>();
@@ -58,8 +60,8 @@ export class TaskWorkflowService {
   readonly latestTask = signal<TaskRecord | null>(null);
   readonly latestSummary = computed(() => this.latestTask()?.summary ?? "");
   readonly notice = signal<NoticeState>({text: "空闲", kind: "muted"});
-  readonly duplicate = signal<DuplicateLookup | null>(null);
-  readonly duplicateUrl = signal("");
+  readonly duplicate = this.duplicates.lookup;
+  readonly duplicateUrl = this.duplicates.url;
   readonly recentTasks = signal<TaskRecord[]>([]);
 
   readonly backendLabel = computed(() => {
@@ -150,7 +152,7 @@ export class TaskWorkflowService {
   }
 
   useExistingDuplicateOutput(): void {
-    const record = this.duplicate()?.record;
+    const record = this.duplicates.reusableRecord();
     if (!record) return;
     this.hideDuplicatePanel();
     this.renderTask({
@@ -162,7 +164,7 @@ export class TaskWorkflowService {
   }
 
   regenerateDuplicateSummary(): void {
-    const record = this.duplicate()?.record;
+    const record = this.duplicates.reusableRecord();
     const url = this.duplicateUrl();
     if (!record || !url) return;
     this.hideDuplicatePanel();
@@ -194,59 +196,39 @@ export class TaskWorkflowService {
     const taskId = this.latestTask()?.task_id;
     if (!taskId) return;
     this.runOnce(
-      this.api.favoriteTask(taskId),
-      () => this.setNotice("总结已保存到收藏。", "ok"),
+      this.outputs.favorite(taskId),
+      (notice) => this.setNotice(notice, "ok"),
     );
   }
 
   copyLatestOutput(): void {
     const task = this.latestTask();
-    const markdownPath = task?.markdown_path;
-    const fallbackSummary = this.latestSummary();
-    if (!markdownPath && !fallbackSummary) return;
-
-    const content$ = markdownPath
-      ? this.api.markdownDocument(markdownPath).pipe(
-        map((document) => ({content: document.content, notice: "已复制完整 Markdown 笔记。"})),
-      )
-      : of({content: fallbackSummary, notice: "已复制总结。"});
-
+    if (!task || (!task.markdown_path && !task.summary)) return;
     this.runOnce(
-      content$.pipe(
-        switchMap(({content, notice}) => defer(() => copyTextToClipboard(content)).pipe(
-          map(() => notice),
-        )),
-      ),
+      this.outputs.copy(task),
       (notice) => this.setNotice(notice, "ok"),
     );
   }
 
   private checkDuplicate(url: string): Observable<boolean> {
-    return this.api.lookupHistory(url).pipe(
-      map((duplicate) => this.applyDuplicateLookup(url, duplicate)),
-      catchError((error) => {
-        this.hideDuplicatePanel();
-        this.setNotice(`检查历史记录失败，将继续正常处理。\n${errorMessage(error)}`, "pending");
-        return of(true);
-      }),
-    );
+    return this.duplicates.inspect(url).pipe(map((decision) => this.applyDuplicateDecision(decision)));
   }
 
-  private applyDuplicateLookup(url: string, duplicate: DuplicateLookup): boolean {
-    if (!duplicate.found) {
-      this.hideDuplicatePanel();
+  private applyDuplicateDecision(decision: DuplicateDecision): boolean {
+    if (decision.kind === "continue") {
       return true;
     }
-    if (!duplicate.can_reuse) {
-      this.hideDuplicatePanel();
+    if (decision.kind === "missing-local") {
       this.setNotice(
         "历史记录中已有此网址，但本地视频不存在，将重新下载。",
         "pending",
       );
       return true;
     }
-    this.duplicate.set(duplicate);
-    this.duplicateUrl.set(url);
+    if (decision.kind === "lookup-failed") {
+      this.setNotice(`检查历史记录失败，将继续正常处理。\n${decision.message}`, "pending");
+      return true;
+    }
     this.setNotice(
       "此视频已经下载。请选择复用已有结果、重新生成笔记或重新下载。",
       "pending",
@@ -299,8 +281,7 @@ export class TaskWorkflowService {
   }
 
   private hideDuplicatePanel(): void {
-    this.duplicate.set(null);
-    this.duplicateUrl.set("");
+    this.duplicates.clear();
   }
 
   private setNotice(text: string, kind: NoticeKind): void {

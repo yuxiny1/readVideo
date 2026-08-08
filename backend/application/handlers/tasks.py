@@ -11,12 +11,8 @@ from backend.application.messages.tasks import (
 from backend.core.config import load_settings
 from backend.core.task_state import get_task, list_tasks, set_task_status
 from backend.services.task_queue import enqueue_video_processing
-from backend.services.video_processor import (
-    process_video,
-    resolve_note_style,
-    resolve_notes_backend,
-    resolve_transcription_settings,
-)
+from backend.services.processing_settings import resolve_processing_plan
+from backend.services.video_processor import process_video
 from backend.storage.history import HistoryStore
 
 
@@ -24,15 +20,17 @@ class StartVideoProcessingHandler:
     def handle(self, command: StartVideoProcessingCommand) -> dict:
         try:
             settings = load_settings()
-            resolve_notes_backend(command.notes_backend, settings.notes_backend)
-            resolve_note_style(command.note_style, settings.note_style)
-            resolve_transcription_settings(
+            resolve_processing_plan(
                 settings,
-                command.transcription_backend,
-                command.transcription_model,
-                command.transcription_prompt,
-                command.local_whisper_model,
-                command.local_whisper_language,
+                notes_dir=command.notes_dir,
+                notes_backend=command.notes_backend,
+                note_style=command.note_style,
+                ollama_model=command.ollama_model,
+                transcription_backend=command.transcription_backend,
+                transcription_model=command.transcription_model,
+                transcription_prompt=command.transcription_prompt,
+                local_whisper_model=command.local_whisper_model,
+                local_whisper_language=command.local_whisper_language,
             )
         except (RuntimeError, ValueError) as exc:
             raise ApplicationError(400, str(exc)) from exc

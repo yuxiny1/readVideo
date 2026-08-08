@@ -12,6 +12,8 @@ import {SavedSourcesComponent} from "../../../saved-sources/ui/saved-sources/sav
 import {LocalModelsService} from "../../data-access/local-models/local-models.service";
 import {ProcessFormService, ProcessFormState} from "../../data-access/process-form/process-form.service";
 import {TaskWorkflowService} from "../../data-access/task-workflow/task-workflow.service";
+import {TaskDuplicateService} from "../../data-access/task-duplicate/task-duplicate.service";
+import {TaskOutputService} from "../../data-access/task-output/task-output.service";
 
 @Component({
   selector: "rv-new-video-page",
@@ -19,7 +21,13 @@ import {TaskWorkflowService} from "../../data-access/task-workflow/task-workflow
   imports: [CommonModule, ProcessPanelComponent, LatestOutputComponent, SavedSourcesComponent],
   templateUrl: "./new-video-page.component.html",
   styleUrl: "./new-video-page.component.scss",
-  providers: [ProcessFormService, LocalModelsService, TaskWorkflowService],
+  providers: [
+    ProcessFormService,
+    LocalModelsService,
+    TaskDuplicateService,
+    TaskOutputService,
+    TaskWorkflowService,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NewVideoPageComponent implements OnInit {

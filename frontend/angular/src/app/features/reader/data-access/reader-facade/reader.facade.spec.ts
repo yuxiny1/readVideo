@@ -8,6 +8,8 @@ import {LibraryStore} from "../../../library/data-access/library-store/library.s
 import {FavoriteFolder, FavoriteSummary, MarkdownFile} from "../../../../shared/models/readvideo-types/readvideo.types";
 import {ReaderDocumentStore} from "../reader-document/reader-document.store";
 import {ReaderHistoryContextService} from "../reader-history-context/reader-history-context.service";
+import {ReaderLibraryViewStore} from "../reader-library-view/reader-library-view.store";
+import {ReaderTagEditorService} from "../reader-tag-editor/reader-tag-editor.service";
 import {ReaderFacade} from "./reader.facade";
 
 const favorite = (overrides: Partial<FavoriteSummary> = {}): FavoriteSummary => ({
@@ -79,6 +81,8 @@ describe("ReaderFacade", () => {
       LibraryStore,
       ReaderDocumentStore,
       ReaderHistoryContextService,
+      ReaderLibraryViewStore,
+      ReaderTagEditorService,
       ReaderFacade,
       {provide: ReadvideoApiService, useValue: api},
       {provide: Router, useValue: router},

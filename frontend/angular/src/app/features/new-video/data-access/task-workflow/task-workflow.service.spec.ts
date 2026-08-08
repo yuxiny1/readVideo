@@ -7,6 +7,8 @@ import {ReadvideoApiService} from "../../../../core/api/readvideo-api/readvideo-
 import {AppConfig, ProcessPayload, TaskRecord} from "../../../../shared/models/readvideo-types/readvideo.types";
 import {LocalModelsService} from "../local-models/local-models.service";
 import {ProcessFormService} from "../process-form/process-form.service";
+import {TaskDuplicateService} from "../task-duplicate/task-duplicate.service";
+import {TaskOutputService} from "../task-output/task-output.service";
 import {TaskWorkflowService} from "./task-workflow.service";
 
 const config: AppConfig = {
@@ -65,6 +67,8 @@ describe("TaskWorkflowService", () => {
     };
     TestBed.configureTestingModule({providers: [
       ProcessFormService,
+      TaskDuplicateService,
+      TaskOutputService,
       TaskWorkflowService,
       {provide: ReadvideoApiService, useValue: api},
       {provide: LocalModelsService, useValue: models},

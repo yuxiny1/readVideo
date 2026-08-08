@@ -6,10 +6,9 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from backend.core.task_state import TASKS, clear_tasks, set_task_status
+from backend.services.download_progress import build_download_progress_hook, download_percent
 from backend.services.markdown_notes import NoteResult
 from backend.services.video_processor import (
-    _download_percent,
-    build_download_progress_hook,
     delete_downloaded_video_after_completion,
     process_video,
 )
@@ -201,7 +200,7 @@ class VideoProcessorReuseTest(unittest.TestCase):
         set_task_status("progress-task", "downloading")
         hook = build_download_progress_hook("progress-task")
 
-        with patch("backend.services.video_processor.time.monotonic", side_effect=[1.0, 2.0, 3.0]):
+        with patch("backend.services.download_progress.time.monotonic", side_effect=[1.0, 2.0, 3.0]):
             hook(
                 {
                     "status": "downloading",
@@ -241,10 +240,10 @@ class VideoProcessorReuseTest(unittest.TestCase):
         self.assertIn("第 2/20 次", task["logs"][-1]["message"])
 
     def test_download_percent_handles_missing_and_caps_at_one_hundred(self):
-        self.assertIsNone(_download_percent(None, 100))
-        self.assertIsNone(_download_percent(100, 0))
-        self.assertEqual(_download_percent(150, 100), 100.0)
-        self.assertEqual(_download_percent(25, 100), 25.0)
+        self.assertIsNone(download_percent(None, 100))
+        self.assertIsNone(download_percent(100, 0))
+        self.assertEqual(download_percent(150, 100), 100.0)
+        self.assertEqual(download_percent(25, 100), 25.0)
 
 
 if __name__ == "__main__":

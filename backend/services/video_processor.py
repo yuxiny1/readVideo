@@ -1,50 +1,21 @@
 import asyncio
 import logging
-from dataclasses import dataclass, replace
-import time
 from pathlib import Path
 from typing import Optional
 
-from backend.core.config import Settings, load_openai_api_key, load_settings
+from backend.core.config import load_settings
 from backend.core.task_state import append_task_log, get_task, set_task_status, update_task_details
+from backend.services.download_progress import build_download_progress_hook
 from backend.services.downloader import download_video
 from backend.services.history_reuse import find_history_reuse_candidate, resolve_existing_path
-from backend.services.local_transcription import LocalWhisperTranscription, read_transcript_text
+from backend.services.local_transcription import read_transcript_text
 from backend.services.notes import write_markdown_note
-from backend.services.openai_transcription import AudioTranscription
+from backend.services.processing_settings import resolve_processing_plan
+from backend.services.transcription_gateway import ExistingTranscriptionResult, transcribe_video
 from backend.storage.history import HistoryStore
 
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class ExistingTranscriptionResult:
-    text: str
-    transcription_path: str
-    chunk_count: Optional[int] = None
-    recovered_encoding: bool = False
-    decode_error: str = ""
-
-
-def transcribe_video(video_path: str, settings: Settings):
-    if settings.transcription_backend == "local":
-        service = LocalWhisperTranscription(
-            whisper_cli=settings.local_whisper_cli,
-            model_path=settings.local_whisper_model,
-            language=settings.local_whisper_language,
-            prompt=settings.local_whisper_prompt,
-            audio_filter=settings.local_whisper_audio_filter,
-        )
-        return service.process_video(video_path)
-
-    service = AudioTranscription(
-        api_key=settings.openai_api_key,
-        model=settings.transcription_model,
-        language=settings.local_whisper_language,
-        prompt=settings.local_whisper_prompt,
-    )
-    return service.process_video(video_path, settings.chunk_seconds)
 
 
 async def process_video(
@@ -65,17 +36,23 @@ async def process_video(
 ):
     settings = None
     try:
-        settings = resolve_transcription_settings(
+        plan = resolve_processing_plan(
             load_settings(),
+            notes_dir=notes_dir,
+            notes_backend=notes_backend,
+            note_style=note_style,
+            ollama_model=ollama_model,
             transcription_backend=transcription_backend,
             transcription_model=transcription_model,
             transcription_prompt=transcription_prompt,
             local_whisper_model=local_whisper_model,
             local_whisper_language=local_whisper_language,
         )
-        resolved_notes_backend = resolve_notes_backend(notes_backend, settings.notes_backend)
-        resolved_note_style = resolve_note_style(note_style, settings.note_style)
-        resolved_ollama_model = ollama_model or settings.ollama_model
+        settings = plan.settings
+        resolved_notes_backend = plan.notes_backend
+        resolved_note_style = plan.note_style
+        resolved_ollama_model = plan.ollama_model
+        task_metadata = plan.task_metadata(delete_video_after_completion)
         candidate = None
         if not force_download:
             candidate = find_history_reuse_candidate(
@@ -94,18 +71,11 @@ async def process_video(
                 url=url,
                 title=video_title,
                 video_path=downloaded_file_path,
-                notes_backend=resolved_notes_backend,
-                note_style=resolved_note_style,
-                ollama_model=resolved_ollama_model if resolved_notes_backend == "ollama" else None,
-                transcription_backend=settings.transcription_backend,
-                transcription_model=settings.transcription_model if settings.transcription_backend == "openai" else None,
-                local_whisper_model=settings.local_whisper_model if settings.transcription_backend == "local" else None,
-                local_whisper_language=settings.local_whisper_language if settings.transcription_backend == "local" else None,
-                delete_video_after_completion=delete_video_after_completion,
                 download_status="reused",
                 download_percent=100,
                 reused_from_task_id=candidate.record.task_id,
                 log_message=f"正在复用任务 {candidate.record.task_id} 已下载的视频：{downloaded_file_path}",
+                **task_metadata,
             )
             persist_task_history(settings.database_path, task_id)
         else:
@@ -116,17 +86,10 @@ async def process_video(
                 task_id,
                 "downloading",
                 url=url,
-                notes_backend=resolved_notes_backend,
-                note_style=resolved_note_style,
-                ollama_model=resolved_ollama_model if resolved_notes_backend == "ollama" else None,
-                transcription_backend=settings.transcription_backend,
-                transcription_model=settings.transcription_model if settings.transcription_backend == "openai" else None,
-                local_whisper_model=settings.local_whisper_model if settings.transcription_backend == "local" else None,
-                local_whisper_language=settings.local_whisper_language if settings.transcription_backend == "local" else None,
-                delete_video_after_completion=delete_video_after_completion,
                 download_dir=settings.download_dir,
                 force_download=force_download,
                 log_message=f"正在从 {url} 下载视频。{reuse_note}",
+                **task_metadata,
             )
             persist_task_history(settings.database_path, task_id)
 
@@ -206,7 +169,7 @@ async def process_video(
             transcript_text=result.text,
             video_title=video_title,
             source_url=url,
-            output_dir=notes_dir or settings.notes_dir,
+            output_dir=plan.notes_dir,
             transcript_path=result.transcription_path,
             summary_backend=resolved_notes_backend,
             ollama_model=resolved_ollama_model,
@@ -292,113 +255,7 @@ def append_transcript_recovery_log(task_id: str, result):
     )
 
 
-def resolve_notes_backend(request_backend: Optional[str], default_backend: str) -> str:
-    backend = (request_backend or default_backend).lower()
-    if backend not in {"extractive", "ollama"}:
-        raise RuntimeError("笔记引擎无效，请选择本地提取式笔记或 Ollama 本地大模型。")
-    return backend
-
-
-def resolve_note_style(request_style: Optional[str], default_style: str) -> str:
-    style = (request_style or default_style).lower()
-    if style not in {"detailed", "commercial"}:
-        raise RuntimeError("笔记风格无效，请选择详细笔记或商业分析。")
-    return style
-
-
-def resolve_transcription_settings(
-    settings: Settings,
-    transcription_backend: Optional[str] = None,
-    transcription_model: Optional[str] = None,
-    transcription_prompt: Optional[str] = None,
-    local_whisper_model: Optional[str] = None,
-    local_whisper_language: Optional[str] = None,
-) -> Settings:
-    backend = (transcription_backend or settings.transcription_backend).lower()
-    if backend not in {"local", "openai"}:
-        raise RuntimeError("转录引擎无效，请选择本地 Whisper 或 OpenAI 转录。")
-
-    openai_api_key = settings.openai_api_key
-    if backend == "openai" and not openai_api_key:
-        openai_api_key = load_openai_api_key(required=True)
-
-    return replace(
-        settings,
-        transcription_backend=backend,
-        openai_api_key=openai_api_key,
-        transcription_model=transcription_model or settings.transcription_model,
-        local_whisper_model=local_whisper_model or settings.local_whisper_model,
-        local_whisper_language=local_whisper_language or settings.local_whisper_language,
-        local_whisper_prompt=(transcription_prompt or settings.local_whisper_prompt or "").strip(),
-    )
-
-
 def persist_task_history(database_path: str, task_id: str):
     task = get_task(task_id)
     if task is not None:
         HistoryStore(database_path).upsert_task(task)
-
-
-def build_download_progress_hook(task_id: str):
-    last_update = 0.0
-    last_bucket = -10
-
-    def report(progress: dict):
-        nonlocal last_update, last_bucket
-        status = progress.get("status")
-        filename = progress.get("filename") or progress.get("tmpfilename") or ""
-        total_bytes = progress.get("total_bytes") or progress.get("total_bytes_estimate")
-        downloaded_bytes = progress.get("downloaded_bytes")
-        percent = _download_percent(downloaded_bytes, total_bytes)
-        now = time.monotonic()
-
-        if status == "downloading" and now - last_update >= 0.8:
-            last_update = now
-            update_task_details(
-                task_id,
-                download_status="downloading",
-                download_filename=Path(filename).name if filename else "",
-                download_percent=percent,
-                downloaded_bytes=downloaded_bytes,
-                download_total_bytes=total_bytes,
-                download_speed=progress.get("speed"),
-                download_eta=progress.get("eta"),
-            )
-
-        if status == "downloading" and percent is not None:
-            bucket = int(percent // 10) * 10
-            if bucket > last_bucket:
-                last_bucket = bucket
-                append_task_log(task_id, f"下载进度：{percent:.1f}%。", status="downloading")
-
-        if status == "finished":
-            update_task_details(
-                task_id,
-                download_status="finished",
-                download_filename=Path(filename).name if filename else "",
-                download_percent=100,
-                downloaded_bytes=downloaded_bytes,
-                download_total_bytes=total_bytes,
-                download_speed=progress.get("speed"),
-                download_eta=0,
-            )
-            append_task_log(task_id, "下载完成，正在准备转录。", status="downloading")
-
-        if status == "retrying":
-            attempt = progress.get("retry_attempt")
-            limit = progress.get("retry_limit")
-            update_task_details(task_id, download_status="retrying")
-            append_task_log(
-                task_id,
-                f"下载连接中断，正在自动重试（第 {attempt}/{limit} 次）。",
-                level="warning",
-                status="downloading",
-            )
-
-    return report
-
-
-def _download_percent(downloaded_bytes: Optional[float], total_bytes: Optional[float]) -> Optional[float]:
-    if not downloaded_bytes or not total_bytes:
-        return None
-    return min(100.0, round((downloaded_bytes / total_bytes) * 100, 1))

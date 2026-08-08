@@ -6,17 +6,16 @@ import {EMPTY, Observable, Subject, catchError, of, switchMap, take, tap} from "
 import {ReadvideoApiService} from "../../../../core/api/readvideo-api/readvideo-api.service";
 import {LibraryStore} from "../../../library/data-access/library-store/library.store";
 import {errorMessage} from "../../../../shared/utils/errors/errors";
-import {parseTags, tagsFor} from "../../../../shared/utils/tags/tags";
 import {
   FavoriteFolder,
   FavoriteSummary,
   MarkdownDocument,
   MarkdownFile,
 } from "../../../../shared/models/readvideo-types/readvideo.types";
-import {LibraryMode, LibrarySort, ReaderLibraryItem} from "../../models/reader-types/reader.types";
-import {filterFavorites, filterFiles, libraryItems} from "../../utils/reader-library/reader-library";
+import {LibraryMode, ReaderLibraryItem} from "../../models/reader-types/reader.types";
 import {ReaderDocumentStore} from "../reader-document/reader-document.store";
-import {ReaderHistoryContextService} from "../reader-history-context/reader-history-context.service";
+import {ReaderLibraryViewStore} from "../reader-library-view/reader-library-view.store";
+import {ReaderTagEditorService} from "../reader-tag-editor/reader-tag-editor.service";
 
 type DocumentRequest =
   | {kind: "path"; path: string; updateRoute: boolean}
@@ -28,56 +27,40 @@ export class ReaderFacade {
   private readonly router = inject(Router);
   private readonly api = inject(ReadvideoApiService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly historyContext = inject(ReaderHistoryContextService);
+  private readonly libraryView = inject(ReaderLibraryViewStore);
+  private readonly tagEditor = inject(ReaderTagEditorService);
   private readonly markdownFileRequests = new Subject<{directory: string; updateRoute: boolean}>();
   private readonly documentRequests = new Subject<DocumentRequest>();
   readonly document = inject(ReaderDocumentStore);
   readonly library = inject(LibraryStore);
 
-  readonly favorites = this.library.favorites;
-  readonly folders = this.library.folders;
-  readonly tags = this.library.tags;
-  readonly activeFolderId = signal("all");
-  readonly activeTag = signal("all");
-  readonly selectedFavoriteId = signal<number | null>(null);
-  readonly activeTask = this.historyContext.activeTask;
-  readonly files = signal<MarkdownFile[]>([]);
-  readonly fileCount = signal("0 个文件");
+  readonly favorites = this.libraryView.favorites;
+  readonly folders = this.libraryView.folders;
+  readonly tags = this.libraryView.tags;
+  readonly activeFolderId = this.libraryView.activeFolderId;
+  readonly activeTag = this.libraryView.activeTag;
+  readonly selectedFavoriteId = this.tagEditor.selectedFavoriteId;
+  readonly activeTask = this.tagEditor.activeTask;
+  readonly files = this.libraryView.files;
+  readonly fileCount = this.libraryView.fileCount;
   readonly defaultNotesDir = signal("notes");
   readonly localError = signal("");
   readonly configReady = signal(false);
-  readonly error = computed(() => this.document.error() || this.localError() || this.library.error());
-  readonly searchQuery = signal("");
-  readonly libraryMode = signal<LibraryMode>("all");
-  readonly librarySort = signal<LibrarySort>("recent");
-  readonly tagDrafts: Record<number, string> = {};
+  readonly error = computed(() => (
+    this.document.error() || this.localError() || this.tagEditor.error() || this.library.error()
+  ));
+  readonly searchQuery = this.libraryView.searchQuery;
+  readonly libraryMode = this.libraryView.mode;
+  readonly librarySort = this.libraryView.sort;
   markdownFolder = "notes";
 
-  readonly filteredFavorites = computed(() => filterFavorites(
-    this.favorites(),
-    this.activeFolderId(),
-    this.activeTag(),
-    this.searchQuery(),
-    this.librarySort(),
-  ));
-  readonly filteredFiles = computed(() => filterFiles(
-    this.files(),
-    this.searchQuery(),
-    this.librarySort(),
-  ));
-  readonly visibleLibraryItems = computed(() => libraryItems(
-    this.libraryMode(),
-    this.filteredFavorites(),
-    this.filteredFiles(),
-  ));
-  readonly libraryCount = computed(() => `${this.filteredFavorites().length} 篇收藏 · ${this.fileCount()}`);
-  readonly activeFavorite = computed(() => (
-    this.favorites().find((item) => item.id === this.selectedFavoriteId())
-      ?? this.favorites().find((item) => this.pathsReferToSameDocument(item.markdown_path, this.document.path()))
-      ?? null
-  ));
-  readonly activeDocumentTags = computed(() => tagsFor(this.activeFavorite() ?? this.activeTask() ?? {}));
-  readonly activeDocumentIsTaggable = computed(() => Boolean(this.activeFavorite() || this.activeTask()));
+  readonly filteredFavorites = this.libraryView.filteredFavorites;
+  readonly filteredFiles = this.libraryView.filteredFiles;
+  readonly visibleLibraryItems = this.libraryView.visibleItems;
+  readonly libraryCount = this.libraryView.libraryCount;
+  readonly activeFavorite = this.tagEditor.activeFavorite;
+  readonly activeDocumentTags = this.tagEditor.activeTags;
+  readonly activeDocumentIsTaggable = this.tagEditor.canEdit;
   readonly activeLibraryIndex = computed(() => {
     const currentPath = this.document.path();
     return currentPath
@@ -89,22 +72,9 @@ export class ReaderFacade {
     const index = this.activeLibraryIndex();
     return index >= 0 && index < this.availableLibraryItems().length - 1;
   });
-  readonly folderCounts = computed(() => {
-    const counts: Record<string, number> = {all: this.favorites().length, unfiled: 0};
-    for (const item of this.favorites()) {
-      if (!item.folder_id) counts["unfiled"] += 1;
-      else counts[String(item.folder_id)] = (counts[String(item.folder_id)] ?? 0) + 1;
-    }
-    return counts;
-  });
-  readonly tagCounts = computed(() => {
-    const counts: Record<string, number> = {all: this.favorites().length};
-    for (const item of this.favorites()) {
-      for (const tag of tagsFor(item)) counts[tag.toLocaleLowerCase()] = (counts[tag.toLocaleLowerCase()] ?? 0) + 1;
-    }
-    return counts;
-  });
-  readonly visibleTags = computed(() => this.tags().filter((tag) => this.tagCount(tag.name) > 0));
+  readonly folderCounts = this.libraryView.folderCounts;
+  readonly tagCounts = this.libraryView.tagCounts;
+  readonly visibleTags = this.libraryView.visibleTags;
   private initialRouteApplied = false;
   constructor() {
     effect(() => {
@@ -113,18 +83,11 @@ export class ReaderFacade {
       this.initialRouteApplied = true;
       this.applyInitialRoute();
     });
-    effect(() => {
-      if (this.library.notice() === "标签已保存") this.document.setStatus("标签已保存");
-      if (this.library.error() && this.document.status() === "正在保存标签") {
-        this.document.setStatus("标签保存失败");
-      }
-    });
     this.markdownFileRequests.pipe(
       switchMap(({directory, updateRoute}) => this.api.markdownFiles(directory).pipe(
         tap((files) => {
           this.markdownFolder = directory;
-          this.files.set(files);
-          this.fileCount.set(`${files.length} 个文件`);
+          this.libraryView.showFiles(files);
           if (updateRoute) {
             void this.router.navigate([], {
               relativeTo: this.route,
@@ -135,8 +98,7 @@ export class ReaderFacade {
         }),
         catchError((error) => {
           this.localError.set(errorMessage(error));
-          this.files.set([]);
-          this.fileCount.set("加载失败");
+          this.libraryView.markFilesFailed();
           return EMPTY;
         }),
       )),
@@ -179,13 +141,12 @@ export class ReaderFacade {
     directory = this.markdownFolder.trim() || this.defaultNotesDir(),
     updateRoute = false,
   ): void {
-    this.fileCount.set("正在加载");
+    this.libraryView.markFilesLoading();
     this.markdownFileRequests.next({directory, updateRoute});
   }
 
   openFavorite(item: FavoriteSummary): void {
-    this.selectedFavoriteId.set(item.id);
-    this.historyContext.clear();
+    this.tagEditor.selectFavorite(item);
     if (item.notes_dir && item.notes_dir !== this.markdownFolder) this.loadMarkdownFiles(item.notes_dir);
     this.document.beginOpen(item.markdown_path || item.title);
     this.localError.set("");
@@ -193,17 +154,14 @@ export class ReaderFacade {
   }
 
   openFile(file: MarkdownFile): void {
-    this.selectedFavoriteId.set(null);
-    this.historyContext.clear();
     this.openPath(file.path);
   }
 
   openPath(path: string, updateRoute = true, taskId = ""): void {
-    const matchingFavorite = this.favorites().find((item) => this.pathsReferToSameDocument(item.markdown_path, path));
-    this.selectedFavoriteId.set(matchingFavorite?.id ?? null);
-    if (matchingFavorite) this.historyContext.clear();
-    else if (taskId) this.runOnce(this.historyContext.load(taskId), () => undefined);
-    else this.historyContext.clear();
+    const matchingFavorite = this.tagEditor.selectPath(path);
+    if (matchingFavorite) this.tagEditor.clearHistory();
+    else if (taskId) this.tagEditor.loadHistory(taskId);
+    else this.tagEditor.clearHistory();
     this.document.beginOpen(path);
     this.localError.set("");
     this.documentRequests.next({kind: "path", path, updateRoute});
@@ -220,70 +178,51 @@ export class ReaderFacade {
   }
 
   setLibraryMode(mode: LibraryMode): void {
-    this.libraryMode.set(mode);
+    this.libraryView.setMode(mode);
   }
 
   setSearchQuery(query: string): void {
-    this.searchQuery.set(query);
+    this.libraryView.setSearchQuery(query);
   }
 
   setActiveTag(tag: string): void {
-    this.activeTag.set(tag);
+    this.libraryView.setActiveTag(tag);
   }
 
   setActiveFavoriteFolder(id: string): void {
-    const valid = id === "all" || id === "unfiled" || this.folders().some((folder) => String(folder.id) === id);
-    this.activeFolderId.set(valid ? id : "all");
+    this.libraryView.setActiveFolder(id);
   }
 
   setLibrarySort(sort: string): void {
-    if (["recent", "title", "folder", "path"].includes(sort)) this.librarySort.set(sort as LibrarySort);
+    this.libraryView.setSort(sort);
   }
 
   activeTagDraft(): string {
-    const item = this.activeFavorite();
-    if (item) return this.tagDraft(item);
-    return this.historyContext.activeDraft();
+    return this.tagEditor.activeDraft();
   }
 
   setActiveTagDraft(value: string): void {
-    const item = this.activeFavorite();
-    if (item) {
-      this.tagDrafts[item.id] = value;
-      return;
-    }
-    this.historyContext.setActiveDraft(value);
+    this.tagEditor.setActiveDraft(value);
   }
 
   saveActiveTags(): void {
-    const item = this.activeFavorite();
-    if (!item && !this.activeTask()) return;
-    this.document.setStatus("正在保存标签");
-    if (item) {
-      this.library.updateTags({favoriteId: item.id, tags: parseTags(this.tagDraft(item))});
-      return;
-    }
-    this.runOnce(this.historyContext.saveActiveTags(), () => {
-      this.library.loadAll();
-      this.document.setStatus("标签已保存");
-    });
+    this.tagEditor.saveActiveTags();
   }
 
   folderCount(id: string | number): number {
-    return this.folderCounts()[String(id)] ?? 0;
+    return this.libraryView.folderCount(id);
   }
 
   tagCount(tag: string): number {
-    return this.tagCounts()[tag.toLocaleLowerCase()] ?? 0;
+    return this.libraryView.tagCount(tag);
   }
 
   folderId(folder: FavoriteFolder): string {
-    return String(folder.id);
+    return this.libraryView.folderId(folder);
   }
 
   tagDraft(item: FavoriteSummary): string {
-    this.tagDrafts[item.id] ??= tagsFor(item).join(", ");
-    return this.tagDrafts[item.id];
+    return this.tagEditor.favoriteDraft(item);
   }
 
   isActivePath(path: string): boolean {
@@ -316,15 +255,7 @@ export class ReaderFacade {
   }
 
   private availableLibraryItems(): ReaderLibraryItem[] {
-    return this.visibleLibraryItems().filter((item) => item.path || item.favorite);
-  }
-
-  private pathsReferToSameDocument(left: string, right: string): boolean {
-    if (!left || !right) return false;
-    if (left === right) return true;
-    const leftName = left.split(/[\\/]/).pop();
-    const rightName = right.split(/[\\/]/).pop();
-    return Boolean(leftName && rightName && leftName === rightName);
+    return this.libraryView.availableItems();
   }
 
   private recover<T>(source$: Observable<T>, fallback: T): Observable<T> {

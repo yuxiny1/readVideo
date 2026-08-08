@@ -29,6 +29,8 @@ their production `.ts` and colocated `.spec.ts`; they do not add empty templates
 - Components own short-lived interaction state such as drag targets and open menus.
 - Page-scoped facades own interaction state and expose `signal` and `computed` values to containers.
 - Component-scoped NgRx SignalStores own Favorites, Folders, Tags, and Reader document state.
+- Focused page services own deep interaction policies such as duplicate-video decisions, task output actions,
+  Reader library projection, and Reader tag persistence target selection.
 - `ReadvideoApiService` is the only root data service. It is stateless and returns typed `Observable` values.
 - Presentational components receive complete view models through `input()` and send user intent through `output()`.
 - Pure selectors and parsers contain filtering, sorting, tag normalization, and Markdown rendering.
@@ -72,7 +74,9 @@ without keeping route-scoped UI state alive after navigation.
 - Subscriptions use `take(1)`, `takeUntilDestroyed`, or a template async boundary.
 - Errors are handled inside the stream.
 - New routes use lazy `loadComponent` loading.
-- TypeScript modules stay below the repository's 350-line architecture guard.
+- Production TypeScript modules stay at or below the repository's 300-line architecture guard.
+
+The broader design rules and module ownership map live in `docs/software-design-principles.md`.
 
 ## Unit Tests
 

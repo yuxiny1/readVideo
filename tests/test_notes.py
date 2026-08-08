@@ -153,13 +153,14 @@ class NotesTest(unittest.TestCase):
         )
         prompts = []
 
-        def fake_request(prompt, model, url, timeout_seconds):
+        def fake_request(prompt):
             prompts.append(prompt)
             if prompt.startswith("你是一个严谨"):
-                return [f"片段要点: {len(prompts)}"]
-            return ["全局总结: 覆盖产品定位、用户问题、执行步骤和后续行动"]
+                return f"- 片段要点: {len(prompts)}"
+            return "- 全局总结: 覆盖产品定位、用户问题、执行步骤和后续行动"
 
-        with patch("backend.services.transcript_summarizer._request_ollama_summary", side_effect=fake_request):
+        with patch("backend.services.ollama_notes.OllamaClient.generate", autospec=True) as generate:
+            generate.side_effect = lambda client, prompt: fake_request(prompt)
             summary = summarize_transcript_with_ollama(transcript, chunk_chars=90)
 
         self.assertGreater(len(prompts), 2)
@@ -195,7 +196,8 @@ class NotesTest(unittest.TestCase):
                 )
             return "- 片段要点: 保留当前片段的关键事实\n- 章节主题: 产品定位"
 
-        with patch("backend.services.transcript_summarizer._request_ollama_text", side_effect=fake_request):
+        with patch("backend.services.ollama_notes.OllamaClient.generate", autospec=True) as generate:
+            generate.side_effect = lambda client, prompt: fake_request(prompt, "", "", 0)
             article = build_article_note_with_ollama(transcript, chunk_chars=90)
 
         self.assertGreater(len(prompts), 2)
@@ -245,7 +247,8 @@ class NotesTest(unittest.TestCase):
                 ]
             )
 
-        with patch("backend.services.transcript_summarizer._request_ollama_text", side_effect=fake_request):
+        with patch("backend.services.ollama_notes.OllamaClient.generate", autospec=True) as generate:
+            generate.side_effect = lambda client, prompt: fake_request(prompt, "", "", 0)
             article = build_article_note_with_ollama(transcript, note_style="commercial")
 
         self.assertEqual(len(article.business_items), 3)

@@ -159,14 +159,14 @@ class FrontendContractTest(unittest.TestCase):
 
     def test_copy_buttons_copy_full_markdown_notes(self):
         latest_template = read_repo_file("frontend/angular/src/app/features/new-video/ui/latest-output/latest-output.component.html")
-        workflow = read_repo_file("frontend/angular/src/app/features/new-video/data-access/task-workflow/task-workflow.service.ts")
+        output_service = read_repo_file("frontend/angular/src/app/features/new-video/data-access/task-output/task-output.service.ts")
         reader_template = read_repo_file("frontend/angular/src/app/features/reader/ui/reader-document-toolbar/reader-document-toolbar.component.html")
         reader_document = read_repo_file("frontend/angular/src/app/features/reader/data-access/reader-document/reader-document.store.ts")
 
         self.assertIn("复制完整笔记", latest_template)
         self.assertIn("copyRequested.emit()", latest_template)
-        self.assertIn("markdownDocument(markdownPath)", workflow)
-        self.assertIn("已复制完整 Markdown 笔记", workflow)
+        self.assertIn("markdownDocument(task.markdown_path)", output_service)
+        self.assertIn("已复制完整 Markdown 笔记", output_service)
         self.assertIn("复制完整笔记", reader_template)
         self.assertIn("完整 Markdown 已复制", reader_document)
 
@@ -177,6 +177,7 @@ class FrontendContractTest(unittest.TestCase):
         favorites_facade = read_repo_file("frontend/angular/src/app/features/favorites/data-access/favorites-facade/favorites.facade.ts")
         favorites_template = read_repo_file("frontend/angular/src/app/features/favorites/page/favorites-page/favorites-page.component.html")
         reader_facade = read_repo_file("frontend/angular/src/app/features/reader/data-access/reader-facade/reader.facade.ts")
+        reader_tag_editor = read_repo_file("frontend/angular/src/app/features/reader/data-access/reader-tag-editor/reader-tag-editor.service.ts")
         reader_library_template = read_repo_file("frontend/angular/src/app/features/reader/ui/reader-library/reader-library.component.html")
         reader_document_template = read_repo_file("frontend/angular/src/app/features/reader/ui/reader-document-toolbar/reader-document-toolbar.component.html")
         history_facade = read_repo_file("frontend/angular/src/app/features/history/data-access/history-facade/history.facade.ts")
@@ -202,7 +203,7 @@ class FrontendContractTest(unittest.TestCase):
         self.assertIn("activeTag", reader_facade)
         self.assertIn("saveActiveTags", reader_facade)
         self.assertIn("updateFavoriteTags", library_store)
-        self.assertIn("this.library.updateTags", reader_facade)
+        self.assertIn("this.library.updateTags", reader_tag_editor)
         self.assertIn("reader-document-tags-row", reader_document_template)
         self.assertIn("rv-tag-editor", reader_document_template)
         self.assertIn("保存标签", reader_document_template)
@@ -229,7 +230,11 @@ class FrontendContractTest(unittest.TestCase):
         self.assertNotIn("fetch(", api)
         self.assertNotIn("Promise<", api)
         self.assertIn("loadComponent", routes)
-        self.assertIn("providers: [ProcessFormService, LocalModelsService, TaskWorkflowService]", new_video)
+        for provider in [
+            "ProcessFormService", "LocalModelsService", "TaskDuplicateService",
+            "TaskOutputService", "TaskWorkflowService",
+        ]:
+            self.assertIn(provider, new_video)
 
         for component in app_root.rglob("*.component.ts"):
             source = component.read_text(encoding="utf-8")
@@ -268,9 +273,13 @@ class FrontendContractTest(unittest.TestCase):
             self.assertNotIn("providedIn", store)
 
         self.assertIn("providers: [LibraryStore, FavoritesFacade]", favorites_page)
-        self.assertIn("providers: [LibraryStore, ReaderDocumentStore, ReaderHistoryContextService, ReaderFacade]", reader_page)
+        for provider in [
+            "LibraryStore", "ReaderDocumentStore", "ReaderHistoryContextService",
+            "ReaderLibraryViewStore", "ReaderTagEditorService", "ReaderFacade",
+        ]:
+            self.assertIn(provider, reader_page)
         self.assertIn("readonly favorites = this.library.favorites", favorites_facade)
-        self.assertIn("readonly favorites = this.library.favorites", reader_facade)
+        self.assertIn("readonly favorites = this.libraryView.favorites", reader_facade)
         self.assertNotIn("readonly favorites = signal", favorites_facade)
         self.assertNotIn("readonly favorites = signal", reader_facade)
         for component in (PROJECT_ROOT / "frontend/angular/src/app/features/reader/ui").rglob("*.component.ts"):
@@ -366,10 +375,12 @@ class FrontendContractTest(unittest.TestCase):
     def test_frontend_typescript_modules_stay_focused(self):
         app_root = PROJECT_ROOT / "frontend/angular/src/app"
         for module in app_root.rglob("*.ts"):
+            if module.name.endswith(".spec.ts"):
+                continue
             line_count = len(module.read_text(encoding="utf-8").splitlines())
             self.assertLessEqual(
                 line_count,
-                350,
+                300,
                 f"{module.relative_to(PROJECT_ROOT)} has {line_count} lines; split its responsibilities",
             )
 
