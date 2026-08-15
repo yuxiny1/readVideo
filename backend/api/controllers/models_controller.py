@@ -4,6 +4,7 @@ from backend.api.schemas import OllamaPullRequest, WhisperModelDownloadRequest
 from backend.application import get_mediator
 from backend.application.messages.models import (
     DownloadWhisperModelCommand,
+    GetMlxStatusQuery,
     ListOllamaModelsQuery,
     ListTranscriptionModelsQuery,
     PullOllamaModelCommand,
@@ -16,6 +17,11 @@ router = APIRouter()
 @router.get("/api/ollama/models")
 async def get_ollama_models():
     return await get_mediator().send(ListOllamaModelsQuery())
+
+
+@router.get("/api/mlx/status")
+async def get_mlx_status():
+    return await get_mediator().send(GetMlxStatusQuery())
 
 
 @router.post("/api/ollama/pull")

@@ -76,6 +76,8 @@ READVIDEO_NOTES_BACKEND=ollama
 READVIDEO_NOTE_STYLE=detailed
 READVIDEO_OLLAMA_MODEL=qwen3.6:35b
 READVIDEO_OLLAMA_URL=http://127.0.0.1:11434/api/generate
+READVIDEO_MLX_MODEL=mlx-community/Qwen2.5-72B-Instruct-3bit
+READVIDEO_MLX_URL=http://127.0.0.1:8080/v1/chat/completions
 ```
 
 Default Ollama note model:
@@ -86,6 +88,8 @@ READVIDEO_NOTES_BACKEND=ollama
 ```
 
 `READVIDEO_NOTES_BACKEND=ollama` means Better Local AI Notes: slower, but uses a local Ollama model to turn the full transcript into key points, a narrative summary paragraph, and high-detail article-style sections that preserve names, dates, examples, numbers, and the original flow. The default model is `qwen3.6:35b` when available. The Markdown note no longer embeds the full transcript; the transcript remains available as its separate `.txt` output.
+
+Apple Silicon can use the downloaded MLX model instead: run `npm run mlx:serve`, then select `MLX（Apple 芯片）` on the new-video page. The terminal-only chat command is `npm run mlx:chat`. See [MLX Local Model](mlx-local-model.md).
 
 `READVIDEO_NOTE_STYLE=commercial` keeps the detailed segmented notes and adds a `Business Lens` plus an `Editorial Article` before them. This mode asks the local model for business-core takeaways, risks, opportunities, key metrics, next signals, and a polished business-news analysis summary with a clear lede, context, stakes, and implications. The default `detailed` mode preserves the current notes format.
 

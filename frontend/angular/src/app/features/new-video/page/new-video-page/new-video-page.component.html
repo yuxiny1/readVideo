@@ -17,6 +17,7 @@
     (submitRequested)="workflow.startFromForm()"
     (whisperDownloadRequested)="models.downloadSelectedWhisperModel($event)"
     (strongestModelRequested)="models.loadOllamaModels(true)"
+    (mlxRefreshRequested)="models.loadMlxStatus()"
     (duplicateAction)="handleDuplicateAction($event)"
   />
   <rv-latest-output

@@ -18,8 +18,11 @@ export function describeTaskPhase(task: TaskRecord | null): string {
   }
   if (task.status === "organizing_notes") {
     const backend = task.summary_backend || task.notes_backend || "ollama";
-    const model = task.ollama_model ? `，模型为 ${task.ollama_model}` : "";
-    const label = backend === "ollama" ? `本地 AI 笔记${model}` : "本地提取式笔记";
+    const selectedModel = backend === "mlx" ? task.mlx_model : task.ollama_model;
+    const model = selectedModel ? `，模型为 ${selectedModel}` : "";
+    const label = backend === "mlx"
+      ? `MLX 本地 AI 笔记${model}`
+      : backend === "ollama" ? `Ollama 本地 AI 笔记${model}` : "本地提取式笔记";
     return `正在使用${label}生成详细总结和分段笔记。`;
   }
   if (task.status === "completed") return describeCompleted(task);

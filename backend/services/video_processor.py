@@ -33,6 +33,7 @@ async def process_video(
     transcription_prompt: Optional[str] = None,
     local_whisper_model: Optional[str] = None,
     local_whisper_language: Optional[str] = None,
+    mlx_model: Optional[str] = None,
 ):
     settings = None
     try:
@@ -42,6 +43,7 @@ async def process_video(
             notes_backend=notes_backend,
             note_style=note_style,
             ollama_model=ollama_model,
+            mlx_model=mlx_model,
             transcription_backend=transcription_backend,
             transcription_model=transcription_model,
             transcription_prompt=transcription_prompt,
@@ -52,6 +54,7 @@ async def process_video(
         resolved_notes_backend = plan.notes_backend
         resolved_note_style = plan.note_style
         resolved_ollama_model = plan.ollama_model
+        resolved_mlx_model = plan.mlx_model
         task_metadata = plan.task_metadata(delete_video_after_completion)
         candidate = None
         if not force_download:
@@ -162,6 +165,13 @@ async def process_video(
                 f"正在使用 Ollama 模型 {resolved_ollama_model} 生成{style_label}。",
                 status="organizing_notes",
             )
+        elif resolved_notes_backend == "mlx":
+            style_label = "商业分析文章" if resolved_note_style == "commercial" else "高细节段落笔记"
+            append_task_log(
+                task_id,
+                f"正在使用 MLX 模型 {resolved_mlx_model} 生成{style_label}。",
+                status="organizing_notes",
+            )
         else:
             append_task_log(task_id, "正在整理本地提取式笔记。", status="organizing_notes")
         note_result = await asyncio.to_thread(
@@ -174,6 +184,8 @@ async def process_video(
             summary_backend=resolved_notes_backend,
             ollama_model=resolved_ollama_model,
             ollama_url=settings.ollama_url,
+            mlx_model=resolved_mlx_model,
+            mlx_url=settings.mlx_url,
             note_style=resolved_note_style,
         )
 
@@ -190,6 +202,7 @@ async def process_video(
             transcription_backend=resolved_transcription_backend,
             summary_backend=note_result.summary_backend,
             ollama_model=resolved_ollama_model if resolved_notes_backend == "ollama" else None,
+            mlx_model=resolved_mlx_model if resolved_notes_backend == "mlx" else None,
             note_style=resolved_note_style,
             chunk_count=getattr(result, "chunk_count", None),
             delete_video_after_completion=delete_video_after_completion,

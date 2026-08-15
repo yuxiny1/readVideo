@@ -1,6 +1,7 @@
 from backend.application.errors import ApplicationError
 from backend.application.messages.models import (
     DownloadWhisperModelCommand,
+    GetMlxStatusQuery,
     ListOllamaModelsQuery,
     ListTranscriptionModelsQuery,
     PullOllamaModelCommand,
@@ -13,6 +14,7 @@ from backend.services.ollama_models import (
     pull_ollama_model,
     recommended_models,
 )
+from backend.services.mlx_client import inspect_mlx_server
 from backend.services.whisper_models import (
     download_whisper_model,
     list_installed_whisper_models,
@@ -58,6 +60,31 @@ class ListOllamaModelsHandler:
             "installed": installed,
             "models": [model.__dict__ for model in models],
         }
+
+
+class GetMlxStatusHandler:
+    def handle(self, _query: GetMlxStatusQuery) -> dict:
+        settings = load_settings()
+        try:
+            status = inspect_mlx_server(settings.mlx_url)
+        except RuntimeError as exc:
+            return {
+                "status": "error",
+                "error": str(exc),
+                "default_model": settings.mlx_model,
+                "models": [],
+                "start_command": _mlx_start_command(settings.mlx_model),
+            }
+        return {
+            "status": "ok",
+            "default_model": settings.mlx_model,
+            "models": status.models,
+            "start_command": _mlx_start_command(settings.mlx_model),
+        }
+
+
+def _mlx_start_command(model: str) -> str:
+    return f"~/mlx-env/bin/mlx_lm.server --model {model} --host 127.0.0.1 --port 8080"
 
 
 class PullOllamaModelHandler:

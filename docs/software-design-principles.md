@@ -27,13 +27,16 @@
 - `backend/services/transcript_summarizer.py`：稳定的笔记领域公共入口。
 - `backend/services/extractive_summarizer.py`：拥有本地提取式排序算法。
 - `backend/services/ollama_client.py`：拥有 Ollama 传输协议和错误翻译。
-- `backend/services/ollama_notes.py`：拥有提示词、长文本分块和模型调用流程。
+- `backend/services/mlx_client.py`：拥有 MLX 的聊天补全协议、服务探测和错误翻译。
+- `backend/services/language_model_notes.py`：拥有 Ollama 与 MLX 共用的提示词、长文本分块和模型调用流程。
+- `backend/services/ollama_notes.py` / `mlx_notes.py`：只把具体传输客户端接到共享笔记流程。
 - `backend/services/article_note_parser.py`：拥有模型输出到领域对象的解析规则。
 - `backend/services/transcript_segments.py`：拥有原文分块与章节匹配算法。
 - `ReaderLibraryViewStore`：拥有 Reader 资料库筛选、排序和计数。
 - `ReaderTagEditorService`：拥有当前阅读对象的标签目标、草稿和保存策略。
 - `TaskDuplicateService`：拥有历史复用决策和重复任务面板状态。
 - `TaskOutputService`：拥有任务收藏与完整笔记复制规则。
+- `processingValidationFailure`：拥有新视频提交前的 Whisper、Ollama 与 MLX 就绪校验。
 
 ## 评审清单
 

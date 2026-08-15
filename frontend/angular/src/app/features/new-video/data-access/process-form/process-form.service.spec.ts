@@ -11,6 +11,7 @@ describe("ProcessFormService", () => {
     expect(service.form()).toMatchObject({
       transcriptionBackend: "local",
       noteStyle: "detailed",
+      notesBackend: "ollama",
       deleteVideoAfterCompletion: false,
     });
   });
@@ -32,6 +33,7 @@ describe("ProcessFormService", () => {
       localWhisperModel: " model.bin ",
       localWhisperLanguage: " zh ",
       ollamaModel: " qwen3.6:35b ",
+      mlxModel: " mlx-community/Qwen2.5-72B-Instruct-3bit ",
       noteStyle: "commercial",
     });
 
@@ -45,10 +47,24 @@ describe("ProcessFormService", () => {
       notes_backend: "ollama",
       note_style: "commercial",
       ollama_model: "qwen3.6:35b",
+      mlx_model: null,
       reuse_task_id: "old-task",
       force_download: true,
       delete_video_after_completion: false,
     });
+  });
+
+  it("sends only the model that belongs to the selected notes engine", () => {
+    const service = new ProcessFormService();
+    service.patch({
+      notesBackend: "mlx",
+      ollamaModel: "qwen:32b",
+      mlxModel: "mlx-community/Qwen2.5-72B-Instruct-3bit",
+    });
+
+    const payload = service.payload("https://example.com");
+    expect(payload.ollama_model).toBeNull();
+    expect(payload.mlx_model).toBe("mlx-community/Qwen2.5-72B-Instruct-3bit");
   });
 
   it("survives unavailable local storage", () => {

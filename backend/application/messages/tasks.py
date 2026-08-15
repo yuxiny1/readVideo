@@ -12,6 +12,7 @@ class StartVideoProcessingCommand:
     notes_backend: Optional[str]
     note_style: Optional[str]
     ollama_model: Optional[str]
+    mlx_model: Optional[str]
     reuse_task_id: Optional[str]
     force_download: bool
     delete_video_after_completion: bool

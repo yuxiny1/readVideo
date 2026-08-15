@@ -1,6 +1,6 @@
 import {Injectable, signal} from "@angular/core";
 
-import {ProcessPayload} from "../../../../shared/models/readvideo-types/readvideo.types";
+import {NotesBackend, ProcessPayload} from "../../../../shared/models/readvideo-types/readvideo.types";
 
 const DELETE_VIDEO_AFTER_COMPLETION_KEY = "readvideo.deleteVideoAfterCompletion";
 
@@ -12,7 +12,9 @@ export interface ProcessFormState {
   localWhisperModel: string;
   localWhisperLanguage: string;
   noteStyle: "detailed" | "commercial";
+  notesBackend: NotesBackend;
   ollamaModel: string;
+  mlxModel: string;
   deleteVideoAfterCompletion: boolean;
 }
 
@@ -26,7 +28,9 @@ export class ProcessFormService {
     localWhisperModel: "",
     localWhisperLanguage: "",
     noteStyle: "detailed",
+    notesBackend: "ollama",
     ollamaModel: "",
+    mlxModel: "",
     deleteVideoAfterCompletion: readDeleteVideoDefault(),
   });
 
@@ -46,9 +50,10 @@ export class ProcessFormService {
       transcription_model: form.transcriptionModel.trim() || null,
       local_whisper_model: form.localWhisperModel.trim() || null,
       local_whisper_language: form.localWhisperLanguage.trim() || null,
-      notes_backend: "ollama",
+      notes_backend: form.notesBackend,
       note_style: form.noteStyle,
-      ollama_model: form.ollamaModel.trim() || null,
+      ollama_model: form.notesBackend === "ollama" ? form.ollamaModel.trim() || null : null,
+      mlx_model: form.notesBackend === "mlx" ? form.mlxModel.trim() || null : null,
       reuse_task_id: options.reuseTaskId || null,
       force_download: Boolean(options.forceDownload),
       delete_video_after_completion: form.deleteVideoAfterCompletion,

@@ -78,6 +78,18 @@ class ProcessingSettingsTest(unittest.TestCase):
         self.assertEqual(plan.task_metadata(False)["transcription_model"], "gpt-4o-mini-transcribe")
         load_key.assert_called_once_with(required=True)
 
+    def test_mlx_backend_records_its_model_without_claiming_ollama(self):
+        plan = resolve_processing_plan(
+            Settings(mlx_model="mlx/default"),
+            notes_backend="mlx",
+            mlx_model="mlx/custom",
+        )
+
+        self.assertEqual(plan.notes_backend, "mlx")
+        self.assertEqual(plan.mlx_model, "mlx/custom")
+        self.assertEqual(plan.task_metadata(False)["mlx_model"], "mlx/custom")
+        self.assertIsNone(plan.task_metadata(False)["ollama_model"])
+
     def test_invalid_choices_fail_at_the_configuration_boundary(self):
         cases = (
             ({"notes_backend": "missing"}, "笔记引擎无效"),

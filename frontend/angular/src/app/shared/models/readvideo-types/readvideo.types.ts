@@ -9,13 +9,17 @@ export interface HealthResponse {
   status: string;
 }
 
+export type NotesBackend = "ollama" | "mlx";
+
 export interface AppConfig {
   transcription_backend: "local" | "openai";
   download_dir: string;
   notes_dir: string;
-  notes_backend: "extractive" | "ollama";
+  notes_backend: "extractive" | NotesBackend;
   note_style: "detailed" | "commercial";
   ollama_model: string;
+  mlx_model: string;
+  mlx_url: string;
   local_whisper_model: string;
   local_whisper_language: string;
   transcription_model: string;
@@ -36,6 +40,14 @@ export interface OllamaModelsResponse {
   default_model: string;
   error?: string;
   models: OllamaModel[];
+}
+
+export interface MlxStatusResponse {
+  status: "ok" | "error";
+  default_model: string;
+  models: string[];
+  start_command: string;
+  error?: string;
 }
 
 export interface WhisperModelOption {
@@ -89,6 +101,7 @@ export interface TaskRecord {
   notes_backend?: string;
   note_style?: string;
   ollama_model?: string;
+  mlx_model?: string;
   created_at?: string;
   updated_at?: string;
   completed_at?: string;
@@ -113,9 +126,10 @@ export interface ProcessPayload {
   transcription_model: string | null;
   local_whisper_model: string | null;
   local_whisper_language: string | null;
-  notes_backend: "ollama";
+  notes_backend: NotesBackend;
   note_style: "detailed" | "commercial";
   ollama_model: string | null;
+  mlx_model: string | null;
   reuse_task_id?: string | null;
   force_download?: boolean;
   delete_video_after_completion?: boolean;

@@ -53,6 +53,8 @@ READVIDEO_LOCAL_WHISPER_LANGUAGE=auto
 READVIDEO_NOTES_BACKEND=ollama
 READVIDEO_OLLAMA_MODEL=qwen3.6:35b
 READVIDEO_OLLAMA_URL=http://127.0.0.1:11434/api/generate
+READVIDEO_MLX_MODEL=mlx-community/Qwen2.5-72B-Instruct-3bit
+READVIDEO_MLX_URL=http://127.0.0.1:8080/v1/chat/completions
 ```
 
 Default Ollama article-style notes:
@@ -63,6 +65,8 @@ READVIDEO_NOTES_BACKEND=ollama
 ```
 
 `READVIDEO_NOTES_BACKEND=ollama` means Better Local AI Notes: slower, but uses a local Ollama model to turn the full transcript into key points, a narrative summary paragraph, and high-detail article-style sections that preserve names, dates, examples, numbers, and the original flow. The default model is `qwen3.6:35b` when available.
+
+On Apple Silicon, readVideo can use an MLX model instead of Ollama. After the Hugging Face download finishes, start the local server in a separate terminal with `npm run mlx:serve`, open readVideo, and select `MLX（Apple 芯片）` under `笔记生成引擎`. Use `npm run mlx:chat` when you only want an interactive terminal chat. See [MLX Local Model](docs/mlx-local-model.md) for download checks, container access, and troubleshooting.
 
 Optional OpenAI backend:
 

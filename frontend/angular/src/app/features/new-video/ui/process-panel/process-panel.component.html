@@ -6,7 +6,7 @@
 
   <form class="stack" (ngSubmit)="submitRequested.emit()">
     <div>
-      <label for="video-url">YouTube 网址</label>
+      <label for="video-url">YouTube 或 Bilibili 网址</label>
       <input
         id="video-url"
         name="url"
@@ -111,24 +111,53 @@
         </p>
       </div>
       <div>
-        <label for="ollama-model">本地 AI 总结模型</label>
-        <div class="input-action-row">
-          <select
-            id="ollama-model"
-            name="ollama_model"
-            [ngModel]="vm().form.ollamaModel"
-            (ngModelChange)="patchForm({ollamaModel: $event})"
-          >
-            @if (vm().form.ollamaModel && !resolveOllamaModel(vm().form.ollamaModel)) {
-              <option [value]="vm().form.ollamaModel">已配置：{{ vm().form.ollamaModel }}</option>
-            }
-            @for (model of vm().ollamaModels; track model.name) {
-              <option [value]="model.name">{{ model.name }} · {{ modelLabel(model) }}</option>
-            }
-          </select>
-          <button class="secondary-button small-button" type="button" (click)="strongestModelRequested.emit()">使用最大模型</button>
-        </div>
-        <p class="field-status" [ngClass]="vm().ollamaStatus.kind">{{ vm().ollamaStatus.text }}</p>
+        <label for="notes-backend">笔记生成引擎</label>
+        <select
+          id="notes-backend"
+          name="notes_backend"
+          [ngModel]="vm().form.notesBackend"
+          (ngModelChange)="patchForm({notesBackend: $event})"
+        >
+          <option value="ollama">Ollama 本地模型</option>
+          <option value="mlx">MLX（Apple 芯片）</option>
+        </select>
+
+        @if (vm().form.notesBackend === 'mlx') {
+          <div class="model-control">
+            <label for="mlx-model">MLX 总结模型</label>
+            <div class="input-action-row">
+              <input
+                id="mlx-model"
+                name="mlx_model"
+                [ngModel]="vm().form.mlxModel"
+                (ngModelChange)="patchForm({mlxModel: $event})"
+              >
+              <button class="secondary-button small-button" type="button" (click)="mlxRefreshRequested.emit()">重新检查</button>
+            </div>
+            <p class="field-status" [ngClass]="vm().mlxStatus.kind">{{ vm().mlxStatus.text }}</p>
+          </div>
+        } @else {
+          <div class="model-control">
+            <label for="ollama-model">Ollama 总结模型</label>
+            <div class="input-action-row">
+              <select
+                id="ollama-model"
+                name="ollama_model"
+                [ngModel]="vm().form.ollamaModel"
+                (ngModelChange)="patchForm({ollamaModel: $event})"
+              >
+                @if (vm().form.ollamaModel && !resolveOllamaModel(vm().form.ollamaModel)) {
+                  <option [value]="vm().form.ollamaModel">已配置：{{ vm().form.ollamaModel }}</option>
+                }
+                @for (model of vm().ollamaModels; track model.name) {
+                  <option [value]="model.name">{{ model.name }} · {{ modelLabel(model) }}</option>
+                }
+              </select>
+              <button class="secondary-button small-button" type="button" (click)="strongestModelRequested.emit()">使用最大模型</button>
+            </div>
+            <p class="field-status" [ngClass]="vm().ollamaStatus.kind">{{ vm().ollamaStatus.text }}</p>
+          </div>
+        }
       </div>
     </div>
 

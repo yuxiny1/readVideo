@@ -15,6 +15,7 @@ class ProcessVideoRequest(BaseModel):
     notes_backend: Optional[str] = Field(default=None, min_length=1)
     note_style: Optional[str] = Field(default=None, min_length=1)
     ollama_model: Optional[str] = Field(default=None, min_length=1)
+    mlx_model: Optional[str] = Field(default=None, min_length=1)
     reuse_task_id: Optional[str] = Field(default=None, min_length=1)
     force_download: bool = False
     delete_video_after_completion: bool = False

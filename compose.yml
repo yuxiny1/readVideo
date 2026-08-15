@@ -13,6 +13,8 @@ x-backend-environment: &backend-environment
   READVIDEO_NOTES_BACKEND: ollama
   READVIDEO_OLLAMA_MODEL: ${READVIDEO_OLLAMA_MODEL:-qwen3.6:35b}
   READVIDEO_OLLAMA_URL: http://ollama:11434/api/generate
+  READVIDEO_MLX_MODEL: ${READVIDEO_MLX_MODEL:-mlx-community/Qwen2.5-72B-Instruct-3bit}
+  READVIDEO_MLX_URL: ${READVIDEO_MLX_URL:-http://host.docker.internal:8080/v1/chat/completions}
   OPENAI_API_KEY: ${OPENAI_API_KEY:-}
 
 x-backend-volumes: &backend-volumes
@@ -42,6 +44,8 @@ services:
     user: "${READVIDEO_UID:-1000}:${READVIDEO_GID:-1000}"
     environment: *backend-environment
     volumes: *backend-volumes
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${READVIDEO_API_PORT:-8001}:8000"
     depends_on:
@@ -57,6 +61,8 @@ services:
     command: ["rq", "worker", "--url", "redis://redis:6379/0", "readvideo", "--with-scheduler"]
     environment: *backend-environment
     volumes: *backend-volumes
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "python", "-c", "from redis import Redis; assert Redis.from_url('redis://redis:6379/0').ping()"]
       interval: 20s

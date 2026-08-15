@@ -26,6 +26,7 @@ class StartVideoProcessingHandler:
                 notes_backend=command.notes_backend,
                 note_style=command.note_style,
                 ollama_model=command.ollama_model,
+                mlx_model=command.mlx_model,
                 transcription_backend=command.transcription_backend,
                 transcription_model=command.transcription_model,
                 transcription_prompt=command.transcription_prompt,
@@ -63,6 +64,8 @@ class StartVideoProcessingHandler:
             command.local_whisper_model,
             command.local_whisper_language,
         )
+        if command.mlx_model is not None:
+            arguments += (command.mlx_model,)
         try:
             queue_backend = enqueue_video_processing(
                 command.local_scheduler,

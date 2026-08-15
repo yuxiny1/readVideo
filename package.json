@@ -18,6 +18,8 @@
     "test:frontend:coverage": "ng test --watch=false --coverage",
     "test": ".venv/bin/python -m unittest -v",
     "test:coverage": ".venv/bin/python -m coverage run -m unittest discover -v && .venv/bin/python -m coverage report --fail-under=80",
+    "mlx:chat": "\"$HOME/mlx-env/bin/mlx_lm.chat\" --model \"${READVIDEO_MLX_MODEL:-mlx-community/Qwen2.5-72B-Instruct-3bit}\" --max-tokens 2048",
+    "mlx:serve": "\"$HOME/mlx-env/bin/mlx_lm.server\" --model \"${READVIDEO_MLX_MODEL:-mlx-community/Qwen2.5-72B-Instruct-3bit}\" --host 127.0.0.1 --port 8080 --max-tokens 4096 --prompt-cache-size 1 --prefill-step-size 1024",
     "containers:up": "./scripts/containers.sh up",
     "containers:up:gpu": "./scripts/containers.sh up-gpu",
     "containers:up:host-ollama": "./scripts/containers.sh up-host-ollama",

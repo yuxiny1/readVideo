@@ -44,6 +44,7 @@ export class NewVideoPageComponent implements OnInit {
     whisperStatus: this.models.whisperStatus(),
     ollamaModels: this.models.ollamaModelOptions(),
     ollamaStatus: this.models.ollamaStatus(),
+    mlxStatus: this.models.mlxStatus(),
     notice: this.workflow.notice(),
     duplicate: this.workflow.duplicate(),
     latestTask: this.workflow.latestTask(),
@@ -68,6 +69,9 @@ export class NewVideoPageComponent implements OnInit {
     this.form.patch(update);
     if (update.localWhisperModel !== undefined) this.models.validateWhisperSelection();
     if (update.ollamaModel !== undefined) this.models.validateOllamaSelection();
+    if (update.mlxModel !== undefined) this.models.validateMlxSelection();
+    if (update.notesBackend === "ollama") this.models.validateOllamaSelection();
+    if (update.notesBackend === "mlx") this.models.validateMlxSelection();
   }
 
   handleDuplicateAction(action: DuplicateAction): void {

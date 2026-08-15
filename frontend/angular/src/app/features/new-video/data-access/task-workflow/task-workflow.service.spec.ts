@@ -18,6 +18,8 @@ const config: AppConfig = {
   notes_backend: "ollama",
   note_style: "detailed",
   ollama_model: "qwen:32b",
+  mlx_model: "mlx-community/Qwen2.5-72B-Instruct-3bit",
+  mlx_url: "http://127.0.0.1:8080/v1/chat/completions",
   local_whisper_model: "models/large.bin",
   local_whisper_language: "auto",
   transcription_model: "",
@@ -39,8 +41,10 @@ describe("TaskWorkflowService", () => {
   let models: {
     config: ReturnType<typeof signal<AppConfig | null>>;
     whisperStatus: ReturnType<typeof signal<{text: string; kind: "ok" | "error"}>>;
+    mlxStatus: ReturnType<typeof signal<{text: string; kind: "ok" | "error"}>>;
     initialize: ReturnType<typeof vi.fn>;
     validateWhisperSelection: ReturnType<typeof vi.fn>;
+    validateMlxSelection: ReturnType<typeof vi.fn>;
     isInstalledOllamaModel: ReturnType<typeof vi.fn>;
     installedModels: ReturnType<typeof vi.fn>;
   };
@@ -60,8 +64,10 @@ describe("TaskWorkflowService", () => {
     models = {
       config: signal<AppConfig | null>(config),
       whisperStatus: signal({text: "Ready", kind: "ok" as const}),
+      mlxStatus: signal({text: "MLX ready", kind: "ok" as const}),
       initialize: vi.fn(),
       validateWhisperSelection: vi.fn(() => true),
+      validateMlxSelection: vi.fn(() => true),
       isInstalledOllamaModel: vi.fn(() => true),
       installedModels: vi.fn(() => ["qwen:32b"]),
     };
@@ -75,7 +81,11 @@ describe("TaskWorkflowService", () => {
     ]});
     service = TestBed.inject(TaskWorkflowService);
     form = TestBed.inject(ProcessFormService);
-    form.patch({localWhisperModel: "models/large.bin", ollamaModel: "qwen:32b"});
+    form.patch({
+      localWhisperModel: "models/large.bin",
+      ollamaModel: "qwen:32b",
+      mlxModel: "mlx-community/Qwen2.5-72B-Instruct-3bit",
+    });
   });
 
   afterEach(() => vi.restoreAllMocks());
@@ -132,6 +142,16 @@ describe("TaskWorkflowService", () => {
     expect(api.processVideo).not.toHaveBeenCalled();
     expect(service.latestTask()).toMatchObject({task_id: "local-check", status: "failed"});
     expect(service.notice()).toMatchObject({kind: "error"});
+  });
+
+  it("submits an MLX task only when the local MLX service is ready", () => {
+    form.patch({notesBackend: "mlx"});
+    service.startProcessingUrl("https://example.com/mlx-video", {skipDuplicateCheck: true});
+
+    const payload = api.processVideo.mock.calls[0][0] as ProcessPayload;
+    expect(payload.notes_backend).toBe("mlx");
+    expect(payload.mlx_model).toBe("mlx-community/Qwen2.5-72B-Instruct-3bit");
+    expect(models.validateMlxSelection).toHaveBeenCalled();
   });
 
   it("continues when the history lookup fails", () => {

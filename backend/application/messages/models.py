@@ -7,6 +7,11 @@ class ListOllamaModelsQuery:
 
 
 @dataclass(frozen=True)
+class GetMlxStatusQuery:
+    pass
+
+
+@dataclass(frozen=True)
 class PullOllamaModelCommand:
     model: str
 

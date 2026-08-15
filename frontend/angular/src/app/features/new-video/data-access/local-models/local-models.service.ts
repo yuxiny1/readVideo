@@ -6,6 +6,7 @@ import {map, pipe, switchMap, tap} from "rxjs";
 import {ReadvideoApiService} from "../../../../core/api/readvideo-api/readvideo-api.service";
 import {
   AppConfig,
+  MlxStatusResponse,
   NoticeState,
   OllamaModel,
   TranscriptionLanguageOption,
@@ -24,6 +25,9 @@ export class LocalModelsService {
   readonly ollamaModels = signal<OllamaModel[]>([]);
   readonly ollamaAvailable = signal(false);
   readonly ollamaStatus = signal<NoticeState>({text: "正在检查 Ollama 模型……", kind: "muted"});
+  readonly mlxAvailable = signal(false);
+  readonly mlxModels = signal<string[]>([]);
+  readonly mlxStatus = signal<NoticeState>({text: "正在检查 MLX 本地模型服务……", kind: "muted"});
   readonly whisperModels = signal<WhisperModelOption[]>([]);
   readonly transcriptionLanguages = signal<TranscriptionLanguageOption[]>([]);
   readonly whisperStatus = signal<NoticeState>({text: "正在检查本地 Whisper 模型……", kind: "muted"});
@@ -68,6 +72,20 @@ export class LocalModelsService {
       )),
     ),
   );
+  private readonly loadMlxStatusRequest = rxMethod<void>(
+    pipe(
+      switchMap(() => this.api.mlxStatus().pipe(
+        tapResponse({
+          next: (result) => this.applyMlxStatus(result),
+          error: (error) => {
+            this.mlxAvailable.set(false);
+            this.mlxModels.set([]);
+            this.mlxStatus.set({text: errorMessage(error), kind: "error"});
+          },
+        }),
+      )),
+    ),
+  );
   private readonly downloadWhisperModelRequest = rxMethod<WhisperModelOption>(
     pipe(
       tap((model) => {
@@ -101,9 +119,12 @@ export class LocalModelsService {
       localWhisperModel: config.local_whisper_model || "models/ggml-large-v3.bin",
       localWhisperLanguage: config.local_whisper_language || "auto",
       noteStyle: config.note_style || "detailed",
+      notesBackend: config.notes_backend === "mlx" ? "mlx" : "ollama",
       ollamaModel: config.ollama_model || "qwen3.6:35b",
+      mlxModel: config.mlx_model || "mlx-community/Qwen2.5-72B-Instruct-3bit",
     });
     this.loadOllamaModels(true);
+    this.loadMlxStatus();
     this.loadTranscriptionModels(true);
   }
 
@@ -113,6 +134,11 @@ export class LocalModelsService {
 
   loadTranscriptionModels(preferStrongest = false): void {
     this.loadTranscriptionModelsRequest(preferStrongest);
+  }
+
+  loadMlxStatus(): void {
+    this.mlxStatus.set({text: "正在检查 MLX 本地模型服务……", kind: "muted"});
+    this.loadMlxStatusRequest();
   }
 
   downloadSelectedWhisperModel(modelPath = this.form.form().localWhisperModel): void {
@@ -168,6 +194,31 @@ export class LocalModelsService {
     return true;
   }
 
+  validateMlxSelection(): boolean {
+    const selected = this.form.form().mlxModel.trim() || this.config()?.mlx_model || "";
+    if (!selected) {
+      this.mlxStatus.set({text: "请输入 MLX 模型名称。", kind: "error"});
+      return false;
+    }
+    if (!this.mlxAvailable()) {
+      this.mlxStatus.update((status) => ({
+        text: status.kind === "error" ? status.text : "MLX 本地模型服务未启动。",
+        kind: "error",
+      }));
+      return false;
+    }
+    const available = this.mlxModels();
+    if (available.length && !available.includes(selected)) {
+      this.mlxStatus.set({
+        text: `MLX 服务的本地缓存中没有 ${selected}。当前可见模型：${available.join("、")}。`,
+        kind: "error",
+      });
+      return false;
+    }
+    this.mlxStatus.set({text: `已就绪：MLX 正在本机运行，模型为 ${selected}。`, kind: "ok"});
+    return true;
+  }
+
   recommendedWhisperModel(): WhisperModelOption | null {
     return this.whisperModels().find((model) => model.recommended) ?? this.whisperModels()[0] ?? null;
   }
@@ -209,5 +260,16 @@ export class LocalModelsService {
     if (preferStrongest || !current || !this.isInstalledOllamaModel(current)) {
       this.form.patch({ollamaModel: strongest.name});
     }
+  }
+
+  private applyMlxStatus(result: MlxStatusResponse): void {
+    this.mlxAvailable.set(result.status === "ok");
+    this.mlxModels.set(result.models ?? []);
+    if (result.status !== "ok") {
+      const detail = result.error || "MLX 本地模型服务未启动。";
+      this.mlxStatus.set({text: `${detail} 下载完成后运行：${result.start_command}`, kind: "error"});
+      return;
+    }
+    this.validateMlxSelection();
   }
 }
