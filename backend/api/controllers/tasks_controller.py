@@ -18,6 +18,7 @@ async def create_task(request: ProcessVideoRequest, background_tasks: Background
         notes_backend=request.notes_backend,
         note_style=request.note_style,
         ollama_model=request.ollama_model,
+        mlx_model=request.mlx_model,
         reuse_task_id=request.reuse_task_id,
         force_download=request.force_download,
         delete_video_after_completion=request.delete_video_after_completion,

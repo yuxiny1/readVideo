@@ -108,6 +108,48 @@ class MainAppTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
 
+    def test_process_video_endpoint_forwards_mlx_model_to_the_worker(self):
+        async def fake_process_video(
+            task_id,
+            url,
+            notes_dir=None,
+            notes_backend=None,
+            note_style=None,
+            ollama_model=None,
+            reuse_task_id=None,
+            force_download=False,
+            delete_video_after_completion=False,
+            transcription_backend=None,
+            transcription_model=None,
+            transcription_prompt=None,
+            local_whisper_model=None,
+            local_whisper_language=None,
+            mlx_model=None,
+        ):
+            self.assertEqual(notes_backend, "mlx")
+            self.assertEqual(mlx_model, "mlx-community/Qwen2.5-72B-Instruct-3bit")
+            set_task_status(task_id, "completed", url=url)
+
+        with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
+            "os.environ",
+            {
+                "READVIDEO_TRANSCRIPTION_BACKEND": "local",
+                "READVIDEO_DATABASE_PATH": str(Path(tmpdir) / "history.sqlite3"),
+            },
+        ), patch("backend.application.handlers.tasks.process_video", fake_process_video):
+            response = TestClient(app).post(
+                "/process_video/",
+                json={
+                    "task_id": "mlx-task",
+                    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                    "notes_backend": "mlx",
+                    "mlx_model": "mlx-community/Qwen2.5-72B-Instruct-3bit",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(TASKS["mlx-task"]["status"], "completed")
+
     def test_process_video_endpoint_records_queue_failures(self):
         with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
             "os.environ",
@@ -206,6 +248,30 @@ class MainAppTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "error")
+
+    def test_mlx_status_endpoint_reports_cached_model(self):
+        status = SimpleNamespace(models=["mlx-community/Qwen2.5-72B-Instruct-3bit"])
+        with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}, clear=True), patch(
+            "backend.application.handlers.models.inspect_mlx_server",
+            return_value=status,
+        ):
+            response = TestClient(app).get("/api/mlx/status")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "ok")
+        self.assertEqual(response.json()["models"], status.models)
+        self.assertIn("mlx_lm.server", response.json()["start_command"])
+
+    def test_mlx_status_endpoint_explains_when_server_is_offline(self):
+        with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}, clear=True), patch(
+            "backend.application.handlers.models.inspect_mlx_server",
+            side_effect=RuntimeError("MLX 本地模型服务未启动。"),
+        ):
+            response = TestClient(app).get("/api/mlx/status")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "error")
+        self.assertIn("未启动", response.json()["error"])
 
     def test_transcription_models_endpoint_lists_recommended_whisper(self):
         with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}, clear=True):

@@ -39,11 +39,11 @@ Controller 只负责 HTTP 参数和文件响应。Handler 负责验证、业务�
 - `backend/application/handlers/`：每种 Message 的业务处理器。
 - `backend/application/mediator.py`：统一 `send()` 分发。
 - `backend/application/container.py`：Message 与 Handler 的集中注册表。
-- `backend/services/`：下载、Whisper、Ollama、Markdown 和队列等基础服务。
+- `backend/services/`：下载、Whisper、Ollama/MLX、Markdown 和队列等基础服务。
 - `backend/storage/`：PostgreSQL/SQLite 持久化实现。
 
 服务内部也遵守信息隐藏：`video_processor` 只编排处理步骤；配置解析、转写引擎、下载进度、
-Ollama 传输、模型输出解析、提取式算法和原文匹配各自拥有唯一模块。公共调用统一经过
+Ollama/MLX 传输、共享本地模型笔记流程、模型输出解析、提取式算法和原文匹配各自拥有唯一模块。公共调用统一经过
 `backend.services.notes` 和 `backend.services.transcript_summarizer` 的稳定入口，不依赖私有解析函数。
 
 ## Command 与 Query

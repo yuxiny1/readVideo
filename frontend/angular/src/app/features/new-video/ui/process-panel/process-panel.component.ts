@@ -24,6 +24,7 @@ export interface ProcessPanelViewModel {
   whisperStatus: NoticeState;
   ollamaModels: OllamaModel[];
   ollamaStatus: NoticeState;
+  mlxStatus: NoticeState;
   notice: NoticeState;
   duplicate: DuplicateLookup | null;
   latestTask: TaskRecord | null;
@@ -52,6 +53,7 @@ export class ProcessPanelComponent {
   readonly submitRequested = output<void>();
   readonly whisperDownloadRequested = output<string>();
   readonly strongestModelRequested = output<void>();
+  readonly mlxRefreshRequested = output<void>();
   readonly duplicateAction = output<DuplicateAction>();
   readonly steps = TASK_STEPS;
 

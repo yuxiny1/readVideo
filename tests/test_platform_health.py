@@ -62,6 +62,17 @@ class PlatformHealthTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "disabled")
 
+    @patch("backend.services.platform_health.inspect_mlx_server")
+    def test_mlx_health_rejects_a_model_missing_from_the_server_cache(self, inspect_mlx):
+        inspect_mlx.return_value.models = ["mlx/another-model"]
+
+        from backend.services.platform_health import _mlx_status
+
+        result = _mlx_status(Settings(notes_backend="mlx", mlx_model="mlx/selected-model"))
+
+        self.assertEqual(result["status"], "model_mismatch")
+        self.assertEqual(result["available_models"], ["mlx/another-model"])
+
 
 if __name__ == "__main__":
     unittest.main()

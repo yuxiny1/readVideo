@@ -4,7 +4,7 @@ from typing import Optional
 from backend.core.config import Settings, load_openai_api_key
 
 
-NOTES_BACKENDS = {"extractive", "ollama"}
+NOTES_BACKENDS = {"extractive", "ollama", "mlx"}
 NOTE_STYLES = {"detailed", "commercial"}
 TRANSCRIPTION_BACKENDS = {"local", "openai"}
 
@@ -16,10 +16,11 @@ class ProcessingPlan:
     notes_backend: str
     note_style: str
     ollama_model: str
+    mlx_model: str
 
     def task_metadata(self, delete_video_after_completion: bool) -> dict:
         settings = self.settings
-        return {
+        metadata = {
             "notes_backend": self.notes_backend,
             "note_style": self.note_style,
             "ollama_model": self.ollama_model if self.notes_backend == "ollama" else None,
@@ -29,6 +30,9 @@ class ProcessingPlan:
             "local_whisper_language": settings.local_whisper_language if settings.transcription_backend == "local" else None,
             "delete_video_after_completion": delete_video_after_completion,
         }
+        if self.notes_backend == "mlx":
+            metadata["mlx_model"] = self.mlx_model
+        return metadata
 
 
 def resolve_processing_plan(
@@ -42,12 +46,13 @@ def resolve_processing_plan(
     transcription_prompt: Optional[str] = None,
     local_whisper_model: Optional[str] = None,
     local_whisper_language: Optional[str] = None,
+    mlx_model: Optional[str] = None,
 ) -> ProcessingPlan:
     resolved_notes_backend = _choice(
         notes_backend,
         settings.notes_backend,
         NOTES_BACKENDS,
-        "笔记引擎无效，请选择本地提取式笔记或 Ollama 本地大模型。",
+        "笔记引擎无效，请选择本地提取式笔记或 Ollama 本地大模型，也可以选择 MLX 本地大模型。",
     )
     resolved_note_style = _choice(
         note_style,
@@ -81,6 +86,7 @@ def resolve_processing_plan(
         notes_backend=resolved_notes_backend,
         note_style=resolved_note_style,
         ollama_model=ollama_model or settings.ollama_model,
+        mlx_model=mlx_model or settings.mlx_model,
     )
 
 

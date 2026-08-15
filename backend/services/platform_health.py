@@ -2,6 +2,7 @@ from sqlalchemy import text
 
 from backend.core.config import Settings
 from backend.services.ollama_models import list_ollama_models
+from backend.services.mlx_client import inspect_mlx_server
 from backend.storage.database import database_engine
 
 
@@ -10,11 +11,12 @@ def inspect_platform(settings: Settings) -> dict:
         "database": _database_status(settings.database_path),
         "redis": _redis_status(settings.redis_url),
         "ollama": _ollama_status(settings),
+        "mlx": _mlx_status(settings),
     }
     core_ready = services["database"]["status"] == "ok" and services["redis"]["status"] in {"ok", "disabled"}
     if not core_ready:
         status = "unavailable"
-    elif services["ollama"]["status"] not in {"ok", "disabled"}:
+    elif any(services[name]["status"] not in {"ok", "disabled"} for name in ("ollama", "mlx")):
         status = "attention_required"
     else:
         status = "ready"
@@ -67,4 +69,27 @@ def _ollama_status(settings: Settings) -> dict:
         "message": f"Ollama 与默认模型 {selected} 已就绪。",
         "model": selected,
         "installed_models": sorted(installed),
+    }
+
+
+def _mlx_status(settings: Settings) -> dict:
+    if settings.notes_backend != "mlx":
+        return {"status": "disabled", "message": "当前笔记引擎不需要 MLX。"}
+    try:
+        status = inspect_mlx_server(settings.mlx_url, timeout_seconds=2)
+    except RuntimeError as exc:
+        return {"status": "error", "message": str(exc), "model": settings.mlx_model}
+
+    if status.models and settings.mlx_model not in status.models:
+        return {
+            "status": "model_mismatch",
+            "message": f"MLX 已启动，但本地缓存中没有模型 {settings.mlx_model}。",
+            "model": settings.mlx_model,
+            "available_models": status.models,
+        }
+    return {
+        "status": "ok",
+        "message": f"MLX 与模型 {settings.mlx_model} 已就绪。",
+        "model": settings.mlx_model,
+        "available_models": status.models,
     }

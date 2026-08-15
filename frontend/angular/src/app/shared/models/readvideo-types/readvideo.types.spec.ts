@@ -14,6 +14,7 @@ describe("readvideo API type contracts", () => {
       notes_backend: "ollama",
       note_style: "detailed",
       ollama_model: "qwen3.6:35b",
+      mlx_model: null,
     };
     const task: TaskRecord = {task_id: "task-1", status: "queued", tags: ["course"]};
 

@@ -32,6 +32,7 @@ import {
   taskNotice,
   taskProgressPercent,
 } from "../../utils/task-presenter/task-presenter";
+import {processingValidationFailure} from "../../utils/processing-readiness/processing-readiness";
 
 export interface StartProcessingOptions {
   skipDuplicateCheck?: boolean;
@@ -68,7 +69,8 @@ export class TaskWorkflowService {
     const config = this.config();
     if (!config) return "处理引擎";
     const transcription = config.transcription_backend === "local" ? "本地 Whisper" : "OpenAI 转录";
-    return `${transcription}、本地 AI 笔记`;
+    const notes = this.processForm.form().notesBackend === "mlx" ? "MLX 本地 AI 笔记" : "Ollama 本地 AI 笔记";
+    return `${transcription}、${notes}`;
   });
   readonly taskIdLabel = computed(() => {
     const taskId = this.latestTask()?.task_id;
@@ -237,17 +239,10 @@ export class TaskWorkflowService {
   }
 
   private validatePayload(payload: ProcessPayload): boolean {
-    if (payload.transcription_backend === "local" && !this.models.validateWhisperSelection()) {
-      this.failLocalValidation(this.models.whisperStatus().text);
-      return false;
-    }
-    const selectedModel = payload.ollama_model || this.config()?.ollama_model || "qwen3.6:35b";
-    if (!this.models.isInstalledOllamaModel(selectedModel)) {
-      const details = `Ollama 当前可见模型：${this.models.installedModels().join(", ") || "无"}。缺少模型：${selectedModel}。`;
-      this.failLocalValidation(`缺少 Ollama 模型：${selectedModel}`, details);
-      return false;
-    }
-    return true;
+    const failure = processingValidationFailure(payload, this.config(), this.models);
+    if (!failure) return true;
+    this.failLocalValidation(failure.message, failure.logMessage);
+    return false;
   }
 
   private failLocalValidation(message: string, logMessage = message): void {

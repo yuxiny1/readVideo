@@ -19,6 +19,7 @@ from backend.application.handlers.library import (
 )
 from backend.application.handlers.models import (
     DownloadWhisperModelHandler,
+    GetMlxStatusHandler,
     ListOllamaModelsHandler,
     ListTranscriptionModelsHandler,
     PullOllamaModelHandler,
@@ -65,6 +66,7 @@ from backend.application.messages.library import (
 )
 from backend.application.messages.models import (
     DownloadWhisperModelCommand,
+    GetMlxStatusQuery,
     ListOllamaModelsQuery,
     ListTranscriptionModelsQuery,
     PullOllamaModelCommand,
@@ -128,6 +130,7 @@ HANDLER_REGISTRATIONS = (
     (ReadinessQuery, ReadinessHandler),
     (AppConfigQuery, AppConfigHandler),
     (ListOllamaModelsQuery, ListOllamaModelsHandler),
+    (GetMlxStatusQuery, GetMlxStatusHandler),
     (PullOllamaModelCommand, PullOllamaModelHandler),
     (ListTranscriptionModelsQuery, ListTranscriptionModelsHandler),
     (DownloadWhisperModelCommand, DownloadWhisperModelHandler),

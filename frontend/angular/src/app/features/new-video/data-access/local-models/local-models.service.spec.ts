@@ -14,6 +14,8 @@ const config: AppConfig = {
   notes_backend: "ollama",
   note_style: "detailed",
   ollama_model: "small:latest",
+  mlx_model: "mlx-community/Qwen2.5-72B-Instruct-3bit",
+  mlx_url: "http://127.0.0.1:8080/v1/chat/completions",
   local_whisper_model: "models/small.bin",
   local_whisper_language: "auto",
   transcription_model: "",
@@ -53,6 +55,7 @@ describe("LocalModelsService", () => {
   let form: ProcessFormService;
   let api: {
     ollamaModels: ReturnType<typeof vi.fn>;
+    mlxStatus: ReturnType<typeof vi.fn>;
     transcriptionModels: ReturnType<typeof vi.fn>;
     downloadTranscriptionModel: ReturnType<typeof vi.fn>;
   };
@@ -64,6 +67,12 @@ describe("LocalModelsService", () => {
         status: "ok",
         default_model: "small:latest",
         models: [ollamaModel("small:latest", 7), ollamaModel("strong:32b", 32)],
+      })),
+      mlxStatus: vi.fn(() => of({
+        status: "ok",
+        default_model: config.mlx_model,
+        models: [config.mlx_model],
+        start_command: "mlx_lm.server",
       })),
       transcriptionModels: vi.fn(() => of(transcriptionModels())),
       downloadTranscriptionModel: vi.fn(() => of({
@@ -89,6 +98,7 @@ describe("LocalModelsService", () => {
     expect(form.form().localWhisperModel).toBe("models/large-v3-turbo.bin");
     expect(service.ollamaModelOptions().map((model) => model.name)).toEqual(["strong:32b", "small:latest"]);
     expect(service.ollamaStatus().kind).toBe("ok");
+    expect(service.mlxStatus().kind).toBe("ok");
     expect(service.whisperStatus().kind).toBe("ok");
   });
 
@@ -118,13 +128,25 @@ describe("LocalModelsService", () => {
 
   it("surfaces model API failures", () => {
     api.ollamaModels.mockReturnValue(throwError(() => new Error("Ollama offline")));
+    api.mlxStatus.mockReturnValue(throwError(() => new Error("MLX offline")));
     api.transcriptionModels.mockReturnValue(throwError(() => new Error("Whisper list failed")));
 
     service.loadOllamaModels();
+    service.loadMlxStatus();
     service.loadTranscriptionModels();
 
     expect(service.ollamaAvailable()).toBe(false);
     expect(service.ollamaStatus()).toEqual({text: "Ollama offline", kind: "error"});
+    expect(service.mlxStatus()).toEqual({text: "MLX offline", kind: "error"});
     expect(service.whisperStatus()).toEqual({text: "Whisper list failed", kind: "error"});
+  });
+
+  it("reports the cached MLX model and rejects a different selection", () => {
+    service.initialize(config);
+    expect(service.validateMlxSelection()).toBe(true);
+
+    form.patch({mlxModel: "mlx-community/another-model"});
+    expect(service.validateMlxSelection()).toBe(false);
+    expect(service.mlxStatus().text).toContain("本地缓存中没有");
   });
 });

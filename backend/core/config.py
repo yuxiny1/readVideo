@@ -29,6 +29,8 @@ class Settings:
     note_style: str = "detailed"
     ollama_model: str = "qwen3.6:35b"
     ollama_url: str = "http://127.0.0.1:11434/api/generate"
+    mlx_model: str = "mlx-community/Qwen2.5-72B-Instruct-3bit"
+    mlx_url: str = "http://127.0.0.1:8080/v1/chat/completions"
     database_path: str = "readvideo.sqlite3"
     redis_url: str = ""
     task_queue_name: str = "readvideo"
@@ -92,8 +94,8 @@ def load_settings() -> Settings:
         raise RuntimeError("转录方式配置无效，请选择本地 Whisper 或 OpenAI 转录。")
 
     notes_backend = os.getenv("READVIDEO_NOTES_BACKEND", "ollama").lower()
-    if notes_backend not in {"extractive", "ollama"}:
-        raise RuntimeError("笔记引擎配置无效，请选择本地提取式笔记或 Ollama 本地大模型。")
+    if notes_backend not in {"extractive", "ollama", "mlx"}:
+        raise RuntimeError("笔记引擎配置无效，请选择本地提取式笔记或 Ollama 本地大模型，也可以选择 MLX 本地大模型。")
 
     note_style = os.getenv("READVIDEO_NOTE_STYLE", "detailed").lower()
     if note_style not in {"detailed", "commercial"}:
@@ -118,6 +120,8 @@ def load_settings() -> Settings:
         note_style=note_style,
         ollama_model=os.getenv("READVIDEO_OLLAMA_MODEL", "qwen3.6:35b"),
         ollama_url=os.getenv("READVIDEO_OLLAMA_URL", "http://127.0.0.1:11434/api/generate"),
+        mlx_model=os.getenv("READVIDEO_MLX_MODEL", "mlx-community/Qwen2.5-72B-Instruct-3bit"),
+        mlx_url=os.getenv("READVIDEO_MLX_URL", "http://127.0.0.1:8080/v1/chat/completions"),
         database_path=os.getenv("READVIDEO_DATABASE_URL") or os.getenv("READVIDEO_DATABASE_PATH", "readvideo.sqlite3"),
         redis_url=os.getenv("READVIDEO_REDIS_URL", ""),
         task_queue_name=os.getenv("READVIDEO_TASK_QUEUE", "readvideo"),

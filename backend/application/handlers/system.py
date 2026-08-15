@@ -26,6 +26,8 @@ class AppConfigHandler:
             "note_style": settings.note_style,
             "ollama_model": settings.ollama_model,
             "ollama_model_options": recommended_models(),
+            "mlx_model": settings.mlx_model,
+            "mlx_url": settings.mlx_url,
             "local_whisper_model": settings.local_whisper_model,
             "local_whisper_language": settings.local_whisper_language,
             "transcription_model": settings.transcription_model,

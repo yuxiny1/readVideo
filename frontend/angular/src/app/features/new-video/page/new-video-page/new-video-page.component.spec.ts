@@ -17,7 +17,9 @@ const formState: ProcessFormState = {
   localWhisperModel: "model.bin",
   localWhisperLanguage: "auto",
   noteStyle: "detailed",
+  notesBackend: "ollama",
   ollamaModel: "qwen:32b",
+  mlxModel: "mlx-community/Qwen2.5-72B-Instruct-3bit",
   deleteVideoAfterCompletion: false,
 };
 
@@ -31,8 +33,11 @@ describe("NewVideoPageComponent", () => {
       whisperStatus: signal({text: "Ready", kind: "ok"}),
       ollamaModelOptions: signal([]),
       ollamaStatus: signal({text: "Ready", kind: "ok"}),
+      mlxStatus: signal({text: "Ready", kind: "ok"}),
       validateWhisperSelection: vi.fn(),
       validateOllamaSelection: vi.fn(),
+      validateMlxSelection: vi.fn(),
+      loadMlxStatus: vi.fn(),
     };
     const workflow = {
       taskIdLabel: signal(""),
@@ -70,10 +75,11 @@ describe("NewVideoPageComponent", () => {
 
     expect(workflow.initialize).toHaveBeenCalledOnce();
     expect(component.processPanelVm().form).toEqual(formState);
-    component.patchForm({localWhisperModel: "large.bin", ollamaModel: "strong:32b"});
+    component.patchForm({localWhisperModel: "large.bin", ollamaModel: "strong:32b", mlxModel: "mlx/model"});
     expect(form.patch).toHaveBeenCalled();
     expect(models.validateWhisperSelection).toHaveBeenCalledOnce();
     expect(models.validateOllamaSelection).toHaveBeenCalledOnce();
+    expect(models.validateMlxSelection).toHaveBeenCalledOnce();
 
     component.handleDuplicateAction("use");
     component.handleDuplicateAction("regenerate");

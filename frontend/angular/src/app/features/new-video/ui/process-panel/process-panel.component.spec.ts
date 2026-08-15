@@ -13,7 +13,9 @@ const form: ProcessFormState = {
   localWhisperModel: "models/large.bin",
   localWhisperLanguage: "auto",
   noteStyle: "detailed",
+  notesBackend: "ollama",
   ollamaModel: "qwen:32b",
+  mlxModel: "mlx-community/Qwen2.5-72B-Instruct-3bit",
   deleteVideoAfterCompletion: false,
 };
 
@@ -55,6 +57,7 @@ describe("ProcessPanelComponent", () => {
       whisperStatus: {text: "Ready", kind: "ok"},
       ollamaModels: [ollama],
       ollamaStatus: {text: "Ready", kind: "ok"},
+      mlxStatus: {text: "Ready", kind: "ok"},
       notice: {text: "Working", kind: "pending"},
       duplicate: null,
       latestTask: {task_id: "1", status: "transcribing"},

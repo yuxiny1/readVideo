@@ -10,6 +10,7 @@ import {
   HealthResponse,
   MarkdownDocument,
   MarkdownFile,
+  MlxStatusResponse,
   OllamaModelsResponse,
   ProcessPayload,
   SourceUpdatesResponse,
@@ -39,6 +40,10 @@ export class ReadvideoApiService {
 
   ollamaModels(): Observable<OllamaModelsResponse> {
     return this.get<OllamaModelsResponse>("/api/ollama/models");
+  }
+
+  mlxStatus(): Observable<MlxStatusResponse> {
+    return this.get<MlxStatusResponse>("/api/mlx/status");
   }
 
   transcriptionModels(): Observable<TranscriptionModelsResponse> {

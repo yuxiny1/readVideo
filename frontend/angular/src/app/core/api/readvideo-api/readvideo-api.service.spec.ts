@@ -39,6 +39,7 @@ describe("ReadvideoApiService", () => {
     expectRequest(api.health(), "GET", "/health", undefined, {status: "ok"});
     expectRequest(api.appConfig(), "GET", "/app_config");
     expectRequest(api.ollamaModels(), "GET", "/api/ollama/models");
+    expectRequest(api.mlxStatus(), "GET", "/api/mlx/status");
     expectRequest(api.transcriptionModels(), "GET", "/api/transcription/models");
     expectRequest(api.downloadTranscriptionModel("large v3"), "POST", "/api/transcription/models/download", {model: "large v3"});
     expectRequest(api.lookupHistory("https://x.test/?a=1&b=2"), "GET", "/api/history/lookup?url=https%3A%2F%2Fx.test%2F%3Fa%3D1%26b%3D2");

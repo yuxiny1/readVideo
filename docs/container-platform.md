@@ -19,6 +19,8 @@ npm run containers:pull-model -- qwen3.6:35b
 npm run containers:up:host-ollama
 ```
 
+原生 MLX 也可以被容器中的 API 和 Worker 使用。先在 Mac 上运行 `npm run mlx:serve`，再在网页的新视频页面选择“MLX（Apple 芯片）”。Compose 已把 MLX 地址设置为 `http://host.docker.internal:8080/v1/chat/completions`，模型仍由 macOS 和 Metal 加载，不会复制进容器。
+
 标准 `containers:up` 使用容器内 Ollama。本机已有的原生模型不会自动复制到容器中；容器模型保存在独立的 `ollama-data` volume，第一次需要执行 `containers:pull-model`。`qwen3.6:35b` 约 24GB；硬件不足时可显式选择 `qwen3.6:27b` 或 `qwen2.5:14b`，不要静默降级。
 
 服务入口：

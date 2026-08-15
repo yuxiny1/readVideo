@@ -12,10 +12,12 @@ from backend.services.transcript_summarizer import (
     ArticleNote,
     ArticleSection,
     build_article_note_with_ollama,
+    build_article_note_with_mlx,
     section_title,
     summarize_transcript,
     summarize_transcript_with_backend,
     summarize_transcript_with_ollama,
+    summarize_transcript_with_mlx,
 )
 
 
@@ -24,6 +26,7 @@ __all__ = [
     "ArticleSection",
     "build_article_note",
     "build_article_note_with_ollama",
+    "build_article_note_with_mlx",
     "NoteResult",
     "chunk_transcript",
     "original_transcript_segments",
@@ -34,5 +37,6 @@ __all__ = [
     "summarize_transcript",
     "summarize_transcript_with_backend",
     "summarize_transcript_with_ollama",
+    "summarize_transcript_with_mlx",
     "write_markdown_note",
 ]
