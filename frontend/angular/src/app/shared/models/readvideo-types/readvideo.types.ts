@@ -12,7 +12,7 @@ export interface HealthResponse {
 export type NotesBackend = "ollama" | "mlx";
 
 export interface AppConfig {
-  transcription_backend: "local" | "openai";
+  transcription_backend: "local" | "mlx" | "openai";
   download_dir: string;
   notes_dir: string;
   notes_backend: "extractive" | NotesBackend;
@@ -21,6 +21,8 @@ export interface AppConfig {
   mlx_model: string;
   mlx_url: string;
   local_whisper_model: string;
+  mlx_whisper_model: string;
+  mlx_whisper_python: string;
   local_whisper_language: string;
   transcription_model: string;
 }
@@ -59,6 +61,13 @@ export interface WhisperModelOption {
   notes: string;
   installed: boolean;
   recommended: boolean;
+  engine: "whisper_cpp" | "mlx";
+}
+
+export interface MlxWhisperRuntime {
+  available: boolean;
+  python: string;
+  error: string;
 }
 
 export interface TranscriptionLanguageOption {
@@ -69,6 +78,9 @@ export interface TranscriptionLanguageOption {
 export interface TranscriptionModelsResponse {
   whisper: WhisperModelOption[];
   installed_whisper: string[];
+  mlx_whisper: WhisperModelOption[];
+  installed_mlx_whisper: string[];
+  mlx_whisper_runtime: MlxWhisperRuntime;
   openai: Array<{name: string; label: string; notes: string}>;
   languages: TranscriptionLanguageOption[];
 }
@@ -102,6 +114,7 @@ export interface TaskRecord {
   note_style?: string;
   ollama_model?: string;
   mlx_model?: string;
+  mlx_whisper_model?: string;
   created_at?: string;
   updated_at?: string;
   completed_at?: string;
@@ -122,9 +135,10 @@ export interface TaskRecord {
 export interface ProcessPayload {
   url: string;
   notes_dir: string | null;
-  transcription_backend: "local" | "openai";
+  transcription_backend: "local" | "mlx" | "openai";
   transcription_model: string | null;
   local_whisper_model: string | null;
+  mlx_whisper_model: string | null;
   local_whisper_language: string | null;
   notes_backend: NotesBackend;
   note_style: "detailed" | "commercial";

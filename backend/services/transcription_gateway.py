@@ -3,6 +3,7 @@ from typing import Optional
 
 from backend.core.config import Settings
 from backend.services.local_transcription import LocalWhisperTranscription
+from backend.services.mlx_whisper_transcription import MlxWhisperTranscription
 from backend.services.openai_transcription import AudioTranscription
 
 
@@ -16,6 +17,16 @@ class ExistingTranscriptionResult:
 
 
 def transcribe_video(video_path: str, settings: Settings):
+    if settings.transcription_backend == "mlx":
+        transcriber = MlxWhisperTranscription(
+            python_executable=settings.mlx_whisper_python,
+            model=settings.mlx_whisper_model,
+            language=settings.local_whisper_language,
+            prompt=settings.local_whisper_prompt,
+            audio_filter=settings.local_whisper_audio_filter,
+        )
+        return transcriber.process_video(video_path)
+
     if settings.transcription_backend == "local":
         transcriber = LocalWhisperTranscription(
             whisper_cli=settings.local_whisper_cli,

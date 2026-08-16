@@ -90,6 +90,18 @@ class ProcessingSettingsTest(unittest.TestCase):
         self.assertEqual(plan.task_metadata(False)["mlx_model"], "mlx/custom")
         self.assertIsNone(plan.task_metadata(False)["ollama_model"])
 
+    def test_mlx_whisper_backend_records_the_selected_transcription_model(self):
+        plan = resolve_processing_plan(
+            Settings(transcription_backend="mlx", mlx_whisper_model="mlx/default"),
+            mlx_whisper_model="mlx/custom",
+            local_whisper_language="zh",
+        )
+
+        metadata = plan.task_metadata(False)
+        self.assertEqual(plan.settings.mlx_whisper_model, "mlx/custom")
+        self.assertEqual(metadata["mlx_whisper_model"], "mlx/custom")
+        self.assertEqual(metadata["local_whisper_language"], "zh")
+
     def test_invalid_choices_fail_at_the_configuration_boundary(self):
         cases = (
             ({"notes_backend": "missing"}, "笔记引擎无效"),

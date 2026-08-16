@@ -2,14 +2,13 @@
 
 Download a YouTube video, transcribe its audio, turn the transcript into Markdown notes, and keep a small local watchlist of YouTube channels/playlists.
 
-The default transcription backend is local `whisper.cpp`, so OpenAI API access is optional.
-For local transcription quality, `ggml-large-v3.bin` is the recommended default; `ggml-large-v3-turbo.bin` is faster, while smaller models are more likely to repeat or hallucinate text on noisy YouTube audio.
+The recommended Apple Silicon transcription backend is MLX Whisper with the full `whisper-large-v3-mlx` model. Linux containers and non-Apple systems keep `whisper.cpp` as the compatibility backend, and OpenAI remains optional.
 
 ## What It Does
 
 - Downloads a single YouTube video with `yt-dlp`.
 - Transcribes speech in the original language; it does not translate between languages.
-- Uses local `whisper.cpp` by default, with optional OpenAI transcription support.
+- Uses MLX Whisper on Apple Silicon, with `whisper.cpp` and OpenAI alternatives.
 - Saves the raw transcript next to the downloaded video.
 - Creates a Markdown note with key points, a narrative summary paragraph, and segmented notes; the raw transcript stays in its own `.txt` file instead of being embedded in the note.
 - Creates Better Local AI Notes with Ollama by default.
@@ -33,7 +32,8 @@ For local transcription quality, `ggml-large-v3.bin` is the recommended default;
 - Python 3.11+
 - Node.js 24 LTS with npm 11 for the Angular TypeScript frontend and shared project scripts
 - `ffmpeg`
-- `whisper.cpp` and a GGML Whisper model for local transcription
+- Apple Silicon: `mlx-whisper` and the Hugging Face full large-v3 MLX model
+- Other systems or containers: `whisper.cpp` and a GGML Whisper model
 
 On macOS:
 
@@ -45,6 +45,8 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 npm install
+npm run mlx:whisper:install
+npm run mlx:whisper:download
 ```
 
 Download a local model:
@@ -66,12 +68,14 @@ cp config/env.example config/.env
 The app also still reads a root `.env` for backwards compatibility. The main settings are:
 
 ```bash
-READVIDEO_TRANSCRIPTION_BACKEND=local
+READVIDEO_TRANSCRIPTION_BACKEND=mlx
 READVIDEO_DOWNLOAD_DIR=downloads/youtube_videos
 READVIDEO_NOTES_DIR=notes
 READVIDEO_LOCAL_WHISPER_CLI=whisper-cli
 READVIDEO_LOCAL_WHISPER_MODEL=models/ggml-large-v3.bin
 READVIDEO_LOCAL_WHISPER_LANGUAGE=auto
+READVIDEO_MLX_WHISPER_PYTHON=~/mlx-env/bin/python
+READVIDEO_MLX_WHISPER_MODEL=mlx-community/whisper-large-v3-mlx
 READVIDEO_NOTES_BACKEND=ollama
 READVIDEO_NOTE_STYLE=detailed
 READVIDEO_OLLAMA_MODEL=qwen3.6:35b
@@ -90,6 +94,8 @@ READVIDEO_NOTES_BACKEND=ollama
 `READVIDEO_NOTES_BACKEND=ollama` means Better Local AI Notes: slower, but uses a local Ollama model to turn the full transcript into key points, a narrative summary paragraph, and high-detail article-style sections that preserve names, dates, examples, numbers, and the original flow. The default model is `qwen3.6:35b` when available. The Markdown note no longer embeds the full transcript; the transcript remains available as its separate `.txt` output.
 
 Apple Silicon can use the downloaded MLX model instead: run `npm run mlx:serve`, then select `MLX（Apple 芯片）` on the new-video page. The terminal-only chat command is `npm run mlx:chat`. See [MLX Local Model](mlx-local-model.md).
+
+MLX Whisper audio transcription is separate from the MLX-LM note model and does not need a server. Select `MLX Whisper（Apple 芯片，高精度）` on the new-video page. See [MLX Whisper Transcription](mlx-whisper-transcription.md).
 
 `READVIDEO_NOTE_STYLE=commercial` keeps the detailed segmented notes and adds a `Business Lens` plus an `Editorial Article` before them. This mode asks the local model for business-core takeaways, risks, opportunities, key metrics, next signals, and a polished business-news analysis summary with a clear lede, context, stakes, and implications. The default `detailed` mode preserves the current notes format.
 
@@ -122,6 +128,7 @@ If port `8000` is already in use, it automatically falls back to the next availa
 
 The frontend is an Angular TypeScript app under `frontend/angular/`. This repo pins Node 24 through `.nvmrc`, `.node-version`, and `package.json` engines; use that version for local servers, web app builds, command-line tools, and npm scripts. FastAPI serves the built app and the frontend calls the same FastAPI process for task status, history, favorites, Markdown output, and saved YouTube sources. Main navigation lives in the left sidebar. See [Frontend Architecture](frontend-architecture.md) for the Signals, RxJS, facade, and SOLID boundaries used by the app.
 The backend uses CQRS with a Mediator and an RQ background worker. See [Backend Architecture](backend-architecture.md) for the Controller, Command/Query, Handler, and worker boundaries.
+Apple Silicon speech recognition setup and model trade-offs are documented in [MLX Whisper Transcription](mlx-whisper-transcription.md).
 Open `/history` to review previously downloaded/transcribed videos and their saved file paths.
 Open `/favorites` to review favorite summaries and organize them into note folders.
 Open `/reader` to search favorite notes and local Markdown files in one title-first result list, switch favorite folders, read `.md` files, and download notes. Wide reading hides the inspector and expands the document column. The persistent top-bar Focus Reading action hides the library, inspector, and global sidebar; inside Focus Reading you can switch between Light and Dark themes.

@@ -2,7 +2,6 @@ import {Injectable, computed, inject, signal} from "@angular/core";
 import {tapResponse} from "@ngrx/operators";
 import {rxMethod} from "@ngrx/signals/rxjs-interop";
 import {map, pipe, switchMap, tap} from "rxjs";
-
 import {ReadvideoApiService} from "../../../../core/api/readvideo-api/readvideo-api.service";
 import {
   AppConfig,
@@ -15,12 +14,10 @@ import {
 } from "../../../../shared/models/readvideo-types/readvideo.types";
 import {errorMessage} from "../../../../shared/utils/errors/errors";
 import {ProcessFormService} from "../process-form/process-form.service";
-
 @Injectable()
 export class LocalModelsService {
   private readonly api = inject(ReadvideoApiService);
   private readonly form = inject(ProcessFormService);
-
   readonly config = signal<AppConfig | null>(null);
   readonly ollamaModels = signal<OllamaModel[]>([]);
   readonly ollamaAvailable = signal(false);
@@ -28,7 +25,13 @@ export class LocalModelsService {
   readonly mlxAvailable = signal(false);
   readonly mlxModels = signal<string[]>([]);
   readonly mlxStatus = signal<NoticeState>({text: "正在检查 MLX 本地模型服务……", kind: "muted"});
-  readonly whisperModels = signal<WhisperModelOption[]>([]);
+  readonly whisperCppModels = signal<WhisperModelOption[]>([]);
+  readonly mlxWhisperModels = signal<WhisperModelOption[]>([]);
+  readonly mlxWhisperRuntimeAvailable = signal(false);
+  readonly mlxWhisperRuntimeError = signal("");
+  readonly whisperModels = computed(() => (
+    this.form.form().transcriptionBackend === "mlx" ? this.mlxWhisperModels() : this.whisperCppModels()
+  ));
   readonly transcriptionLanguages = signal<TranscriptionLanguageOption[]>([]);
   readonly whisperStatus = signal<NoticeState>({text: "正在检查本地 Whisper 模型……", kind: "muted"});
   readonly ollamaModelOptions = computed(() => [...this.ollamaModels()].sort((first, second) => {
@@ -64,7 +67,9 @@ export class LocalModelsService {
         tapResponse({
           next: (result) => this.applyTranscriptionModels(result, preferStrongest),
           error: (error) => {
-            this.whisperModels.set([]);
+            this.whisperCppModels.set([]);
+            this.mlxWhisperModels.set([]);
+            this.mlxWhisperRuntimeAvailable.set(false);
             this.transcriptionLanguages.set([]);
             this.whisperStatus.set({text: errorMessage(error), kind: "error"});
           },
@@ -97,7 +102,9 @@ export class LocalModelsService {
         )),
         tapResponse({
           next: ({download, models, model}) => {
-            this.form.patch({localWhisperModel: download.path});
+            this.form.patch(model.engine === "mlx"
+              ? {mlxWhisperModel: download.path}
+              : {localWhisperModel: download.path});
             this.applyTranscriptionModels(models, false);
             this.whisperStatus.set({
               text: download.downloaded
@@ -111,12 +118,12 @@ export class LocalModelsService {
       )),
     ),
   );
-
   initialize(config: AppConfig): void {
     this.config.set(config);
     this.form.patch({
-      transcriptionBackend: config.transcription_backend || "local",
+      transcriptionBackend: config.transcription_backend || "mlx",
       localWhisperModel: config.local_whisper_model || "models/ggml-large-v3.bin",
+      mlxWhisperModel: config.mlx_whisper_model || "mlx-community/whisper-large-v3-mlx",
       localWhisperLanguage: config.local_whisper_language || "auto",
       noteStyle: config.note_style || "detailed",
       notesBackend: config.notes_backend === "mlx" ? "mlx" : "ollama",
@@ -131,7 +138,6 @@ export class LocalModelsService {
   loadOllamaModels(preferStrongest = false): void {
     this.loadOllamaModelsRequest(preferStrongest);
   }
-
   loadTranscriptionModels(preferStrongest = false): void {
     this.loadTranscriptionModelsRequest(preferStrongest);
   }
@@ -140,8 +146,9 @@ export class LocalModelsService {
     this.mlxStatus.set({text: "正在检查 MLX 本地模型服务……", kind: "muted"});
     this.loadMlxStatusRequest();
   }
-
-  downloadSelectedWhisperModel(modelPath = this.form.form().localWhisperModel): void {
+  downloadSelectedWhisperModel(modelPath = this.form.form().transcriptionBackend === "mlx"
+    ? this.form.form().mlxWhisperModel
+    : this.form.form().localWhisperModel): void {
     const model = this.resolveWhisperModel(modelPath) ?? this.recommendedWhisperModel();
     if (!model) {
       this.whisperStatus.set({text: "请先选择推荐的 Whisper 模型。", kind: "error"});
@@ -151,13 +158,24 @@ export class LocalModelsService {
   }
 
   validateWhisperSelection(): boolean {
-    const selection = this.form.form().localWhisperModel.trim() || this.config()?.local_whisper_model || "";
+    const backend = this.form.form().transcriptionBackend;
+    const isMlx = backend === "mlx";
+    if (isMlx && !this.mlxWhisperRuntimeAvailable()) {
+      this.whisperStatus.set({
+        text: this.mlxWhisperRuntimeError() || "MLX Whisper 运行环境尚未安装。",
+        kind: "error",
+      });
+      return false;
+    }
+    const selection = isMlx
+      ? this.form.form().mlxWhisperModel.trim() || this.config()?.mlx_whisper_model || ""
+      : this.form.form().localWhisperModel.trim() || this.config()?.local_whisper_model || "";
     const model = this.resolveWhisperModel(selection);
     if (model?.installed) {
       this.whisperStatus.set({
         text: model.recommended
-          ? `已就绪：${model.label} 已安装，推荐用于减少转录文本重复。`
-          : `已就绪：${model.label} 已安装；如果仍有重复，建议改用大型 v3 高精度模型。`,
+          ? `已就绪：${model.label} 已安装，将使用高精度和防重复参数。`
+          : `已就绪：${model.label} 已安装；准确度优先时建议改用完整大型 v3。`,
         kind: model.recommended ? "ok" : "pending",
       });
       return true;
@@ -170,7 +188,7 @@ export class LocalModelsService {
       return false;
     }
     this.whisperStatus.set({
-      text: selection ? `自定义模型路径：${selection}` : "请选择本地 Whisper 模型。",
+      text: selection ? `自定义模型：${selection}` : "请选择本地 Whisper 模型。",
       kind: selection ? "muted" : "error",
     });
     return Boolean(selection);
@@ -244,11 +262,18 @@ export class LocalModelsService {
   }
 
   private applyTranscriptionModels(result: TranscriptionModelsResponse, preferStrongest: boolean): void {
-    this.whisperModels.set(result.whisper ?? []);
+    this.whisperCppModels.set(result.whisper ?? []);
+    this.mlxWhisperModels.set(result.mlx_whisper ?? []);
+    this.mlxWhisperRuntimeAvailable.set(Boolean(result.mlx_whisper_runtime?.available));
+    this.mlxWhisperRuntimeError.set(result.mlx_whisper_runtime?.error || "");
     this.transcriptionLanguages.set(result.languages ?? []);
-    const recommended = this.recommendedWhisperModel();
-    if (recommended && (preferStrongest || !this.form.form().localWhisperModel.trim())) {
-      this.form.patch({localWhisperModel: recommended.path});
+    const recommendedCpp = this.whisperCppModels().find((model) => model.recommended);
+    const recommendedMlx = this.mlxWhisperModels().find((model) => model.recommended);
+    if (recommendedCpp && (preferStrongest || !this.form.form().localWhisperModel.trim())) {
+      this.form.patch({localWhisperModel: recommendedCpp.path});
+    }
+    if (recommendedMlx && (preferStrongest || !this.form.form().mlxWhisperModel.trim())) {
+      this.form.patch({mlxWhisperModel: recommendedMlx.path});
     }
     this.validateWhisperSelection();
   }

@@ -24,6 +24,8 @@ class Settings:
     local_whisper_language: str = "auto"
     local_whisper_prompt: str = ""
     local_whisper_audio_filter: str = "highpass=f=80,lowpass=f=8000,loudnorm=I=-16:TP=-1.5:LRA=11"
+    mlx_whisper_python: str = "~/mlx-env/bin/python"
+    mlx_whisper_model: str = "mlx-community/whisper-large-v3-mlx"
     notes_dir: str = "notes"
     notes_backend: str = "ollama"
     note_style: str = "detailed"
@@ -90,8 +92,8 @@ def _default_local_whisper_model() -> str:
 
 def load_settings() -> Settings:
     transcription_backend = os.getenv("READVIDEO_TRANSCRIPTION_BACKEND", "local").lower()
-    if transcription_backend not in {"local", "openai"}:
-        raise RuntimeError("转录方式配置无效，请选择本地 Whisper 或 OpenAI 转录。")
+    if transcription_backend not in {"local", "mlx", "openai"}:
+        raise RuntimeError("转录方式配置无效，请选择 MLX Whisper、whisper.cpp 或 OpenAI 转录。")
 
     notes_backend = os.getenv("READVIDEO_NOTES_BACKEND", "ollama").lower()
     if notes_backend not in {"extractive", "ollama", "mlx"}:
@@ -114,6 +116,11 @@ def load_settings() -> Settings:
         local_whisper_audio_filter=os.getenv(
             "READVIDEO_LOCAL_WHISPER_AUDIO_FILTER",
             "highpass=f=80,lowpass=f=8000,loudnorm=I=-16:TP=-1.5:LRA=11",
+        ),
+        mlx_whisper_python=os.getenv("READVIDEO_MLX_WHISPER_PYTHON", "~/mlx-env/bin/python"),
+        mlx_whisper_model=os.getenv(
+            "READVIDEO_MLX_WHISPER_MODEL",
+            "mlx-community/whisper-large-v3-mlx",
         ),
         notes_dir=os.getenv("READVIDEO_NOTES_DIR", "notes"),
         notes_backend=notes_backend,

@@ -11,6 +11,7 @@ const form: ProcessFormState = {
   transcriptionBackend: "local",
   transcriptionModel: "",
   localWhisperModel: "models/large.bin",
+  mlxWhisperModel: "mlx-community/whisper-large-v3-mlx",
   localWhisperLanguage: "auto",
   noteStyle: "detailed",
   notesBackend: "ollama",
@@ -28,6 +29,7 @@ const whisper: WhisperModelOption = {
   notes: "",
   installed: true,
   recommended: true,
+  engine: "whisper_cpp",
 };
 
 const ollama: OllamaModel = {

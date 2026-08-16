@@ -21,6 +21,7 @@ class StartVideoProcessingCommand:
     transcription_prompt: Optional[str]
     local_whisper_model: Optional[str]
     local_whisper_language: Optional[str]
+    mlx_whisper_model: Optional[str] = None
 
 
 @dataclass(frozen=True)

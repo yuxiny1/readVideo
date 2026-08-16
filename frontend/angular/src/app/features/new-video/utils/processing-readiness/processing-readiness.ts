@@ -23,7 +23,7 @@ export function processingValidationFailure(
   config: AppConfig | null,
   models: ProcessingModelReadiness,
 ): ProcessingValidationFailure | null {
-  if (payload.transcription_backend === "local" && !models.validateWhisperSelection()) {
+  if (payload.transcription_backend !== "openai" && !models.validateWhisperSelection()) {
     const message = models.whisperStatus().text;
     return {message, logMessage: message};
   }

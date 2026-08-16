@@ -29,6 +29,8 @@ class AppConfigHandler:
             "mlx_model": settings.mlx_model,
             "mlx_url": settings.mlx_url,
             "local_whisper_model": settings.local_whisper_model,
+            "mlx_whisper_model": settings.mlx_whisper_model,
+            "mlx_whisper_python": settings.mlx_whisper_python,
             "local_whisper_language": settings.local_whisper_language,
             "transcription_model": settings.transcription_model,
             "transcription_prompt": settings.local_whisper_prompt,

@@ -6,10 +6,10 @@ describe("ProcessFormService", () => {
   beforeEach(() => localStorage.clear());
   afterEach(() => vi.restoreAllMocks());
 
-  it("starts with local-first defaults", () => {
+  it("starts with Apple MLX transcription defaults", () => {
     const service = new ProcessFormService();
     expect(service.form()).toMatchObject({
-      transcriptionBackend: "local",
+      transcriptionBackend: "mlx",
       noteStyle: "detailed",
       notesBackend: "ollama",
       deleteVideoAfterCompletion: false,
@@ -28,6 +28,7 @@ describe("ProcessFormService", () => {
   it("builds a normalized processing payload", () => {
     const service = new ProcessFormService();
     service.patch({
+      transcriptionBackend: "local",
       notesDir: " /notes ",
       transcriptionModel: " whisper-1 ",
       localWhisperModel: " model.bin ",
@@ -43,6 +44,7 @@ describe("ProcessFormService", () => {
       transcription_backend: "local",
       transcription_model: "whisper-1",
       local_whisper_model: "model.bin",
+      mlx_whisper_model: null,
       local_whisper_language: "zh",
       notes_backend: "ollama",
       note_style: "commercial",
@@ -65,6 +67,19 @@ describe("ProcessFormService", () => {
     const payload = service.payload("https://example.com");
     expect(payload.ollama_model).toBeNull();
     expect(payload.mlx_model).toBe("mlx-community/Qwen2.5-72B-Instruct-3bit");
+  });
+
+  it("sends only the model that belongs to the selected transcription engine", () => {
+    const service = new ProcessFormService();
+    service.patch({
+      transcriptionBackend: "mlx",
+      localWhisperModel: "models/ggml-large-v3.bin",
+      mlxWhisperModel: "mlx-community/whisper-large-v3-mlx",
+    });
+
+    const payload = service.payload("https://example.com");
+    expect(payload.local_whisper_model).toBeNull();
+    expect(payload.mlx_whisper_model).toBe("mlx-community/whisper-large-v3-mlx");
   });
 
   it("survives unavailable local storage", () => {

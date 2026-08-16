@@ -68,7 +68,11 @@ export class TaskWorkflowService {
   readonly backendLabel = computed(() => {
     const config = this.config();
     if (!config) return "处理引擎";
-    const transcription = config.transcription_backend === "local" ? "本地 Whisper" : "OpenAI 转录";
+    const transcription = {
+      mlx: "MLX Whisper 高精度转录",
+      local: "whisper.cpp 兼容转录",
+      openai: "OpenAI 转录",
+    }[this.processForm.form().transcriptionBackend];
     const notes = this.processForm.form().notesBackend === "mlx" ? "MLX 本地 AI 笔记" : "Ollama 本地 AI 笔记";
     return `${transcription}、${notes}`;
   });

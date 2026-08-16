@@ -32,6 +32,7 @@ class StartVideoProcessingHandler:
                 transcription_prompt=command.transcription_prompt,
                 local_whisper_model=command.local_whisper_model,
                 local_whisper_language=command.local_whisper_language,
+                mlx_whisper_model=command.mlx_whisper_model,
             )
         except (RuntimeError, ValueError) as exc:
             raise ApplicationError(400, str(exc)) from exc
@@ -64,7 +65,9 @@ class StartVideoProcessingHandler:
             command.local_whisper_model,
             command.local_whisper_language,
         )
-        if command.mlx_model is not None:
+        if command.mlx_whisper_model is not None:
+            arguments += (command.mlx_model, command.mlx_whisper_model)
+        elif command.mlx_model is not None:
             arguments += (command.mlx_model,)
         try:
             queue_backend = enqueue_video_processing(

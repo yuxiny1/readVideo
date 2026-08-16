@@ -36,7 +36,7 @@ class MainAppTest(unittest.TestCase):
 
     def test_load_settings_validates_backend_names_and_integer_chunks(self):
         with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "bad"}, clear=True):
-            with self.assertRaisesRegex(RuntimeError, "请选择本地 Whisper 或 OpenAI 转录"):
+            with self.assertRaisesRegex(RuntimeError, "请选择 MLX Whisper、whisper.cpp 或 OpenAI 转录"):
                 load_settings()
 
         with patch.dict("os.environ", {"READVIDEO_NOTES_BACKEND": "bad"}, clear=True):
@@ -174,6 +174,49 @@ class MainAppTest(unittest.TestCase):
         self.assertEqual(TASKS["queue-failure"]["status"], "failed")
         self.assertIn("任务队列暂时不可用", TASKS["queue-failure"]["error"])
 
+    def test_process_video_endpoint_forwards_mlx_whisper_model_to_the_worker(self):
+        async def fake_process_video(
+            task_id,
+            url,
+            notes_dir=None,
+            notes_backend=None,
+            note_style=None,
+            ollama_model=None,
+            reuse_task_id=None,
+            force_download=False,
+            delete_video_after_completion=False,
+            transcription_backend=None,
+            transcription_model=None,
+            transcription_prompt=None,
+            local_whisper_model=None,
+            local_whisper_language=None,
+            mlx_model=None,
+            mlx_whisper_model=None,
+        ):
+            self.assertEqual(transcription_backend, "mlx")
+            self.assertEqual(mlx_whisper_model, "mlx-community/whisper-large-v3-mlx")
+            set_task_status(task_id, "completed", url=url)
+
+        with tempfile.TemporaryDirectory() as tmpdir, patch.dict(
+            "os.environ",
+            {
+                "READVIDEO_TRANSCRIPTION_BACKEND": "local",
+                "READVIDEO_DATABASE_PATH": str(Path(tmpdir) / "history.sqlite3"),
+            },
+        ), patch("backend.application.handlers.tasks.process_video", fake_process_video):
+            response = TestClient(app).post(
+                "/process_video/",
+                json={
+                    "task_id": "mlx-whisper-task",
+                    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                    "transcription_backend": "mlx",
+                    "mlx_whisper_model": "mlx-community/whisper-large-v3-mlx",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(TASKS["mlx-whisper-task"]["status"], "completed")
+
     def test_index_serves_frontend(self):
         client = TestClient(app)
         response = client.get("/")
@@ -214,6 +257,8 @@ class MainAppTest(unittest.TestCase):
         self.assertEqual(data["note_style"], "detailed")
         self.assertEqual(data["ollama_model"], "qwen3.6:35b")
         self.assertEqual(data["local_whisper_model"], "models/ggml-large-v3.bin")
+        self.assertEqual(data["mlx_whisper_model"], "mlx-community/whisper-large-v3-mlx")
+        self.assertEqual(data["mlx_whisper_python"], "~/mlx-env/bin/python")
         self.assertNotIn("openai_api_key", data)
 
     def test_ollama_models_endpoint_lists_installed_models(self):

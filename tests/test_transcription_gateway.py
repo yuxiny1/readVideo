@@ -6,6 +6,29 @@ from backend.services.transcription_gateway import transcribe_video
 
 
 class TranscriptionGatewayTest(unittest.TestCase):
+    @patch("backend.services.transcription_gateway.MlxWhisperTranscription")
+    def test_mlx_transcription_configuration_stays_inside_gateway(self, transcriber_type):
+        transcriber_type.return_value.process_video.return_value = "mlx-result"
+        settings = Settings(
+            transcription_backend="mlx",
+            mlx_whisper_python="/mlx/python",
+            mlx_whisper_model="mlx/model",
+            local_whisper_language="zh",
+            local_whisper_prompt="专业术语",
+            local_whisper_audio_filter="loudnorm",
+        )
+
+        result = transcribe_video("video.mp4", settings)
+
+        self.assertEqual(result, "mlx-result")
+        transcriber_type.assert_called_once_with(
+            python_executable="/mlx/python",
+            model="mlx/model",
+            language="zh",
+            prompt="专业术语",
+            audio_filter="loudnorm",
+        )
+
     @patch("backend.services.transcription_gateway.LocalWhisperTranscription")
     def test_local_transcription_configuration_stays_inside_gateway(self, transcriber_type):
         transcriber_type.return_value.process_video.return_value = "local-result"

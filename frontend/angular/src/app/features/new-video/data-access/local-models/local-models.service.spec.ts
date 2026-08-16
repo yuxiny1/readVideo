@@ -17,6 +17,8 @@ const config: AppConfig = {
   mlx_model: "mlx-community/Qwen2.5-72B-Instruct-3bit",
   mlx_url: "http://127.0.0.1:8080/v1/chat/completions",
   local_whisper_model: "models/small.bin",
+  mlx_whisper_model: "mlx-community/whisper-large-v3-mlx",
+  mlx_whisper_python: "~/mlx-env/bin/python",
   local_whisper_language: "auto",
   transcription_model: "",
 };
@@ -40,12 +42,16 @@ const whisperModel = (overrides: Partial<WhisperModelOption> = {}): WhisperModel
   notes: "Strong local model",
   installed: true,
   recommended: true,
+  engine: "whisper_cpp",
   ...overrides,
 });
 
 const transcriptionModels = (model = whisperModel()): TranscriptionModelsResponse => ({
   whisper: [model],
   installed_whisper: model.installed ? [model.path] : [],
+  mlx_whisper: [],
+  installed_mlx_whisper: [],
+  mlx_whisper_runtime: {available: true, python: "/mlx/python", error: ""},
   openai: [],
   languages: [{code: "auto", label: "Auto"}],
 });
@@ -105,8 +111,12 @@ describe("LocalModelsService", () => {
   it("reports missing Ollama and Whisper selections", () => {
     service.ollamaAvailable.set(true);
     service.ollamaModels.set([ollamaModel("installed:7b", 7)]);
-    service.whisperModels.set([whisperModel({installed: false})]);
-    form.patch({ollamaModel: "missing:32b", localWhisperModel: "models/large-v3-turbo.bin"});
+    service.whisperCppModels.set([whisperModel({installed: false})]);
+    form.patch({
+      transcriptionBackend: "local",
+      ollamaModel: "missing:32b",
+      localWhisperModel: "models/large-v3-turbo.bin",
+    });
 
     expect(service.validateOllamaSelection()).toBe(false);
     expect(service.ollamaStatus().text).toContain("ollama pull missing:32b");
@@ -115,8 +125,8 @@ describe("LocalModelsService", () => {
   });
 
   it("downloads the selected Whisper model and refreshes model state", () => {
-    service.whisperModels.set([whisperModel({installed: false})]);
-    form.patch({localWhisperModel: "models/large-v3-turbo.bin"});
+    service.whisperCppModels.set([whisperModel({installed: false})]);
+    form.patch({transcriptionBackend: "local", localWhisperModel: "models/large-v3-turbo.bin"});
 
     service.downloadSelectedWhisperModel();
 
@@ -148,5 +158,25 @@ describe("LocalModelsService", () => {
     form.patch({mlxModel: "mlx-community/another-model"});
     expect(service.validateMlxSelection()).toBe(false);
     expect(service.mlxStatus().text).toContain("本地缓存中没有");
+  });
+
+  it("selects the full MLX Whisper model for Apple transcription", () => {
+    const mlxWhisper = whisperModel({
+      name: "mlx-community/whisper-large-v3-mlx",
+      path: "mlx-community/whisper-large-v3-mlx",
+      label: "MLX Large v3",
+      engine: "mlx",
+    });
+    api.transcriptionModels.mockReturnValue(of({
+      ...transcriptionModels(),
+      mlx_whisper: [mlxWhisper],
+      installed_mlx_whisper: [mlxWhisper.path],
+    }));
+
+    service.initialize({...config, transcription_backend: "mlx"});
+
+    expect(form.form().mlxWhisperModel).toBe(mlxWhisper.path);
+    expect(service.whisperModels()).toEqual([mlxWhisper]);
+    expect(service.validateWhisperSelection()).toBe(true);
   });
 });

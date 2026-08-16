@@ -6,7 +6,7 @@ from backend.core.config import Settings, load_openai_api_key
 
 NOTES_BACKENDS = {"extractive", "ollama", "mlx"}
 NOTE_STYLES = {"detailed", "commercial"}
-TRANSCRIPTION_BACKENDS = {"local", "openai"}
+TRANSCRIPTION_BACKENDS = {"local", "mlx", "openai"}
 
 
 @dataclass(frozen=True)
@@ -27,11 +27,13 @@ class ProcessingPlan:
             "transcription_backend": settings.transcription_backend,
             "transcription_model": settings.transcription_model if settings.transcription_backend == "openai" else None,
             "local_whisper_model": settings.local_whisper_model if settings.transcription_backend == "local" else None,
-            "local_whisper_language": settings.local_whisper_language if settings.transcription_backend == "local" else None,
+            "local_whisper_language": settings.local_whisper_language if settings.transcription_backend in {"local", "mlx"} else None,
             "delete_video_after_completion": delete_video_after_completion,
         }
         if self.notes_backend == "mlx":
             metadata["mlx_model"] = self.mlx_model
+        if settings.transcription_backend == "mlx":
+            metadata["mlx_whisper_model"] = settings.mlx_whisper_model
         return metadata
 
 
@@ -47,6 +49,7 @@ def resolve_processing_plan(
     local_whisper_model: Optional[str] = None,
     local_whisper_language: Optional[str] = None,
     mlx_model: Optional[str] = None,
+    mlx_whisper_model: Optional[str] = None,
 ) -> ProcessingPlan:
     resolved_notes_backend = _choice(
         notes_backend,
@@ -64,7 +67,7 @@ def resolve_processing_plan(
         transcription_backend,
         settings.transcription_backend,
         TRANSCRIPTION_BACKENDS,
-        "转录引擎无效，请选择本地 Whisper 或 OpenAI 转录。",
+        "转录引擎无效，请选择 MLX Whisper、whisper.cpp 或 OpenAI 转录。",
     )
 
     openai_api_key = settings.openai_api_key
@@ -77,6 +80,7 @@ def resolve_processing_plan(
         openai_api_key=openai_api_key,
         transcription_model=transcription_model or settings.transcription_model,
         local_whisper_model=local_whisper_model or settings.local_whisper_model,
+        mlx_whisper_model=mlx_whisper_model or settings.mlx_whisper_model,
         local_whisper_language=local_whisper_language or settings.local_whisper_language,
         local_whisper_prompt=(transcription_prompt or settings.local_whisper_prompt or "").strip(),
     )
