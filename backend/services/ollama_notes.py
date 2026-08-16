@@ -10,7 +10,7 @@ def summarize_transcript_with_ollama(
     transcript_text: str,
     model: str = "qwen3.6:35b",
     url: str = "http://127.0.0.1:11434/api/generate",
-    timeout_seconds: int = 180,
+    timeout_seconds: int = 900,
     max_items: int = 8,
     chunk_chars: int = 7000,
 ) -> list[str]:
@@ -27,7 +27,7 @@ def build_article_note_with_ollama(
     transcript_text: str,
     model: str = "qwen3.6:35b",
     url: str = "http://127.0.0.1:11434/api/generate",
-    timeout_seconds: int = 240,
+    timeout_seconds: int = 900,
     max_summary_items: int = 7,
     max_sections: int = 10,
     chunk_chars: int = 5200,
