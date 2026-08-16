@@ -15,6 +15,7 @@ const formState: ProcessFormState = {
   transcriptionBackend: "local",
   transcriptionModel: "",
   localWhisperModel: "model.bin",
+  mlxWhisperModel: "mlx-community/whisper-large-v3-mlx",
   localWhisperLanguage: "auto",
   noteStyle: "detailed",
   notesBackend: "ollama",

@@ -3,6 +3,7 @@ from sqlalchemy import text
 from backend.core.config import Settings
 from backend.services.ollama_models import list_ollama_models
 from backend.services.mlx_client import inspect_mlx_server
+from backend.services.mlx_whisper_models import inspect_mlx_whisper_runtime, mlx_whisper_model_installed
 from backend.storage.database import database_engine
 
 
@@ -12,11 +13,12 @@ def inspect_platform(settings: Settings) -> dict:
         "redis": _redis_status(settings.redis_url),
         "ollama": _ollama_status(settings),
         "mlx": _mlx_status(settings),
+        "mlx_whisper": _mlx_whisper_status(settings),
     }
     core_ready = services["database"]["status"] == "ok" and services["redis"]["status"] in {"ok", "disabled"}
     if not core_ready:
         status = "unavailable"
-    elif any(services[name]["status"] not in {"ok", "disabled"} for name in ("ollama", "mlx")):
+    elif any(services[name]["status"] not in {"ok", "disabled"} for name in ("ollama", "mlx", "mlx_whisper")):
         status = "attention_required"
     else:
         status = "ready"
@@ -92,4 +94,24 @@ def _mlx_status(settings: Settings) -> dict:
         "message": f"MLX 与模型 {settings.mlx_model} 已就绪。",
         "model": settings.mlx_model,
         "available_models": status.models,
+    }
+
+
+def _mlx_whisper_status(settings: Settings) -> dict:
+    if settings.transcription_backend != "mlx":
+        return {"status": "disabled", "message": "当前转录引擎不需要 MLX Whisper。"}
+    runtime = inspect_mlx_whisper_runtime(settings.mlx_whisper_python)
+    if not runtime["available"]:
+        return {"status": "error", "message": runtime["error"], "python": runtime["python"]}
+    if not mlx_whisper_model_installed(settings.mlx_whisper_model):
+        return {
+            "status": "model_missing",
+            "message": f"尚未下载 MLX Whisper 模型 {settings.mlx_whisper_model}。",
+            "model": settings.mlx_whisper_model,
+        }
+    return {
+        "status": "ok",
+        "message": f"MLX Whisper 与模型 {settings.mlx_whisper_model} 已就绪。",
+        "model": settings.mlx_whisper_model,
+        "python": runtime["python"],
     }

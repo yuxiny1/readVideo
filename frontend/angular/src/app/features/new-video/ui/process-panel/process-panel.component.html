@@ -37,62 +37,70 @@
           [ngModel]="vm().form.transcriptionBackend"
           (ngModelChange)="patchForm({transcriptionBackend: $event})"
         >
-          <option value="local">本地 Whisper</option>
+          <option value="mlx">MLX Whisper（Apple 芯片，高精度）</option>
+          <option value="local">whisper.cpp（兼容模式）</option>
           <option value="openai">OpenAI 转录</option>
         </select>
-        <p class="field-status muted">Whisper 只负责把音频转成文字；小模型出现重复语句时，请使用大型 v3 高精度模型。</p>
+        @if (vm().form.transcriptionBackend === 'mlx') {
+          <p class="field-status muted">使用 Apple GPU 本地转录。完整大型 v3 优先保证中文准确度，并启用防重复参数。</p>
+        } @else if (vm().form.transcriptionBackend === 'local') {
+          <p class="field-status muted">使用 GGML 模型和 whisper.cpp，适合容器或兼容运行。</p>
+        } @else {
+          <p class="field-status muted">音频将发送到 OpenAI 转录接口，需要 API 密钥。</p>
+        }
       </div>
       <div>
-        <label for="local-whisper-model">Whisper 语音转录模型</label>
-        <div class="input-action-row">
-          <select
-            id="local-whisper-model"
-            name="local_whisper_model"
-            [ngModel]="vm().form.localWhisperModel"
-            (ngModelChange)="patchForm({localWhisperModel: $event})"
+        @if (vm().form.transcriptionBackend === 'openai') {
+          <label for="transcription-model">OpenAI 转录模型</label>
+          <input
+            id="transcription-model"
+            name="transcription_model"
+            [placeholder]="vm().config?.transcription_model || 'gpt-4o-mini-transcribe'"
+            [ngModel]="vm().form.transcriptionModel"
+            (ngModelChange)="patchForm({transcriptionModel: $event})"
           >
-            @if (vm().form.localWhisperModel && !resolveWhisperModel(vm().form.localWhisperModel)) {
-              <option [value]="vm().form.localWhisperModel">自定义：{{ vm().form.localWhisperModel }}</option>
-            }
-            @for (model of vm().whisperModels; track model.name) {
-              <option [value]="model.path">{{ model.label }} · {{ whisperModelLabel(model) }}</option>
-            }
-          </select>
-          <button class="secondary-button small-button" type="button" (click)="whisperDownloadRequested.emit(vm().form.localWhisperModel)">下载</button>
-        </div>
-        <p class="field-status" [ngClass]="vm().whisperStatus.kind">{{ vm().whisperStatus.text }}</p>
+        } @else {
+          <label for="local-whisper-model">Whisper 语音转录模型</label>
+          <div class="input-action-row">
+            <select
+              id="local-whisper-model"
+              name="local_whisper_model"
+              [ngModel]="selectedWhisperModel()"
+              (ngModelChange)="patchWhisperModel($event)"
+            >
+              @if (selectedWhisperModel() && !resolveWhisperModel(selectedWhisperModel())) {
+                <option [value]="selectedWhisperModel()">自定义：{{ selectedWhisperModel() }}</option>
+              }
+              @for (model of vm().whisperModels; track model.name) {
+                <option [value]="model.path">{{ model.label }} · {{ whisperModelLabel(model) }}</option>
+              }
+            </select>
+            <button class="secondary-button small-button" type="button" (click)="whisperDownloadRequested.emit(selectedWhisperModel())">下载</button>
+          </div>
+          <p class="field-status" [ngClass]="vm().whisperStatus.kind">{{ vm().whisperStatus.text }}</p>
+        }
       </div>
     </div>
 
-    <div class="form-grid">
-      <div>
-        <label for="local-whisper-language">Whisper 语言</label>
-        <input
-          id="local-whisper-language"
-          name="local_whisper_language"
-          list="whisper-languages"
-          [placeholder]="vm().config?.local_whisper_language || 'auto'"
-          [ngModel]="vm().form.localWhisperLanguage"
-          (ngModelChange)="patchForm({localWhisperLanguage: $event})"
-        >
-        <datalist id="whisper-languages">
-          @for (language of vm().transcriptionLanguages; track language.code) {
-            <option [value]="language.code" [label]="language.label"></option>
-          }
-        </datalist>
-        <p class="field-status muted">处理中英混合视频时建议使用自动检测。</p>
-      </div>
-      <div>
-        <label for="transcription-model">OpenAI 转录模型</label>
-        <input
-          id="transcription-model"
-          name="transcription_model"
-          [placeholder]="vm().config?.transcription_model || 'gpt-4o-mini-transcribe'"
-          [ngModel]="vm().form.transcriptionModel"
-          (ngModelChange)="patchForm({transcriptionModel: $event})"
-        >
-      </div>
+    @if (vm().form.transcriptionBackend !== 'openai') {
+    <div>
+      <label for="local-whisper-language">Whisper 语言</label>
+      <input
+        id="local-whisper-language"
+        name="local_whisper_language"
+        list="whisper-languages"
+        [placeholder]="vm().config?.local_whisper_language || 'auto'"
+        [ngModel]="vm().form.localWhisperLanguage"
+        (ngModelChange)="patchForm({localWhisperLanguage: $event})"
+      >
+      <datalist id="whisper-languages">
+        @for (language of vm().transcriptionLanguages; track language.code) {
+          <option [value]="language.code" [label]="language.label"></option>
+        }
+      </datalist>
+      <p class="field-status muted">处理中英混合视频时建议使用自动检测。</p>
     </div>
+    }
 
     <div class="form-grid">
       <div>

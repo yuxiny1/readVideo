@@ -27,6 +27,7 @@ async def create_task(request: ProcessVideoRequest, background_tasks: Background
         transcription_prompt=request.transcription_prompt,
         local_whisper_model=request.local_whisper_model,
         local_whisper_language=request.local_whisper_language,
+        mlx_whisper_model=request.mlx_whisper_model,
     )
     return await get_mediator().send(command)
 

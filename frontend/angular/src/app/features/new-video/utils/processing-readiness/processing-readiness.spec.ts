@@ -9,6 +9,7 @@ const payload = (overrides: Partial<ProcessPayload> = {}): ProcessPayload => ({
   transcription_backend: "local",
   transcription_model: null,
   local_whisper_model: "models/large.bin",
+  mlx_whisper_model: null,
   local_whisper_language: "auto",
   notes_backend: "ollama",
   note_style: "detailed",

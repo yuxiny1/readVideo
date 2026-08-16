@@ -34,6 +34,7 @@ async def process_video(
     local_whisper_model: Optional[str] = None,
     local_whisper_language: Optional[str] = None,
     mlx_model: Optional[str] = None,
+    mlx_whisper_model: Optional[str] = None,
 ):
     settings = None
     try:
@@ -49,6 +50,7 @@ async def process_video(
             transcription_prompt=transcription_prompt,
             local_whisper_model=local_whisper_model,
             local_whisper_language=local_whisper_language,
+            mlx_whisper_model=mlx_whisper_model,
         )
         settings = plan.settings
         resolved_notes_backend = plan.notes_backend
@@ -140,7 +142,12 @@ async def process_video(
             append_transcript_recovery_log(task_id, result)
             persist_task_history(settings.database_path, task_id)
         else:
-            transcription_label = "本地 Whisper" if settings.transcription_backend == "local" else "OpenAI 转录"
+            transcription_labels = {
+                "mlx": f"MLX Whisper 模型 {settings.mlx_whisper_model}",
+                "local": "whisper.cpp 本地转录",
+                "openai": "OpenAI 转录",
+            }
+            transcription_label = transcription_labels[settings.transcription_backend]
             append_task_log(task_id, f"正在使用{transcription_label}。", status="transcribing")
             result = await asyncio.to_thread(transcribe_video, downloaded_file_path, settings)
             resolved_transcription_backend = settings.transcription_backend

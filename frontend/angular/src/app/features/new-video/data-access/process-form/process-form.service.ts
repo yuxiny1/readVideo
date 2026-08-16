@@ -7,9 +7,10 @@ const DELETE_VIDEO_AFTER_COMPLETION_KEY = "readvideo.deleteVideoAfterCompletion"
 export interface ProcessFormState {
   url: string;
   notesDir: string;
-  transcriptionBackend: "local" | "openai";
+  transcriptionBackend: "local" | "mlx" | "openai";
   transcriptionModel: string;
   localWhisperModel: string;
+  mlxWhisperModel: string;
   localWhisperLanguage: string;
   noteStyle: "detailed" | "commercial";
   notesBackend: NotesBackend;
@@ -23,9 +24,10 @@ export class ProcessFormService {
   readonly form = signal<ProcessFormState>({
     url: "",
     notesDir: "",
-    transcriptionBackend: "local",
+    transcriptionBackend: "mlx",
     transcriptionModel: "",
     localWhisperModel: "",
+    mlxWhisperModel: "",
     localWhisperLanguage: "",
     noteStyle: "detailed",
     notesBackend: "ollama",
@@ -48,7 +50,8 @@ export class ProcessFormService {
       notes_dir: form.notesDir.trim() || null,
       transcription_backend: form.transcriptionBackend,
       transcription_model: form.transcriptionModel.trim() || null,
-      local_whisper_model: form.localWhisperModel.trim() || null,
+      local_whisper_model: form.transcriptionBackend === "local" ? form.localWhisperModel.trim() || null : null,
+      mlx_whisper_model: form.transcriptionBackend === "mlx" ? form.mlxWhisperModel.trim() || null : null,
       local_whisper_language: form.localWhisperLanguage.trim() || null,
       notes_backend: form.notesBackend,
       note_style: form.noteStyle,

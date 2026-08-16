@@ -10,6 +10,7 @@ describe("readvideo API type contracts", () => {
       transcription_backend: "local",
       transcription_model: null,
       local_whisper_model: "models/ggml-large-v3.bin",
+      mlx_whisper_model: null,
       local_whisper_language: "auto",
       notes_backend: "ollama",
       note_style: "detailed",

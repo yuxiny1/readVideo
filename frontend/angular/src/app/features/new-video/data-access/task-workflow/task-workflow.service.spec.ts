@@ -21,6 +21,8 @@ const config: AppConfig = {
   mlx_model: "mlx-community/Qwen2.5-72B-Instruct-3bit",
   mlx_url: "http://127.0.0.1:8080/v1/chat/completions",
   local_whisper_model: "models/large.bin",
+  mlx_whisper_model: "mlx-community/whisper-large-v3-mlx",
+  mlx_whisper_python: "~/mlx-env/bin/python",
   local_whisper_language: "auto",
   transcription_model: "",
 };

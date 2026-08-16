@@ -73,6 +73,7 @@ def recommended_whisper_models(configured_model_path: str | None = None) -> list
         models.append({
             **asdict(option),
             "path": _display_model_path(resolved_path),
+            "engine": "whisper_cpp",
             "installed": resolved_path in installed,
         })
     return models

@@ -72,6 +72,17 @@ export class ProcessPanelComponent {
     this.formPatched.emit(update);
   }
 
+  selectedWhisperModel(): string {
+    const form = this.vm().form;
+    return form.transcriptionBackend === "mlx" ? form.mlxWhisperModel : form.localWhisperModel;
+  }
+
+  patchWhisperModel(model: string): void {
+    this.patchForm(this.vm().form.transcriptionBackend === "mlx"
+      ? {mlxWhisperModel: model}
+      : {localWhisperModel: model});
+  }
+
   resolveWhisperModel(pathOrName: string): WhisperModelOption | null {
     return this.vm().whisperModels.find((model) => (
       model.path === pathOrName || model.name === pathOrName

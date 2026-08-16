@@ -10,6 +10,7 @@ class ProcessVideoRequest(BaseModel):
     transcription_model: Optional[str] = Field(default=None, min_length=1)
     transcription_prompt: Optional[str] = Field(default=None)
     local_whisper_model: Optional[str] = Field(default=None, min_length=1)
+    mlx_whisper_model: Optional[str] = Field(default=None, min_length=1)
     local_whisper_language: Optional[str] = Field(default=None, min_length=1)
     notes_dir: Optional[str] = Field(default=None, min_length=1)
     notes_backend: Optional[str] = Field(default=None, min_length=1)

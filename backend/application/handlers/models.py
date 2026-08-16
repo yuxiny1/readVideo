@@ -15,6 +15,12 @@ from backend.services.ollama_models import (
     recommended_models,
 )
 from backend.services.mlx_client import inspect_mlx_server
+from backend.services.mlx_whisper_models import (
+    download_mlx_whisper_model,
+    inspect_mlx_whisper_runtime,
+    list_installed_mlx_whisper_models,
+    recommended_mlx_whisper_models,
+)
 from backend.services.whisper_models import (
     download_whisper_model,
     list_installed_whisper_models,
@@ -106,6 +112,9 @@ class ListTranscriptionModelsHandler:
         return {
             "whisper": recommended_whisper_models(settings.local_whisper_model),
             "installed_whisper": list_installed_whisper_models(settings.local_whisper_model),
+            "mlx_whisper": recommended_mlx_whisper_models(),
+            "installed_mlx_whisper": list_installed_mlx_whisper_models(),
+            "mlx_whisper_runtime": inspect_mlx_whisper_runtime(settings.mlx_whisper_python),
             "openai": OPENAI_TRANSCRIPTION_MODELS,
             "languages": TRANSCRIPTION_LANGUAGES,
         }
@@ -114,8 +123,11 @@ class ListTranscriptionModelsHandler:
 class DownloadWhisperModelHandler:
     def handle(self, command: DownloadWhisperModelCommand) -> dict:
         try:
+            if command.model.startswith("mlx-community/"):
+                settings = load_settings()
+                return download_mlx_whisper_model(command.model, settings.mlx_whisper_python)
             return download_whisper_model(command.model, load_settings().local_whisper_model)
         except ValueError as exc:
             raise ApplicationError(404, str(exc)) from exc
-        except OSError as exc:
+        except (OSError, RuntimeError) as exc:
             raise ApplicationError(400, str(exc)) from exc

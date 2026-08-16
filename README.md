@@ -2,13 +2,13 @@
 
 Download a YouTube video, transcribe its audio, turn the transcript into Markdown notes, and keep a small local watchlist of YouTube channels/playlists.
 
-The default transcription backend is local `whisper.cpp`, so OpenAI API access is optional.
+Apple Silicon uses the full MLX Whisper large-v3 model for high-quality local transcription. Containers keep `whisper.cpp`, and OpenAI access is optional.
 
 ## What It Does
 
 - Downloads a single YouTube video with `yt-dlp`.
 - Transcribes speech in the original language; it does not translate between languages.
-- Uses local `whisper.cpp` by default, with optional OpenAI transcription support.
+- Supports MLX Whisper, `whisper.cpp`, and optional OpenAI transcription.
 - Saves the raw transcript next to the downloaded video.
 - Creates a Markdown note with key points, a narrative summary paragraph, and segmented notes; the raw transcript stays in its own `.txt` file instead of being embedded in the note.
 - Creates Better Local AI Notes with Ollama by default.
@@ -20,7 +20,7 @@ The default transcription backend is local `whisper.cpp`, so OpenAI API access i
 
 - Python 3.11+
 - `ffmpeg`
-- `whisper.cpp` and a GGML Whisper model for local transcription
+- Apple Silicon: `mlx-whisper`; containers and other systems: `whisper.cpp`
 
 On macOS:
 
@@ -29,6 +29,8 @@ brew install ffmpeg whisper-cpp
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+npm run mlx:whisper:install
+npm run mlx:whisper:download
 ```
 
 Download a local model:
@@ -44,12 +46,14 @@ curl -L -o models/ggml-small.bin \
 Create a local `.env` file, which is ignored by Git:
 
 ```bash
-READVIDEO_TRANSCRIPTION_BACKEND=local
+READVIDEO_TRANSCRIPTION_BACKEND=mlx
 READVIDEO_DOWNLOAD_DIR=downloads/youtube_videos
 READVIDEO_NOTES_DIR=notes
 READVIDEO_LOCAL_WHISPER_CLI=whisper-cli
 READVIDEO_LOCAL_WHISPER_MODEL=models/ggml-large-v3.bin
 READVIDEO_LOCAL_WHISPER_LANGUAGE=auto
+READVIDEO_MLX_WHISPER_PYTHON=~/mlx-env/bin/python
+READVIDEO_MLX_WHISPER_MODEL=mlx-community/whisper-large-v3-mlx
 READVIDEO_NOTES_BACKEND=ollama
 READVIDEO_OLLAMA_MODEL=qwen3.6:35b
 READVIDEO_OLLAMA_URL=http://127.0.0.1:11434/api/generate
@@ -67,6 +71,8 @@ READVIDEO_NOTES_BACKEND=ollama
 `READVIDEO_NOTES_BACKEND=ollama` means Better Local AI Notes: slower, but uses a local Ollama model to turn the full transcript into key points, a narrative summary paragraph, and high-detail article-style sections that preserve names, dates, examples, numbers, and the original flow. The default model is `qwen3.6:35b` when available.
 
 On Apple Silicon, readVideo can use an MLX model instead of Ollama. After the Hugging Face download finishes, start the local server in a separate terminal with `npm run mlx:serve`, open readVideo, and select `MLX（Apple 芯片）` under `笔记生成引擎`. Use `npm run mlx:chat` when you only want an interactive terminal chat. See [MLX Local Model](docs/mlx-local-model.md) for download checks, container access, and troubleshooting.
+
+For audio transcription, select `MLX Whisper（Apple 芯片，高精度）`. This uses the separate full large-v3 speech model directly and does not require `mlx_lm.server`. See [MLX Whisper Transcription](docs/mlx-whisper-transcription.md).
 
 Optional OpenAI backend:
 

@@ -67,7 +67,11 @@ export class NewVideoPageComponent implements OnInit {
 
   patchForm(update: Partial<ProcessFormState>): void {
     this.form.patch(update);
-    if (update.localWhisperModel !== undefined) this.models.validateWhisperSelection();
+    if (
+      update.transcriptionBackend !== undefined
+      || update.localWhisperModel !== undefined
+      || update.mlxWhisperModel !== undefined
+    ) this.models.validateWhisperSelection();
     if (update.ollamaModel !== undefined) this.models.validateOllamaSelection();
     if (update.mlxModel !== undefined) this.models.validateMlxSelection();
     if (update.notesBackend === "ollama") this.models.validateOllamaSelection();

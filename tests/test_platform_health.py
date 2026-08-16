@@ -73,6 +73,22 @@ class PlatformHealthTests(unittest.TestCase):
         self.assertEqual(result["status"], "model_mismatch")
         self.assertEqual(result["available_models"], ["mlx/another-model"])
 
+    @patch("backend.services.platform_health.mlx_whisper_model_installed", return_value=True)
+    @patch("backend.services.platform_health.inspect_mlx_whisper_runtime")
+    def test_mlx_whisper_health_reports_the_native_runtime_and_model(self, inspect_runtime, _installed):
+        inspect_runtime.return_value = {"available": True, "python": "/mlx/python", "error": ""}
+
+        from backend.services.platform_health import _mlx_whisper_status
+
+        result = _mlx_whisper_status(Settings(
+            transcription_backend="mlx",
+            mlx_whisper_python="/mlx/python",
+            mlx_whisper_model="mlx/whisper-large",
+        ))
+
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["model"], "mlx/whisper-large")
+
 
 if __name__ == "__main__":
     unittest.main()
