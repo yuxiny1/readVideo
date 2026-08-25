@@ -7,7 +7,7 @@ COPY angular.json tsconfig.json tsconfig.app.json tsconfig.spec.json ./
 COPY frontend/angular ./frontend/angular
 RUN npm run build:frontend
 
-FROM nginx:1.27-alpine
+FROM nginx:1.31-alpine
 COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/frontend/dist/readvideo/browser /usr/share/nginx/html
 EXPOSE 8080
