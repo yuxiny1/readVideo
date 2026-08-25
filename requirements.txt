@@ -3,7 +3,7 @@ uvicorn[standard]==0.52.0
 google-auth>=2.30.0
 google-auth-oauthlib>=1.2.0
 google-auth-httplib2>=0.2.0
-google-api-python-client>=2.140.0
+google-api-python-client>=2.198.0
 yt-dlp>=2026.7.4
 openai>=1.60.0
 python-dotenv>=1.0.0
