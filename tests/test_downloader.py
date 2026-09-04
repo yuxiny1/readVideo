@@ -59,6 +59,9 @@ class DownloaderFilenameTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir, patch(
             "backend.services.downloader.yt_dlp.YoutubeDL",
             FakeYoutubeDLWithRequestedDownload,
+        ), patch(
+            "backend.services.downloader.shutil.which",
+            return_value="/opt/homebrew/bin/node",
         ):
             downloaded = Path(download_video("https://youtu.be/demo", tmpdir, progress_events.append))
 
@@ -74,6 +77,14 @@ class DownloaderFilenameTest(unittest.TestCase):
             self.assertEqual(FakeYoutubeDLWithRequestedDownload.last_options["http_chunk_size"], HTTP_CHUNK_SIZE)
             self.assertTrue(FakeYoutubeDLWithRequestedDownload.last_options["continuedl"])
             self.assertFalse(FakeYoutubeDLWithRequestedDownload.last_options["nopart"])
+            self.assertEqual(
+                FakeYoutubeDLWithRequestedDownload.last_options["js_runtimes"],
+                {"node": {"path": "/opt/homebrew/bin/node"}},
+            )
+            self.assertEqual(
+                FakeYoutubeDLWithRequestedDownload.last_options["color"],
+                {"stdout": "never", "stderr": "never"},
+            )
 
     def test_yt_dlp_logger_reports_retry_attempts_to_the_task_hook(self):
         progress_events = []
