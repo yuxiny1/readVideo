@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import shutil
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -43,6 +44,11 @@ class YtDlpLogger:
 
 def _retry_delay(n: int) -> int:
     return min(2 ** n, 10)
+
+
+def _javascript_runtimes() -> dict[str, dict[str, str]]:
+    node_path = shutil.which("node")
+    return {"node": {"path": node_path}} if node_path else {}
 
 
 def clean_filename_part(value: str) -> str:
@@ -126,6 +132,8 @@ def download_video(
         "nopart": False,
         "http_chunk_size": HTTP_CHUNK_SIZE,
         "socket_timeout": 30,
+        "color": {"stdout": "never", "stderr": "never"},
+        "js_runtimes": _javascript_runtimes(),
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
