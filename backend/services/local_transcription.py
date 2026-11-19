@@ -7,6 +7,7 @@ from pathlib import Path
 
 from backend.services.downloader import clean_filename_part
 from backend.services.media_audio import (
+    CommandExecutionError,
     DEFAULT_AUDIO_FILTER,
     build_ffmpeg_command as _build_ffmpeg_command,
     run_command as _run_command,
@@ -72,17 +73,39 @@ class LocalWhisperTranscription:
 
         try:
             _run_command(_build_ffmpeg_command(video_path, audio_path, self.audio_filter))
-            _run_command(
-                _build_whisper_command(
+            supported_flags = _supported_whisper_flags(self.whisper_cli)
+            command = _build_whisper_command(
+                self.whisper_cli,
+                self.model_path,
+                audio_path,
+                self.language,
+                output_base,
+                self.prompt,
+                supported_flags,
+            )
+            try:
+                _run_command(command)
+            except CommandExecutionError as exc:
+                if not _should_retry_without_flash_attention(exc, supported_flags):
+                    raise
+                transcript_path.unlink(missing_ok=True)
+                retry_command = _build_whisper_command(
                     self.whisper_cli,
                     self.model_path,
                     audio_path,
                     self.language,
                     output_base,
                     self.prompt,
-                    _supported_whisper_flags(self.whisper_cli),
+                    supported_flags,
+                    disable_flash_attention=True,
                 )
-            )
+                try:
+                    _run_command(retry_command)
+                except CommandExecutionError as retry_exc:
+                    raise RuntimeError(
+                        "whisper.cpp 的 Metal 转录失败，关闭 Flash Attention 重试后仍未成功。\n"
+                        f"{retry_exc}"
+                    ) from retry_exc
 
             transcript_path = _resolve_transcript_path(transcript_path, output_base, audio_path, video_path)
             transcript = read_transcript_text(transcript_path)
@@ -184,6 +207,7 @@ def _build_whisper_command(
     output_base: Path,
     prompt: str = "",
     supported_flags: set[str] | None = None,
+    disable_flash_attention: bool = False,
 ) -> list[str]:
     flags = supported_flags or set()
     command = [
@@ -212,7 +236,24 @@ def _build_whisper_command(
         command.append("-sow")
     if "-ml" in flags or "--max-len" in flags:
         command.extend(["-ml", "96"])
+    if disable_flash_attention and ("-nfa" in flags or "--no-flash-attn" in flags):
+        command.append("-nfa")
     return command
+
+
+def _should_retry_without_flash_attention(
+    error: CommandExecutionError,
+    supported_flags: set[str],
+) -> bool:
+    if "-nfa" not in supported_flags and "--no-flash-attn" not in supported_flags:
+        return False
+    output = error.output.lower()
+    metal_started = "ggml_metal_init" in output or "using mtl" in output
+    no_actionable_error = not any(
+        marker in output
+        for marker in ("failed to", "error:", "invalid ", "not found", "cannot open")
+    )
+    return error.returncode < 0 or (metal_started and no_actionable_error)
 
 
 @lru_cache(maxsize=4)

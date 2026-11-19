@@ -41,7 +41,7 @@ class MlxClient:
         except (urllib.error.URLError, TimeoutError) as exc:
             raise RuntimeError(
                 "无法连接 MLX 本地模型服务。请先确认模型已下载完成，再运行："
-                f"~/mlx-env/bin/mlx_lm.server --model {self._model} --host 127.0.0.1 --port 8080"
+                f"{mlx_start_command(self._model, self._url)}"
             ) from exc
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise RuntimeError("MLX 本地模型服务返回了无法解析的数据。") from exc
@@ -70,6 +70,13 @@ def inspect_mlx_server(url: str, timeout_seconds: int = 3) -> MlxServerStatus:
         if isinstance(item, dict) and str(item.get("id") or "").strip()
     ]
     return MlxServerStatus(models=models)
+
+
+def mlx_start_command(model: str, url: str) -> str:
+    parsed = urlsplit(url)
+    if parsed.port == 8000:
+        return "brew services start omlx"
+    return f"~/mlx-env/bin/mlx_lm.server --model {model} --host 127.0.0.1 --port 8080"
 
 
 def _models_url(url: str) -> str:

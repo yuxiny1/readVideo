@@ -318,6 +318,25 @@ class MainAppTest(unittest.TestCase):
         self.assertEqual(response.json()["status"], "error")
         self.assertIn("未启动", response.json()["error"])
 
+    def test_mlx_status_endpoint_uses_omlx_start_command(self):
+        status = SimpleNamespace(models=["Qwen2.5-14B-Instruct-4bit"])
+        with patch.dict(
+            "os.environ",
+            {
+                "READVIDEO_TRANSCRIPTION_BACKEND": "local",
+                "READVIDEO_MLX_MODEL": "Qwen2.5-14B-Instruct-4bit",
+                "READVIDEO_MLX_URL": "http://127.0.0.1:8000/v1/chat/completions",
+            },
+            clear=True,
+        ), patch(
+            "backend.application.handlers.models.inspect_mlx_server",
+            return_value=status,
+        ):
+            response = TestClient(app).get("/api/mlx/status")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["start_command"], "brew services start omlx")
+
     def test_transcription_models_endpoint_lists_recommended_whisper(self):
         with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "local"}, clear=True):
             client = TestClient(app)

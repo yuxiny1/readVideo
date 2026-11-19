@@ -4,6 +4,17 @@ Download a YouTube video, transcribe its audio, turn the transcript into Markdow
 
 The recommended Apple Silicon transcription backend is MLX Whisper with the full `whisper-large-v3-mlx` model. Linux containers and non-Apple systems keep `whisper.cpp` as the compatibility backend, and OpenAI remains optional.
 
+## Local Model Map
+
+| Job | Runtime | Default/recommended model | Endpoint |
+| --- | --- | --- | --- |
+| Audio transcription | MLX Whisper | `mlx-community/whisper-large-v3-mlx` | No server; invoked directly |
+| Markdown notes | Ollama | `qwen3.6:35b` | `http://127.0.0.1:11434` |
+| Markdown notes, Apple alternative | OMLX | `Qwen2.5-14B-Instruct-4bit` | `http://127.0.0.1:8000` |
+| Compatibility transcription | whisper.cpp | `models/ggml-large-v3.bin` | No server; invoked directly |
+
+OMLX and MLX Whisper are different systems. OMLX serves language models for summaries through an OpenAI-compatible API. MLX Whisper converts audio to text and does not need a persistent server.
+
 ## What It Does
 
 - Downloads a single YouTube video with `yt-dlp`.
@@ -35,19 +46,43 @@ The recommended Apple Silicon transcription backend is MLX Whisper with the full
 - Apple Silicon: `mlx-whisper` and the Hugging Face full large-v3 MLX model
 - Other systems or containers: `whisper.cpp` and a GGML Whisper model
 
-On macOS:
+On a new Apple Silicon Mac:
 
 ```bash
 brew install ffmpeg whisper-cpp
+brew install nvm
+mkdir -p "$HOME/.nvm"
+export NVM_DIR="$HOME/.nvm"
+source /opt/homebrew/opt/nvm/nvm.sh
+brew install ollama
+brew services start ollama
+
+# Optional OMLX summary backend.
+brew install omlx
+brew services start omlx
+
+git clone https://github.com/yuxiny1/readVideo.git
+cd readVideo
 nvm install
 nvm use
 python3 -m venv .venv
 source .venv/bin/activate
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 npm install
+
+python3 -m venv ~/mlx-env
+~/mlx-env/bin/python -m pip install --upgrade pip mlx-lm mlx-whisper huggingface-hub
 npm run mlx:whisper:install
 npm run mlx:whisper:download
+
+ollama pull qwen3.6:35b
+cp config/env.example config/.env
+npm run build:frontend
+npm run dev
 ```
+
+OMLX uses port `8000`. If it is running, readVideo starts on the next free port, normally `8001`. Use the OMLX admin page at `http://127.0.0.1:8000/admin/dashboard` to download and manage models.
 
 Download a local model:
 
@@ -80,8 +115,8 @@ READVIDEO_NOTES_BACKEND=ollama
 READVIDEO_NOTE_STYLE=detailed
 READVIDEO_OLLAMA_MODEL=qwen3.6:35b
 READVIDEO_OLLAMA_URL=http://127.0.0.1:11434/api/generate
-READVIDEO_MLX_MODEL=mlx-community/Qwen2.5-72B-Instruct-3bit
-READVIDEO_MLX_URL=http://127.0.0.1:8080/v1/chat/completions
+READVIDEO_MLX_MODEL=Qwen2.5-14B-Instruct-4bit
+READVIDEO_MLX_URL=http://127.0.0.1:8000/v1/chat/completions
 ```
 
 Default Ollama note model:
@@ -93,7 +128,7 @@ READVIDEO_NOTES_BACKEND=ollama
 
 `READVIDEO_NOTES_BACKEND=ollama` means Better Local AI Notes: slower, but uses a local Ollama model to turn the full transcript into key points, a narrative summary paragraph, and high-detail article-style sections that preserve names, dates, examples, numbers, and the original flow. The default model is `qwen3.6:35b` when available. The Markdown note no longer embeds the full transcript; the transcript remains available as its separate `.txt` output.
 
-Apple Silicon can use the downloaded MLX model instead: run `npm run mlx:serve`, then select `MLX（Apple 芯片）` on the new-video page. The terminal-only chat command is `npm run mlx:chat`. See [MLX Local Model](mlx-local-model.md).
+Apple Silicon can use OMLX instead: start the OMLX service, download a model in its admin interface, then select `MLX（Apple 芯片）` on the new-video page. The legacy `mlx_lm.server` path is still available with `npm run mlx:serve` on port `8080`. See [MLX Local Model](mlx-local-model.md).
 
 MLX Whisper audio transcription is separate from the MLX-LM note model and does not need a server. Select `MLX Whisper（Apple 芯片，高精度）` on the new-video page. See [MLX Whisper Transcription](mlx-whisper-transcription.md).
 
@@ -148,7 +183,25 @@ npm run dev             # start the FastAPI app through package.json
 npm run build           # build the Angular frontend
 npm run check:frontend  # development Angular build/type check
 npm test                # run the Python unit test suite from the active venv
+npm run omlx:status     # show OMLX health and default model
+npm run omlx:models     # show installed and currently loaded OMLX models
 ```
+
+Inspect the active model settings without printing secrets:
+
+```bash
+.venv/bin/python -c "from backend.core.config import load_settings; s=load_settings(); print('transcription_backend=', s.transcription_backend); print('mlx_whisper_model=', s.mlx_whisper_model); print('notes_backend=', s.notes_backend); print('ollama_model=', s.ollama_model); print('mlx_model=', s.mlx_model); print('mlx_url=', s.mlx_url)"
+```
+
+Inspect each local runtime directly:
+
+```bash
+ollama list
+curl -fsS http://127.0.0.1:8000/health | python3 -m json.tool
+curl -fsS http://127.0.0.1:8000/v1/models/status | python3 -m json.tool
+```
+
+An OMLX model with `loaded: false` is installed but idle. OMLX loads it on demand when a request selects that model.
 
 The npm scripts expect the project virtualenv at `.venv/`, created in the setup steps above.
 
@@ -157,7 +210,9 @@ The npm scripts expect the project virtualenv at `.venv/`, created in the setup 
 Create a background task:
 
 ```bash
-curl -X POST "http://localhost:8000/process_video/" \
+READVIDEO_BASE_URL=http://127.0.0.1:8001
+
+curl -X POST "$READVIDEO_BASE_URL/process_video/" \
   -H "Content-Type: application/json" \
   -d '{
     "task_id": "demo-1",
@@ -170,29 +225,31 @@ curl -X POST "http://localhost:8000/process_video/" \
   }'
 ```
 
+Set `READVIDEO_BASE_URL` to the URL printed by readVideo. With OMLX on port `8000`, readVideo normally uses `8001`.
+
 Check task status:
 
 ```bash
-curl "http://localhost:8000/task_status/demo-1"
+curl "$READVIDEO_BASE_URL/task_status/demo-1"
 ```
 
 Watchlist:
 
 ```bash
-curl "http://localhost:8000/watchlist"
+curl "$READVIDEO_BASE_URL/watchlist"
 ```
 
 History:
 
 ```bash
-curl "http://localhost:8000/api/history"
+curl "$READVIDEO_BASE_URL/api/history"
 ```
 
 Favorites:
 
 ```bash
-curl "http://localhost:8000/api/favorites"
-curl -X POST "http://localhost:8000/api/favorites" \
+curl "$READVIDEO_BASE_URL/api/favorites"
+curl -X POST "$READVIDEO_BASE_URL/api/favorites" \
   -H "Content-Type: application/json" \
   -d '{"task_id": "demo-1"}'
 ```
@@ -200,28 +257,28 @@ curl -X POST "http://localhost:8000/api/favorites" \
 Markdown files:
 
 ```bash
-curl "http://localhost:8000/api/markdown_files?directory=notes"
-curl "http://localhost:8000/api/markdown_files/read?path=notes/demo.md"
-curl -OJ "http://localhost:8000/api/markdown_files/download?path=notes/demo.md"
+curl "$READVIDEO_BASE_URL/api/markdown_files?directory=notes"
+curl "$READVIDEO_BASE_URL/api/markdown_files/read?path=notes/demo.md"
+curl -OJ "$READVIDEO_BASE_URL/api/markdown_files/download?path=notes/demo.md"
 ```
 
 Favorite folders:
 
 ```bash
-curl "http://localhost:8000/api/favorites/folders"
-curl -X POST "http://localhost:8000/api/favorites/folders" \
+curl "$READVIDEO_BASE_URL/api/favorites/folders"
+curl -X POST "$READVIDEO_BASE_URL/api/favorites/folders" \
   -H "Content-Type: application/json" \
   -d '{"name": "AI notes", "notes": "Local model and agent videos"}'
-curl -X PATCH "http://localhost:8000/api/favorites/1/folder" \
+curl -X PATCH "$READVIDEO_BASE_URL/api/favorites/1/folder" \
   -H "Content-Type: application/json" \
   -d '{"folder_id": 1}'
-curl "http://localhost:8000/api/favorites/1/markdown"
+curl "$READVIDEO_BASE_URL/api/favorites/1/markdown"
 ```
 
 Saved source updates:
 
 ```bash
-curl "http://localhost:8000/watchlist/1/updates?limit=8"
+curl "$READVIDEO_BASE_URL/watchlist/1/updates?limit=8"
 ```
 
 ## Tests

@@ -9,10 +9,12 @@ from backend.services.local_transcription import (
     _build_whisper_command,
     _normalize_whisper_text,
     _run_command,
+    _should_retry_without_flash_attention,
     _resolve_transcript_path,
     _supported_whisper_flags,
     read_transcript_text,
 )
+from backend.services.media_audio import CommandExecutionError
 
 
 class LocalTranscriptionTest(unittest.TestCase):
@@ -110,6 +112,78 @@ class LocalTranscriptionTest(unittest.TestCase):
         self.assertNotIn("-sns", command)
         self.assertNotIn("--prompt", command)
 
+    def test_build_whisper_command_can_disable_flash_attention_for_retry(self):
+        command = _build_whisper_command(
+            "whisper-cli",
+            "models/ggml-large-v3.bin",
+            Path("audio.wav"),
+            "zh",
+            Path("out"),
+            supported_flags={"-nfa"},
+            disable_flash_attention=True,
+        )
+
+        self.assertIn("-nfa", command)
+
+    def test_metal_failure_without_actionable_error_uses_safe_retry(self):
+        error = CommandExecutionError(
+            ["whisper-cli", "-m"],
+            1,
+            "ggml_metal_init: allocating\nwhisper_full_with_state: auto-detected language: zh",
+        )
+
+        self.assertTrue(_should_retry_without_flash_attention(error, {"-nfa"}))
+
+    def test_invalid_model_error_does_not_retry(self):
+        error = CommandExecutionError(
+            ["whisper-cli", "-m"],
+            1,
+            "ggml_metal_init: allocating\nerror: failed to load model",
+        )
+
+        self.assertFalse(_should_retry_without_flash_attention(error, {"-nfa"}))
+
+    def test_process_video_retries_metal_failure_without_flash_attention(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            video_path = Path(tmpdir) / "sample.mp4"
+            video_path.write_bytes(b"video")
+            calls = []
+
+            def run(command):
+                calls.append(command)
+                if command[0] == "ffmpeg":
+                    Path(command[-1]).write_bytes(b"wav")
+                elif len(calls) == 2:
+                    raise CommandExecutionError(
+                        command,
+                        1,
+                        "ggml_metal_init: allocating\n"
+                        "whisper_full_with_state: auto-detected language: zh",
+                    )
+                else:
+                    Path(tmpdir, "sample_transcription.txt").write_text(
+                        "转录成功\n",
+                        encoding="utf-8",
+                    )
+
+            service = LocalWhisperTranscription(model_path="model.bin")
+            with (
+                patch.object(service, "_validate"),
+                patch("backend.services.local_transcription._run_command", side_effect=run),
+                patch(
+                    "backend.services.local_transcription._supported_whisper_flags",
+                    return_value={"-nfa"},
+                ),
+            ):
+                result = service.process_video(str(video_path))
+
+        self.assertEqual(result.text, "转录成功\n")
+        self.assertEqual(len(calls), 3)
+        self.assertNotIn("-nfa", calls[1])
+        self.assertIn("-nfa", calls[2])
+
     def test_supported_whisper_flags_parses_help_output_and_handles_missing_cli(self):
         _supported_whisper_flags.cache_clear()
         result = CompletedProcess(
@@ -133,13 +207,19 @@ class LocalTranscriptionTest(unittest.TestCase):
         long_error = "x" * 2105
         result = CompletedProcess(args=["ffmpeg"], returncode=1, stdout="", stderr=long_error)
         with patch("backend.services.media_audio.subprocess.run", return_value=result):
-            with self.assertRaisesRegex(RuntimeError, "命令执行失败：ffmpeg"):
+            with self.assertRaisesRegex(RuntimeError, "命令执行失败（退出码 1）：ffmpeg"):
                 _run_command(["ffmpeg", "-version"])
 
     def test_run_command_decodes_invalid_process_output_for_errors(self):
         result = CompletedProcess(args=["whisper-cli"], returncode=1, stdout=b"", stderr=b"bad output \xe4\xff")
         with patch("backend.services.media_audio.subprocess.run", return_value=result):
             with self.assertRaisesRegex(RuntimeError, "bad output"):
+                _run_command(["whisper-cli", "-m"])
+
+    def test_run_command_reports_termination_signal(self):
+        result = CompletedProcess(args=["whisper-cli"], returncode=-9, stdout=b"", stderr=b"")
+        with patch("backend.services.media_audio.subprocess.run", return_value=result):
+            with self.assertRaisesRegex(RuntimeError, r"SIGKILL \(9\)"):
                 _run_command(["whisper-cli", "-m"])
 
     def test_validate_reports_missing_dependencies_and_model(self):

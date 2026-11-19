@@ -4,10 +4,20 @@ import unittest
 import urllib.error
 from unittest.mock import patch
 
-from backend.services.mlx_client import MlxClient, inspect_mlx_server
+from backend.services.mlx_client import MlxClient, inspect_mlx_server, mlx_start_command
 
 
 class MlxClientTest(unittest.TestCase):
+    def test_start_command_matches_omlx_or_legacy_server(self):
+        self.assertEqual(
+            mlx_start_command("Qwen2.5-14B-Instruct-4bit", "http://127.0.0.1:8000/v1/chat/completions"),
+            "brew services start omlx",
+        )
+        self.assertIn(
+            "mlx_lm.server --model mlx/model",
+            mlx_start_command("mlx/model", "http://127.0.0.1:8080/v1/chat/completions"),
+        )
+
     @patch("backend.services.mlx_client.urllib.request.urlopen")
     def test_generate_uses_openai_compatible_chat_completions(self, urlopen):
         response = urlopen.return_value.__enter__.return_value
@@ -44,6 +54,15 @@ class MlxClientTest(unittest.TestCase):
 
         with self.assertRaisesRegex(RuntimeError, "mlx_lm.server --model mlx/model"):
             MlxClient("mlx/model", "http://127.0.0.1:8080/v1/chat/completions", 30).generate("提示词")
+
+    @patch("backend.services.mlx_client.urllib.request.urlopen")
+    def test_omlx_connection_error_uses_omlx_start_command(self, urlopen):
+        urlopen.side_effect = urllib.error.URLError("connection refused")
+
+        with self.assertRaisesRegex(RuntimeError, "brew services start omlx"):
+            MlxClient("Qwen2.5-14B-Instruct-4bit", "http://127.0.0.1:8000/v1/chat/completions", 30).generate(
+                "提示词"
+            )
 
     @patch("backend.services.mlx_client.urllib.request.urlopen")
     def test_http_error_is_translated_without_losing_server_detail(self, urlopen):

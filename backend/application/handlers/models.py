@@ -14,7 +14,7 @@ from backend.services.ollama_models import (
     pull_ollama_model,
     recommended_models,
 )
-from backend.services.mlx_client import inspect_mlx_server
+from backend.services.mlx_client import inspect_mlx_server, mlx_start_command
 from backend.services.mlx_whisper_models import (
     download_mlx_whisper_model,
     inspect_mlx_whisper_runtime,
@@ -79,18 +79,14 @@ class GetMlxStatusHandler:
                 "error": str(exc),
                 "default_model": settings.mlx_model,
                 "models": [],
-                "start_command": _mlx_start_command(settings.mlx_model),
+                "start_command": mlx_start_command(settings.mlx_model, settings.mlx_url),
             }
         return {
             "status": "ok",
             "default_model": settings.mlx_model,
             "models": status.models,
-            "start_command": _mlx_start_command(settings.mlx_model),
+            "start_command": mlx_start_command(settings.mlx_model, settings.mlx_url),
         }
-
-
-def _mlx_start_command(model: str) -> str:
-    return f"~/mlx-env/bin/mlx_lm.server --model {model} --host 127.0.0.1 --port 8080"
 
 
 class PullOllamaModelHandler:

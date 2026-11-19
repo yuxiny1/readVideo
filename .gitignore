@@ -9,6 +9,7 @@ htmlcov/
 coverage/
 /downloads
 /notes
+/https:/
 readvideo.sqlite3
 apiKey.json
 .env

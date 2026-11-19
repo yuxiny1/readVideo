@@ -22,6 +22,8 @@
     "mlx:serve": "\"$HOME/mlx-env/bin/mlx_lm.server\" --model \"${READVIDEO_MLX_MODEL:-mlx-community/Qwen2.5-72B-Instruct-3bit}\" --host 127.0.0.1 --port 8080 --max-tokens 4096 --prompt-cache-size 1 --prefill-step-size 1024",
     "mlx:whisper:install": "\"$HOME/mlx-env/bin/python\" -m pip install -U mlx-whisper",
     "mlx:whisper:download": "\"$HOME/mlx-env/bin/python\" -c \"from huggingface_hub import snapshot_download; snapshot_download('mlx-community/whisper-large-v3-mlx')\"",
+    "omlx:status": "curl -fsS http://127.0.0.1:8000/health",
+    "omlx:models": "curl -fsS http://127.0.0.1:8000/v1/models/status",
     "containers:up": "./scripts/containers.sh up",
     "containers:up:gpu": "./scripts/containers.sh up-gpu",
     "containers:up:host-ollama": "./scripts/containers.sh up-host-ollama",
