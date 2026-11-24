@@ -59,24 +59,31 @@ def original_transcript_segments_for_sections(
     candidates = chunk_transcript(transcript_text, max_chars=900)
     if not candidates:
         return []
-    return [_best_original_segment(section, candidates) for section in article_sections]
+    if len(candidates) < len(article_sections):
+        nonempty_line_count = sum(1 for line in transcript_text.splitlines() if line.strip())
+        candidate_count = min(nonempty_line_count, len(article_sections) * 2)
+        candidates = original_transcript_segments(transcript_text, candidate_count)
+    assigned: list[list[str]] = [[] for _ in article_sections]
+    for candidate_index, candidate in enumerate(candidates):
+        expected_section = min(
+            candidate_index * len(article_sections) // len(candidates),
+            len(article_sections) - 1,
+        )
+        scores = [_original_segment_score(section, candidate) for section in article_sections]
+        best_score = max(scores)
+        best_sections = [index for index, score in enumerate(scores) if score == best_score]
+        section_index = min(best_sections, key=lambda index: abs(index - expected_section))
+        assigned[section_index].append(candidate)
+    return ["\n".join(segment) for segment in assigned]
 
 
-def _best_original_segment(section: ArticleSection, candidates: list[str]) -> str:
+def _original_segment_score(section: ArticleSection, candidate: str) -> float:
     query_text = _expand_query(f"{section.title}\n{section.body}")
     query_tokens = _matching_tokens(query_text)
     if not query_tokens:
-        return candidates[0]
-
-    def score(candidate: str) -> float:
-        overlap = query_tokens & _matching_tokens(candidate)
-        return (
-            len(overlap) * 10
-            + _phrase_score(query_text, candidate)
-            + min(len(candidate), 1600) / 1000
-        )
-
-    return max(candidates, key=score)
+        return 0
+    overlap = query_tokens & _matching_tokens(candidate)
+    return len(overlap) * 10 + _phrase_score(query_text, candidate)
 
 
 def _expand_query(text: str) -> str:

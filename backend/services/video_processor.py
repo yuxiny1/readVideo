@@ -12,6 +12,7 @@ from backend.services.local_transcription import read_transcript_text
 from backend.services.notes import write_markdown_note
 from backend.services.processing_settings import resolve_processing_plan
 from backend.services.transcription_gateway import ExistingTranscriptionResult, transcribe_video
+from backend.services.transcription_progress import transcription_progress_hook, transcription_result_details
 from backend.storage.history import HistoryStore
 
 
@@ -118,7 +119,7 @@ async def process_video(
             )
             persist_task_history(settings.database_path, task_id)
 
-        if candidate is not None and candidate.video_path is not None and candidate.transcript_path is not None:
+        if candidate is not None and candidate.video_path is not None and candidate.can_reuse_transcript:
             transcript = read_transcript_text(candidate.transcript_path)
             if transcript.recovered_encoding:
                 candidate.transcript_path.write_text(transcript.text, encoding="utf-8")
@@ -142,6 +143,18 @@ async def process_video(
             append_transcript_recovery_log(task_id, result)
             persist_task_history(settings.database_path, task_id)
         else:
+            if (
+                candidate is not None
+                and candidate.video_path is not None
+                and candidate.transcript_path is not None
+                and not candidate.can_reuse_transcript
+            ):
+                append_task_log(
+                    task_id,
+                    "已有本地转录缺少有效的完整性审计，将重新转录而不是复用可能不完整的文本。",
+                    level="warning",
+                    status="transcribing",
+                )
             transcription_labels = {
                 "mlx": f"MLX Whisper 模型 {settings.mlx_whisper_model}",
                 "local": "whisper.cpp 本地转录",
@@ -149,7 +162,12 @@ async def process_video(
             }
             transcription_label = transcription_labels[settings.transcription_backend]
             append_task_log(task_id, f"正在使用{transcription_label}。", status="transcribing")
-            result = await asyncio.to_thread(transcribe_video, downloaded_file_path, settings)
+            result = await asyncio.to_thread(
+                transcribe_video,
+                downloaded_file_path,
+                settings,
+                transcription_progress_hook(task_id),
+            )
             resolved_transcription_backend = settings.transcription_backend
             set_task_status(
                 task_id,
@@ -159,8 +177,8 @@ async def process_video(
                 video_path=downloaded_file_path,
                 transcription_path=result.transcription_path,
                 transcription_backend=settings.transcription_backend,
-                chunk_count=getattr(result, "chunk_count", None),
                 log_message=f"转录文件已保存至：{result.transcription_path}",
+                **transcription_result_details(result),
             )
             append_transcript_recovery_log(task_id, result)
             persist_task_history(settings.database_path, task_id)
@@ -211,9 +229,9 @@ async def process_video(
             ollama_model=resolved_ollama_model if resolved_notes_backend == "ollama" else None,
             mlx_model=resolved_mlx_model if resolved_notes_backend == "mlx" else None,
             note_style=resolved_note_style,
-            chunk_count=getattr(result, "chunk_count", None),
             delete_video_after_completion=delete_video_after_completion,
             log_message=f"Markdown 笔记已保存至：{note_result.markdown_path}",
+            **transcription_result_details(result),
         )
         persist_task_history(settings.database_path, task_id)
         if delete_video_after_completion:

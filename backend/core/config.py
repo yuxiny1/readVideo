@@ -24,6 +24,7 @@ class Settings:
     local_whisper_language: str = "auto"
     local_whisper_prompt: str = ""
     local_whisper_audio_filter: str = "highpass=f=80,lowpass=f=8000,loudnorm=I=-16:TP=-1.5:LRA=11"
+    local_whisper_chunk_seconds: int = 300
     mlx_whisper_python: str = "~/mlx-env/bin/python"
     mlx_whisper_model: str = "mlx-community/whisper-large-v3-mlx"
     notes_dir: str = "notes"
@@ -58,9 +59,9 @@ def load_openai_api_key(config_path: str = "apiKey.json", required: bool = True)
     return None
 
 
-def _load_chunk_seconds(raw_value: Optional[str]) -> int:
+def _load_chunk_seconds(raw_value: Optional[str], default: int = 180) -> int:
     if raw_value is None:
-        return 180
+        return default
 
     try:
         chunk_seconds = int(raw_value)
@@ -116,6 +117,10 @@ def load_settings() -> Settings:
         local_whisper_audio_filter=os.getenv(
             "READVIDEO_LOCAL_WHISPER_AUDIO_FILTER",
             "highpass=f=80,lowpass=f=8000,loudnorm=I=-16:TP=-1.5:LRA=11",
+        ),
+        local_whisper_chunk_seconds=_load_chunk_seconds(
+            os.getenv("READVIDEO_LOCAL_WHISPER_CHUNK_SECONDS"),
+            default=300,
         ),
         mlx_whisper_python=os.getenv("READVIDEO_MLX_WHISPER_PYTHON", "~/mlx-env/bin/python"),
         mlx_whisper_model=os.getenv(

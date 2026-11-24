@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+from backend.services.transcription_audit import transcription_audit_is_valid
 from backend.storage.history import HistoryRecord, HistoryStore
 
 
@@ -22,6 +23,18 @@ class HistoryReuseCandidate:
     @property
     def transcript_exists(self) -> bool:
         return self.transcript_path is not None
+
+    @property
+    def transcript_verified(self) -> bool:
+        return bool(self.transcript_path and transcription_audit_is_valid(self.transcript_path))
+
+    @property
+    def can_reuse_transcript(self) -> bool:
+        if not self.transcript_exists:
+            return False
+        if self.record.transcription_backend == "local":
+            return self.transcript_verified
+        return True
 
     @property
     def markdown_exists(self) -> bool:

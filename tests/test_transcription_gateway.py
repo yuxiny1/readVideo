@@ -39,6 +39,7 @@ class TranscriptionGatewayTest(unittest.TestCase):
             local_whisper_language="zh",
             local_whisper_prompt="domain words",
             local_whisper_audio_filter="loudnorm",
+            local_whisper_chunk_seconds=600,
         )
 
         result = transcribe_video("video.mp4", settings)
@@ -50,6 +51,8 @@ class TranscriptionGatewayTest(unittest.TestCase):
             language="zh",
             prompt="domain words",
             audio_filter="loudnorm",
+            chunk_seconds=600,
+            progress_callback=None,
         )
         transcriber_type.return_value.process_video.assert_called_once_with("video.mp4")
 

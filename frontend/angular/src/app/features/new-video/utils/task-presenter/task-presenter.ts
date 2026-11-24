@@ -6,7 +6,11 @@ export const TERMINAL_TASK_STATUSES: ReadonlySet<string> = new Set(["completed",
 export function taskProgressPercent(task: TaskRecord | null): number {
   if (!task) return 0;
   if (task.status === "completed") return 100;
-  const percent = Number(task.download_percent);
+  const percent = Number(
+    task.status === "transcribing"
+      ? task.transcription_percent
+      : task.download_percent,
+  );
   return Number.isFinite(percent) ? Math.max(0, Math.min(100, percent)) : 0;
 }
 
@@ -14,6 +18,12 @@ export function describeTaskPhase(task: TaskRecord | null): string {
   if (!task) return "当前没有任务。";
   if (task.status === "downloading") return describeDownload(task);
   if (task.status === "transcribing") {
+    if (Number(task.transcription_chunks_total) > 0) {
+      const completed = Number(task.transcription_chunks_completed) || 0;
+      const total = Number(task.transcription_chunks_total);
+      const coverage = Number(task.transcription_coverage_percent) || 0;
+      return `正在转录第 ${completed}/${total} 段，已验证覆盖 ${coverage.toFixed(1)}% 音频。`;
+    }
     return task.video_path ? `视频已保存：${task.video_path}` : "正在准备转录。";
   }
   if (task.status === "organizing_notes") {

@@ -15,6 +15,8 @@ describe("task presenter", () => {
     expect(taskProgressPercent(null)).toBe(0);
     expect(taskProgressPercent({task_id: "1", status: "downloading", download_percent: 120})).toBe(100);
     expect(taskProgressPercent({task_id: "1", status: "downloading", download_percent: -2})).toBe(0);
+    expect(taskProgressPercent({task_id: "1", status: "transcribing", download_percent: 100, transcription_percent: 40}))
+      .toBe(40);
     expect(taskProgressPercent({task_id: "1", status: "completed"})).toBe(100);
     expect(TERMINAL_TASK_STATUSES.has("failed")).toBe(true);
   });
@@ -25,6 +27,13 @@ describe("task presenter", () => {
       .toContain("video.mp4 · 50.0%");
     expect(describeTaskPhase({task_id: "1", status: "transcribing", video_path: "/video.mp4"}))
       .toContain("视频已保存");
+    expect(describeTaskPhase({
+      task_id: "1",
+      status: "transcribing",
+      transcription_chunks_completed: 3,
+      transcription_chunks_total: 12,
+      transcription_coverage_percent: 25,
+    })).toContain("第 3/12 段");
     expect(describeTaskPhase({task_id: "1", status: "organizing_notes", ollama_model: "qwen"}))
       .toContain("qwen");
     expect(describeTaskPhase({task_id: "1", status: "failed", error: "bad audio"})).toBe("bad audio");

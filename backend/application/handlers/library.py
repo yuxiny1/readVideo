@@ -49,6 +49,7 @@ class LookupHistoryHandler:
             "can_reuse": candidate.can_reuse,
             "video_exists": candidate.video_exists,
             "transcript_exists": candidate.transcript_exists,
+            "transcript_verified": candidate.transcript_verified,
             "markdown_exists": candidate.markdown_exists,
             "record": history_record_dict(record, tag_store().tags_for_task(record.task_id)),
             "resolved_paths": {

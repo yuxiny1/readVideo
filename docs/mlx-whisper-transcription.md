@@ -65,3 +65,13 @@ Whisper 的序列到序列结构可能产生重复或幻觉。MLX 转录路径�
 
 Apple MLX 不能在 Linux 容器中运行。Compose 的 API 和 worker 继续使用
 `whisper.cpp` 与挂载的 GGML 模型；本机运行 readVideo 时可以选择 MLX Whisper。
+
+`whisper.cpp` 兼容路径会把长录音按完整窗口转录，避免单次处理一小时直播时静默遗漏中后段：
+
+```bash
+READVIDEO_LOCAL_WHISPER_CHUNK_SECONDS=300
+```
+
+每个 5 分钟窗口都成功并通过 JSON 时间戳审计后，才会原子合并并写入最终 TXT 与 `*_transcription.audit.json`。任一窗口失败、时间戳损坏或覆盖不连续时，任务会明确失败，不会覆盖已有完整 TXT，也不会把半成品标为完成。历史中的本地转录如果没有有效审计，会自动重新转录。
+
+Whisper 的一句话可以合法跨过 5 分钟边界，系统会记录超出的毫秒数并把审计范围截到当前窗口，不会因此误报失败。真正失败时，已经验证的分块和配置指纹 checkpoint 会保留；对同一视频重试会从第一个未完成分块继续，成功合并后再清理 checkpoint。

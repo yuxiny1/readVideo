@@ -51,6 +51,24 @@ class NotesTest(unittest.TestCase):
         self.assertIn("China's rise", segments[0])
         self.assertIn("750 bases", segments[1])
 
+    def test_original_transcript_segments_for_sections_preserve_every_chunk_once(self):
+        lines = [f"第{i:03d}行 " + ("市场与治理内容" * 20) for i in range(1, 81)]
+        transcript = "\n".join(lines)
+        sections = [
+            ArticleSection(title="市场", body="市场变化与投资机会。"),
+            ArticleSection(title="治理", body="社区治理与协议发展。"),
+            ArticleSection(title="结尾", body="最后的问答与结束语。"),
+        ]
+
+        segments = original_transcript_segments_for_sections(transcript, sections)
+        combined = "\n".join(segments)
+
+        self.assertEqual(len(segments), 3)
+        for line in lines:
+            self.assertEqual(combined.count(line), 1)
+        self.assertIn(lines[0], combined)
+        self.assertIn(lines[-1], combined)
+
     def test_write_markdown_note_creates_summary_and_file(self):
         transcript = "\n".join(
             [

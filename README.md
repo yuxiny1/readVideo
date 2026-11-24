@@ -126,6 +126,7 @@ READVIDEO_NOTES_DIR=notes
 READVIDEO_LOCAL_WHISPER_CLI=whisper-cli
 READVIDEO_LOCAL_WHISPER_MODEL=models/ggml-large-v3.bin
 READVIDEO_LOCAL_WHISPER_LANGUAGE=auto
+READVIDEO_LOCAL_WHISPER_CHUNK_SECONDS=300
 READVIDEO_MLX_WHISPER_PYTHON=~/mlx-env/bin/python
 READVIDEO_MLX_WHISPER_MODEL=mlx-community/whisper-large-v3-mlx
 READVIDEO_NOTES_BACKEND=ollama
@@ -150,6 +151,14 @@ READVIDEO_NOTES_BACKEND=ollama
 On Apple Silicon, readVideo can use OMLX instead of Ollama. Start OMLX, open readVideo, and select `MLX（Apple 芯片）` under `笔记生成引擎`. OMLX exposes the OpenAI-compatible endpoint configured by `READVIDEO_MLX_URL`. The older `mlx_lm.server` workflow remains available through `npm run mlx:serve` on port `8080`. See [MLX Local Model](docs/mlx-local-model.md) for both workflows.
 
 For audio transcription, select `MLX Whisper（Apple 芯片，高精度）`. This uses the separate full large-v3 speech model directly and does not require `mlx_lm.server`. See [MLX Whisper Transcription](docs/mlx-whisper-transcription.md).
+
+The whisper.cpp compatibility backend processes long recordings in audited 5-minute windows and merges them only after every window succeeds. `READVIDEO_LOCAL_WHISPER_CHUNK_SECONDS` can tune that window size; `300` is the tested default after 15-minute calls were found to omit speech inside a successful process.
+
+Each successful local transcript has a sibling `*_transcription.audit.json` containing contiguous audio-window coverage, per-window character counts and Whisper timestamp metadata, plus a SHA-256 hash of the final TXT. The final TXT and audit are written atomically only after 100% of the audio duration has been processed. A local transcript without a valid matching audit is not automatically reused.
+
+Whisper segments may legitimately cross a five-minute boundary; that overrun is recorded as a diagnostic and clamped to the requested window instead of failing the task. If a later window genuinely fails, completed part files and a source/config fingerprint checkpoint are retained, so retrying the same video resumes from the first unfinished window. Checkpoints are removed after a verified successful merge.
+
+Generated Markdown assigns every original transcript chunk to one relevant note section exactly once, preserving the complete source through the final line without repeated excerpts.
 
 Optional OpenAI backend:
 

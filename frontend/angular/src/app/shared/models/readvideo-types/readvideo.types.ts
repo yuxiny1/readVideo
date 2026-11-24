@@ -126,6 +126,12 @@ export interface TaskRecord {
   download_total_bytes?: number;
   download_speed?: number;
   download_eta?: number;
+  chunk_count?: number;
+  transcription_chunks_completed?: number;
+  transcription_chunks_total?: number;
+  transcription_percent?: number;
+  transcription_coverage_percent?: number;
+  transcription_audit_path?: string;
   delete_video_after_completion?: boolean;
   video_deleted_after_completion?: boolean;
   video_delete_error?: string;
@@ -154,6 +160,7 @@ export interface DuplicateLookup {
   can_reuse: boolean;
   video_exists?: boolean;
   transcript_exists?: boolean;
+  transcript_verified?: boolean;
   markdown_exists?: boolean;
   record?: TaskRecord;
   resolved_paths?: {

@@ -109,6 +109,7 @@ READVIDEO_NOTES_DIR=notes
 READVIDEO_LOCAL_WHISPER_CLI=whisper-cli
 READVIDEO_LOCAL_WHISPER_MODEL=models/ggml-large-v3.bin
 READVIDEO_LOCAL_WHISPER_LANGUAGE=auto
+READVIDEO_LOCAL_WHISPER_CHUNK_SECONDS=300
 READVIDEO_MLX_WHISPER_PYTHON=~/mlx-env/bin/python
 READVIDEO_MLX_WHISPER_MODEL=mlx-community/whisper-large-v3-mlx
 READVIDEO_NOTES_BACKEND=ollama
@@ -131,6 +132,14 @@ READVIDEO_NOTES_BACKEND=ollama
 Apple Silicon can use OMLX instead: start the OMLX service, download a model in its admin interface, then select `MLX（Apple 芯片）` on the new-video page. The legacy `mlx_lm.server` path is still available with `npm run mlx:serve` on port `8080`. See [MLX Local Model](mlx-local-model.md).
 
 MLX Whisper audio transcription is separate from the MLX-LM note model and does not need a server. Select `MLX Whisper（Apple 芯片，高精度）` on the new-video page. See [MLX Whisper Transcription](mlx-whisper-transcription.md).
+
+The whisper.cpp compatibility path divides long recordings into audited 5-minute windows, transcribes every window, and writes the final transcript only after all windows succeed. Configure the window with `READVIDEO_LOCAL_WHISPER_CHUNK_SECONDS`; the default is `300` seconds because real long-form testing showed that a successful 15-minute invocation could still omit internal speech.
+
+Successful local runs write `*_transcription.audit.json` beside the TXT. It proves contiguous 100% window coverage, records per-window text and timestamp diagnostics, and binds the audit to the TXT with SHA-256. Local history without a valid audit is re-transcribed instead of silently reused.
+
+A Whisper sentence may cross a window edge, so timestamp overrun is recorded and clamped rather than treated as missing audio. Failed long runs keep verified part files plus a source/config fingerprint checkpoint; retrying the same video skips completed windows and resumes at the first unfinished one. A successful audited merge removes the checkpoint.
+
+Markdown source excerpts assign every transcript chunk to one relevant note section exactly once, so the segmented source remains complete through the final line.
 
 `READVIDEO_NOTE_STYLE=commercial` keeps the detailed segmented notes and adds a `Business Lens` plus an `Editorial Article` before them. This mode asks the local model for business-core takeaways, risks, opportunities, key metrics, next signals, and a polished business-news analysis summary with a clear lede, context, stakes, and implications. The default `detailed` mode preserves the current notes format.
 

@@ -1,8 +1,8 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Callable, Optional
 
 from backend.core.config import Settings
-from backend.services.local_transcription import LocalWhisperTranscription
+from backend.services.local_transcription import LocalWhisperTranscription, TranscriptionProgress
 from backend.services.mlx_whisper_transcription import MlxWhisperTranscription
 from backend.services.openai_transcription import AudioTranscription
 
@@ -16,7 +16,11 @@ class ExistingTranscriptionResult:
     decode_error: str = ""
 
 
-def transcribe_video(video_path: str, settings: Settings):
+def transcribe_video(
+    video_path: str,
+    settings: Settings,
+    progress_callback: Callable[[TranscriptionProgress], None] | None = None,
+):
     if settings.transcription_backend == "mlx":
         transcriber = MlxWhisperTranscription(
             python_executable=settings.mlx_whisper_python,
@@ -34,6 +38,8 @@ def transcribe_video(video_path: str, settings: Settings):
             language=settings.local_whisper_language,
             prompt=settings.local_whisper_prompt,
             audio_filter=settings.local_whisper_audio_filter,
+            chunk_seconds=settings.local_whisper_chunk_seconds,
+            progress_callback=progress_callback,
         )
         return transcriber.process_video(video_path)
 

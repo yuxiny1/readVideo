@@ -34,6 +34,21 @@ class MainAppTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "必须大于 0"):
                 load_settings()
 
+        with patch.dict(
+            "os.environ",
+            {"READVIDEO_TRANSCRIPTION_BACKEND": "local", "READVIDEO_LOCAL_WHISPER_CHUNK_SECONDS": "0"},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "音频分段时长必须大于 0"):
+                load_settings()
+
+        with patch.dict(
+            "os.environ",
+            {"READVIDEO_TRANSCRIPTION_BACKEND": "local"},
+            clear=True,
+        ):
+            self.assertEqual(load_settings().local_whisper_chunk_seconds, 300)
+
     def test_load_settings_validates_backend_names_and_integer_chunks(self):
         with patch.dict("os.environ", {"READVIDEO_TRANSCRIPTION_BACKEND": "bad"}, clear=True):
             with self.assertRaisesRegex(RuntimeError, "请选择 MLX Whisper、whisper.cpp 或 OpenAI 转录"):

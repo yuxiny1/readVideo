@@ -12,6 +12,8 @@ from backend.services.video_processor import (
     delete_downloaded_video_after_completion,
     process_video,
 )
+from backend.services.local_transcription import TranscriptionProgress
+from backend.services.transcription_progress import transcription_progress_hook
 from backend.storage.history import HistoryStore
 
 
@@ -244,6 +246,19 @@ class VideoProcessorReuseTest(unittest.TestCase):
         self.assertIsNone(download_percent(100, 0))
         self.assertEqual(download_percent(150, 100), 100.0)
         self.assertEqual(download_percent(25, 100), 25.0)
+
+    def test_transcription_progress_hook_records_verified_audio_coverage(self):
+        set_task_status("transcription-progress", "transcribing")
+        report = transcription_progress_hook("transcription-progress")
+
+        report(TranscriptionProgress(0, 4, 0, 1_200_000))
+        report(TranscriptionProgress(1, 4, 300_000, 1_200_000))
+
+        task = TASKS["transcription-progress"]
+        self.assertEqual(task["transcription_chunks_completed"], 1)
+        self.assertEqual(task["transcription_chunks_total"], 4)
+        self.assertEqual(task["transcription_percent"], 25.0)
+        self.assertTrue(any("第 1/4 段完成" in log["message"] for log in task["logs"]))
 
 
 if __name__ == "__main__":
